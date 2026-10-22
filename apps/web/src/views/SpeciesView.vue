@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api.js';
 import { useCatalogue } from '../catalogue-context.js';
+import SpeciesInsights from '../components/SpeciesInsights.vue';
 import { formatDate, plateNumber } from '../format.js';
 
 const props = defineProps({ speciesId: { type: Number, required: true } });
@@ -199,6 +200,8 @@ function exifLine(p) {
           </div>
         </div>
       </section>
+
+      <SpeciesInsights :catalogue="catalogue.slug" :species-id="entry.id" :common-name="entry.commonName" />
 
       <section class="notes">
         <h3>Notes</h3>

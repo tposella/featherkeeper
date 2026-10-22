@@ -36,3 +36,30 @@ export const visibilityLabels = {
   members: 'Signed-in users',
   public: 'Public',
 };
+
+export const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/** "today", "yesterday", "3 days ago" for eBird dates like "2026-10-20 08:15" (local time of the sighting). */
+export function timeAgo(value) {
+  if (!value) return '';
+  const d = new Date(String(value).replace(' ', 'T'));
+  if (Number.isNaN(d.getTime())) return value;
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 30) return `${days} days ago`;
+  return formatDate(d.toISOString());
+}

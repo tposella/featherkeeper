@@ -626,6 +626,76 @@ const routes = [
       links: { inaturalist: 'https://www.inaturalist.org', wikipedia: null },
     };
   }],
+  ['GET', /^\/catalogues\/([\w-]+)\/season$/, async ([slug], body, query) => {
+    const c = getCatalogue(slug);
+    await wait(500);
+    const current = Number(query.get('current')) || new Date().getMonth() + 1;
+    const month = Number(query.get('month')) || current;
+    if (!c.area) return { month, currentMonth: current, area: null, sources: {}, species: [], notInCatalogue: [] };
+    const dex = dexList(c);
+    const daysAgo = (n) => {
+      const d = new Date(Date.now() - n * 86400000);
+      return `${d.toISOString().slice(0, 10)} 08:${String(10 + n).padStart(2, '0')}`;
+    };
+    // Pretend summer birds are around May-September and everything else all year.
+    const summer = new Set(['rufhum', 'easkin', 'treswa', 'yelwar', 'westan', 'sposan', 'fragul', 'amwpel', 'osprey', 'killde', 'moublu', 'sancra']);
+    const winter = new Set(['bohwax', 'comgol', 'goleag']);
+    const inSeason = (code) => (summer.has(code) ? month >= 5 && month <= 9 : winter.has(code) ? month <= 3 || month >= 10 : true);
+    const species = [];
+    dex.forEach((d, i) => {
+      if (!d.ebirdCode || !inSeason(d.ebirdCode)) return;
+      const nowHit = month === current && i % 3 !== 1;
+      species.push({
+        ...d,
+        plate: i + 1,
+        now: nowHit ? { observedAt: daysAgo(i % 9), where: PLACES[i % PLACES.length].name, howMany: 1 + (i % 5) } : null,
+        usual: { observations: 8 + ((i * 37) % 140) },
+      });
+    });
+    return {
+      month,
+      currentMonth: current,
+      area: { kind: 'area', label: c.area.label, radiusKm: c.area.radiusKm, regionCode: null },
+      sources: { now: month === current ? 'ebird' : null, usual: 'inaturalist', nowError: null, usualError: null },
+      species,
+      notInCatalogue:
+        month === current
+          ? [
+              { ebirdCode: 'snoowl1', commonName: 'Snowy Owl', scientificName: 'Bubo scandiacus', observedAt: daysAgo(2), where: 'Horse Creek Road' },
+              { ebirdCode: 'clanut', commonName: "Clark's Nutcracker", scientificName: 'Nucifraga columbiana', observedAt: daysAgo(6), where: 'Ghost Reservoir' },
+            ]
+          : [],
+    };
+  }],
+  ['GET', /^\/catalogues\/([\w-]+)\/species\/(\d+)\/insights$/, async ([slug, id]) => {
+    const c = getCatalogue(slug);
+    await wait(500);
+    const sp = species.find((x) => x.id === Number(id));
+    const seed = Number(id);
+    const peak = 3 + (seed % 5);
+    const months = Array.from({ length: 12 }, (_, i) => Math.max(0, Math.round(120 * Math.exp(-((i - peak) ** 2) / (2 + (seed % 4)))) + (seed % 3)));
+    const hours = Array.from({ length: 24 }, (_, h) => (h < 5 || h > 21 ? 0 : Math.round(20 * Math.exp(-((h - 8 - (seed % 3)) ** 2) / 8) + 6 * Math.exp(-((h - 18) ** 2) / 4))));
+    const mine = sightings
+      .filter((s) => s.catalogueId === c.id && s.speciesId === sp.id && s.observedAt)
+      .map((s) => ({ observedAt: s.observedAt, where: s.locationName }));
+    return {
+      area: c.area ? { kind: 'area', label: c.area.label, radiusKm: c.area.radiusKm, regionCode: null } : null,
+      months,
+      hours: { hours, sample: hours.reduce((a, b) => a + b, 0) },
+      habitat: {
+        text: `Sample habitat text for the ${sp.common_name}. In a real install this is the opening of the habitat section of its Wikipedia article, for example "open woodland, forest edges and lakeshores".`,
+        section: 'Distribution and habitat',
+        url: 'https://en.wikipedia.org',
+        title: sp.common_name,
+      },
+      reports: [
+        { where: PLACES[seed % PLACES.length].name, observedAt: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10) + ' 07:45', howMany: 2 },
+        { where: PLACES[(seed + 2) % PLACES.length].name, observedAt: new Date(Date.now() - 9 * 86400000).toISOString().slice(0, 10) + ' 16:20', howMany: 1 },
+      ],
+      yours: mine,
+      links: { inaturalist: 'https://www.inaturalist.org', ebird: sp.ebird_code ? `https://ebird.org/species/${sp.ebird_code}` : null },
+    };
+  }],
   ['GET', /^\/catalogues\/([\w-]+)\/members$/, ([slug]) => {
     const c = getCatalogue(slug);
     requireEdit(c);

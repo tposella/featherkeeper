@@ -8,6 +8,7 @@ const MAX_CHARS = 420;
 
 export function stripHtml(html) {
   return html
+    .replace(/<span[^>]*mw-editsection[\s\S]*?<\/span>\s*<\/span>|<span[^>]*mw-editsection[\s\S]*?<\/span>/gi, ' ')
     .replace(/<(style|script|table|figure)[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<sup[\s\S]*?<\/sup>/gi, '') // citation markers like [12]
     .replace(/<h[1-6][\s\S]*?<\/h[1-6]>/gi, ' ')
@@ -18,7 +19,7 @@ export function stripHtml(html) {
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/\[\d+\]|\[edit\]/g, '')
+    .replace(/\[\s*\d+\s*\]|\[\s*edit\s*\]/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -28,7 +29,7 @@ export function firstSentences(text, maxChars = MAX_CHARS) {
   const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g) ?? [text];
   let out = '';
   for (const s of sentences) {
-    if ((out + s).length > maxChars) break;
+    if ((out + s).trim().length > maxChars) break;
     out += s;
   }
   return (out || text.slice(0, maxChars)).trim();

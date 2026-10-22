@@ -14,6 +14,7 @@ const pages = [
   ['species-seen-only', '#/c/bow-valley/species/3'],
   ['species-missing', '#/c/bow-valley/species/6'],
   ['families', '#/c/bow-valley/families'],
+  ['season', '#/c/bow-valley/season'],
   ['dex-one-family', '#/c/bow-valley?family=Woodpeckers'],
   ['map', '#/c/bow-valley/map'],
   ['recent', '#/c/bow-valley/recent'],
