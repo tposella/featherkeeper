@@ -53,5 +53,5 @@ cd apps/web && npm run dev                                    # proxies /api to 
 - Species import from eBird for any region, plus manual entry
 - Photo uploads with EXIF date, camera and GPS
 - Map of sightings, with an option to hide locations
-- Optional AI species suggestions from a photo
+- Optional AI identification (BioCLIP 2, runs on your own CPU): top 3 matches with confidence, weighted by what eBird has recorded where the photo was taken. See [docs/ai-identification.md](docs/ai-identification.md)
 - One `docker compose up` to deploy on any Linux host or Proxmox LXC

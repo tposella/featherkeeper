@@ -43,7 +43,7 @@ SPECIES = [
     ("Mountain bluebird", "Mountain Bluebird"),
     ("Common raven", "Common Raven"),
     ("Dark-eyed junco", "Dark-eyed Junco"),
-    ("Yellow warbler", "Yellow Warbler"),
+    ("Yellow warbler", "Northern Yellow Warbler"),  # eBird's name since its 2025 taxonomy split
     ("Great blue heron", "Great Blue Heron"),
     ("Bohemian waxwing", "Bohemian Waxwing"),
     ("Cedar waxwing", "Cedar Waxwing"),
