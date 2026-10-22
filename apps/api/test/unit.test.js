@@ -99,3 +99,40 @@ test('bioclip identifier sends candidates and defaults to the bundled container'
   assert.equal(res.model, 'bioclip-2');
   assert.equal(res.predictions[0].id, 'ebird:amerob');
 });
+
+test('reference photos come from iNaturalist, openly licensed only, with credit', async () => {
+  const { createReferenceClient } = await import('../src/integrations/reference.js');
+  const calls = [];
+  const fakeFetch = async (url) => {
+    calls.push(url);
+    const json = (body) => new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
+    if (url.includes('/v1/taxa?q=')) return json({ results: [{ id: 12727, name: 'Turdus migratorius' }] });
+    if (url.includes('/v1/taxa/12727')) {
+      return json({
+        results: [
+          {
+            id: 12727,
+            wikipedia_url: 'http://en.wikipedia.org/wiki/American_robin',
+            taxon_photos: [
+              { photo: { id: 1, license_code: 'cc-by-nc', attribution: '(c) Ann, some rights reserved (CC BY-NC)', medium_url: 'https://static.example/photos/1/medium.jpg', square_url: 'https://static.example/photos/1/square.jpg' } },
+              { photo: { id: 2, license_code: null, attribution: '(c) Bob, all rights reserved', medium_url: 'https://static.example/photos/2/medium.jpg' } },
+              { photo: { id: 3, license_code: 'cc0', attribution: 'no rights reserved', medium_url: 'https://static.example/photos/3/medium.jpg' } },
+            ],
+          },
+        ],
+      });
+    }
+    throw new Error(`unexpected ${url}`);
+  };
+  const ref = createReferenceClient({ enabled: true, userAgent: 'test' }, fakeFetch);
+  const info = await ref.forSpecies('Turdus migratorius', 'American Robin');
+  assert.equal(info.photos.length, 2, 'the all-rights-reserved photo is skipped');
+  assert.equal(info.photos[0].licence, 'CC BY-NC');
+  assert.equal(info.photos[0].url, 'https://static.example/photos/1/large.jpg');
+  assert.equal(info.photos[0].thumb, 'https://static.example/photos/1/square.jpg');
+  assert.match(info.photos[0].credit, /Ann/);
+  assert.equal(info.links.inaturalist, 'https://www.inaturalist.org/taxa/12727');
+  const before = calls.length;
+  await ref.forSpecies('turdus migratorius');
+  assert.equal(calls.length, before, 'second lookup is cached');
+});

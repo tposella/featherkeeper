@@ -52,6 +52,11 @@ export function loadConfig(env = process.env) {
       url: env.GEOCODER_URL ?? 'https://nominatim.openstreetmap.org',
       userAgent: `Featherkeeper/0.1 (+${publicUrl})`,
     },
+    // Example photos of suggested species, from iNaturalist and Wikipedia.
+    reference: {
+      enabled: bool(env.REFERENCE_PHOTOS, true),
+      userAgent: `Featherkeeper/0.1 (+${publicUrl})`,
+    },
     identify: {
       provider: identifyProvider,
       url: env.IDENTIFY_URL ?? '',

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
 
-export default async function systemRoutes(app, { db, config, ebird, geocoder, identifier }) {
+export default async function systemRoutes(app, { db, config, ebird, geocoder, identifier, reference }) {
   // Used by Docker health checks and uptime monitors.
   app.get('/health', async (request, reply) => {
     try {
@@ -23,6 +23,7 @@ export default async function systemRoutes(app, { db, config, ebird, geocoder, i
       maxUploadMb: config.maxUploadMb,
       ebirdEnabled: ebird.enabled,
       placeSearchEnabled: geocoder.enabled,
+      referencePhotosEnabled: reference.enabled,
       identifyEnabled: identifier.enabled,
     };
   });

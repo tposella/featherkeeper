@@ -274,6 +274,7 @@ const routes = [
     maxUploadMb: 100,
     ebirdEnabled: true,
     placeSearchEnabled: true,
+    referencePhotosEnabled: true,
     identifyEnabled: true,
   })],
   ['GET', /^\/auth\/me$/, () => ({ user: me() })],
@@ -595,6 +596,23 @@ const routes = [
     };
   }],
 
+  ['GET', /^\/reference$/, async (m, body, query) => {
+    await wait(300);
+    const sci = query.get('scientificName') ?? '';
+    const seed = [...sci].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+    return {
+      photos: [0, 1, 2].map((i) => ({
+        thumb: placeholderPhoto(seed + i, 240, 240),
+        url: placeholderPhoto(seed + i, 1200, 900),
+        medium: placeholderPhoto(seed + i, 800, 600),
+        credit: `Sample reference photo ${i + 1} (in a real install: iNaturalist, with the photographer's credit)`,
+        licence: 'CC BY-NC',
+        source: 'iNaturalist',
+        page: 'https://www.inaturalist.org',
+      })),
+      links: { inaturalist: 'https://www.inaturalist.org', wikipedia: null },
+    };
+  }],
   ['GET', /^\/catalogues\/([\w-]+)\/members$/, ([slug]) => {
     const c = getCatalogue(slug);
     requireEdit(c);

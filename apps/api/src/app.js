@@ -4,6 +4,7 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import { createEbirdClient } from './integrations/ebird.js';
 import { createGeocoder } from './integrations/geocode.js';
+import { createReferenceClient } from './integrations/reference.js';
 import { createIdentifier } from './integrations/identify.js';
 import { createStorage } from './lib/storage.js';
 import { authPlugin } from './plugins/auth.js';
@@ -11,6 +12,7 @@ import authRoutes from './routes/auth.js';
 import catalogueRoutes from './routes/catalogues.js';
 import dexRoutes from './routes/dex.js';
 import ebirdRoutes from './routes/ebird.js';
+import referenceRoutes from './routes/reference.js';
 import sightingRoutes from './routes/sightings.js';
 import systemRoutes from './routes/system.js';
 
@@ -18,13 +20,14 @@ import systemRoutes from './routes/system.js';
  * Build the Fastify app. Dependencies can be passed in (tests swap the eBird
  * client and the identifier for fakes); anything missing is created from config.
  */
-export async function buildApp({ config, db, storage, ebird, geocoder, identifier, logger }) {
+export async function buildApp({ config, db, storage, ebird, geocoder, identifier, reference, logger }) {
   const deps = {
     config,
     db,
     storage: storage ?? createStorage(config.dataDir),
     ebird: ebird ?? createEbirdClient(config.ebird),
     geocoder: geocoder ?? createGeocoder(config.geocoder),
+    reference: reference ?? createReferenceClient(config.reference),
     identifier: identifier ?? createIdentifier(config.identify),
   };
 
@@ -73,6 +76,7 @@ export async function buildApp({ config, db, storage, ebird, geocoder, identifie
       await api.register(catalogueRoutes, deps);
       await api.register(dexRoutes, deps);
       await api.register(ebirdRoutes, deps);
+      await api.register(referenceRoutes, deps);
       await api.register(sightingRoutes, deps);
     },
     { prefix: '/api' },

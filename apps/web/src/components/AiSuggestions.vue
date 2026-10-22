@@ -1,6 +1,8 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { api } from '../api.js';
+import { session } from '../session.js';
+import PhotoCompare from './PhotoCompare.vue';
 
 /**
  * Asks the server which species a photo shows, weighted by where it was taken,
@@ -34,6 +36,40 @@ const hiddenCount = computed(() => {
   const list = (result.value?.suggestions ?? []).filter((s) => !rejected.value.has(keyOf(s)));
   return Math.max(0, Math.min(6, list.length) - visible.value.length);
 });
+
+// Reference photos per suggestion, loaded as cards appear. Shared across runs.
+const references = reactive({});
+const compare = ref(null); // { s, start }
+const yourPhoto = ref('');
+watch(
+  () => props.file,
+  (file, old) => {
+    if (yourPhoto.value) URL.revokeObjectURL(yourPhoto.value);
+    yourPhoto.value = file ? URL.createObjectURL(file) : '';
+  },
+  { immediate: true },
+);
+onUnmounted(() => yourPhoto.value && URL.revokeObjectURL(yourPhoto.value));
+
+async function loadReference(s) {
+  const key = keyOf(s);
+  if (references[key] || session.config.referencePhotosEnabled === false || !s.scientificName) return;
+  references[key] = { loading: true, photos: [], links: {} };
+  try {
+    const q = new URLSearchParams({ scientificName: s.scientificName, ...(s.commonName ? { commonName: s.commonName } : {}) });
+    const info = await api.get(`/reference?${q}`);
+    references[key] = { loading: false, photos: info.photos, links: info.links };
+  } catch {
+    references[key] = { loading: false, photos: [], links: {} };
+  }
+}
+watch(visible, (list) => list.forEach(loadReference), { immediate: true });
+
+async function acceptFromCompare() {
+  const s = compare.value.s;
+  compare.value = null;
+  await accept(s);
+}
 
 const NEARBY = {
   recent: { label: 'Seen nearby this month', tone: 'good' },
@@ -197,6 +233,20 @@ defineExpose({ run });
               <span v-if="s.nearby" :class="['tag', NEARBY[s.nearby].tone]">{{ NEARBY[s.nearby].label }}</span>
               <span v-if="!s.inCatalogue" class="soft">Not in this catalogue yet</span>
             </p>
+            <div v-if="references[keyOf(s)]?.photos.length" class="refs">
+              <button
+                v-for="(ph, j) in references[keyOf(s)].photos.slice(0, 3)"
+                :key="ph.thumb"
+                type="button"
+                class="ref"
+                :aria-label="`Compare your photo with example ${j + 1} of ${s.commonName}`"
+                @click="compare = { s, start: j }"
+              >
+                <img :src="ph.thumb" alt="" loading="lazy" />
+              </button>
+              <button type="button" class="btn quiet small compare" @click="compare = { s, start: 0 }">Compare</button>
+            </div>
+            <p v-else-if="references[keyOf(s)]?.loading" class="soft small refs-note">Loading example photos...</p>
           </div>
           <div class="actions">
             <button
@@ -224,8 +274,22 @@ defineExpose({ run });
       <p v-if="!visible.length" class="soft small">
         You rejected every suggestion. Find the species below, or ask again with a tighter crop.
       </p>
-      <p class="soft small">Suggestions can be wrong; you make the final call.</p>
+      <p class="soft small">
+        Suggestions can be wrong; you make the final call. Example photos are from iNaturalist and Wikipedia; click one to
+        compare it with yours.
+      </p>
     </template>
+
+    <PhotoCompare
+      v-if="compare"
+      :your-photo="yourPhoto"
+      :species="compare.s"
+      :photos="references[keyOf(compare.s)].photos"
+      :links="references[keyOf(compare.s)].links"
+      :start="compare.start"
+      @close="compare = null"
+      @accept="acceptFromCompare"
+    />
   </section>
 </template>
 
@@ -318,6 +382,34 @@ h4 {
 }
 .tag.warn {
   color: var(--goldfinch);
+}
+.refs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+.ref {
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: zoom-in;
+  display: block;
+}
+.ref img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  display: block;
+}
+.ref:hover {
+  outline: 2px solid var(--jay);
+  outline-offset: 1px;
+}
+.refs-note {
+  margin: 8px 0 0;
 }
 .actions {
   display: flex;

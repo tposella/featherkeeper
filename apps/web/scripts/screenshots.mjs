@@ -52,6 +52,12 @@ for (const scheme of ['light', 'dark']) {
       await page.locator('input[type=file]').first().setInputFiles({ name: 'unknown-bird.png', mimeType: 'image/png', buffer: png });
       await page.getByText('Strong match').first().waitFor({ timeout: 8000 });
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-ai-suggestions.png`, fullPage: true });
+      await page.locator('.ref').first().waitFor({ timeout: 5000 });
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-ai-suggestions-with-examples.png`, fullPage: true });
+      await page.locator('.ref').first().click();
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-ai-compare.png` });
+      await page.getByRole('button', { name: 'Close' }).click();
       await page.getByRole('button', { name: 'Accept' }).first().click();
       await page.waitForTimeout(500);
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-ai-accepted.png`, fullPage: true });
