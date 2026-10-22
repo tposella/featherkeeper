@@ -36,11 +36,11 @@ function round(n, places) {
   return Math.round(n * f) / f;
 }
 
-/** Pull the fields the app cares about out of a photo's EXIF. Never throws. */
-export async function readExif(buffer) {
+/** Pull the fields the app cares about out of a photo's EXIF. Accepts a file path or Buffer. Never throws. */
+export async function readExif(input) {
   let raw;
   try {
-    raw = await exifr.parse(buffer, {
+    raw = await exifr.parse(input, {
       tiff: true,
       exif: true,
       gps: true,
@@ -57,7 +57,7 @@ export async function readExif(buffer) {
 
   let gps = null;
   try {
-    gps = await exifr.gps(buffer);
+    gps = await exifr.gps(input);
   } catch {
     gps = null;
   }
@@ -91,13 +91,13 @@ export async function readExif(buffer) {
 }
 
 /**
- * Validate an upload and produce the display and thumbnail versions.
+ * Validate an upload (file path or Buffer) and produce the display and thumbnail versions.
  * Both derived images are re-encoded without metadata, so they never carry GPS.
  */
-export async function processImage(buffer) {
+export async function processImage(input) {
   let meta;
   try {
-    meta = await sharp(buffer).metadata();
+    meta = await sharp(input).metadata();
   } catch {
     throw new HttpError(415, `That file isn't an image we can read. Upload ${ACCEPTED_DESCRIPTION}.`);
   }
@@ -107,7 +107,7 @@ export async function processImage(buffer) {
     throw new HttpError(415, `Unsupported image type.${hint} Upload ${ACCEPTED_DESCRIPTION}.`);
   }
 
-  const base = sharp(buffer, { failOn: 'none' }).rotate();
+  const base = sharp(input, { failOn: 'none' }).rotate();
   const [display, thumb, exifData] = await Promise.all([
     base
       .clone()
@@ -119,7 +119,7 @@ export async function processImage(buffer) {
       .resize({ width: 480, height: 480, fit: 'cover', position: sharp.strategy.attention })
       .webp({ quality: 78 })
       .toBuffer(),
-    readExif(buffer),
+    readExif(input),
   ]);
 
   // Orientations 5-8 rotate by 90 degrees, so width and height swap.

@@ -271,7 +271,7 @@ const routes = [
     version: 'demo',
     allowRegistration: true,
     needsSetup: false,
-    maxUploadMb: 25,
+    maxUploadMb: 100,
     ebirdEnabled: true,
     placeSearchEnabled: true,
     identifyEnabled: true,

@@ -53,7 +53,7 @@ async function onFiles(event) {
   const picked = [...(event.target.files ?? [])];
   event.target.value = '';
   if (!picked.length) return;
-  const maxBytes = session.config.maxUploadMb * 1024 * 1024;
+  const maxBytes = session.config.maxUploadMb > 0 ? session.config.maxUploadMb * 1024 * 1024 : Infinity;
   const tooBig = picked.filter((f) => f.size > maxBytes);
   if (tooBig.length) error.value = `${tooBig.map((f) => f.name).join(', ')} is larger than ${session.config.maxUploadMb} MB and was skipped.`;
   const heic = picked.filter((f) => /\.hei[cf]$/i.test(f.name));
@@ -180,8 +180,8 @@ async function save() {
         <input class="visually-hidden" type="file" :accept="ACCEPT" multiple @change="onFiles" />
       </label>
       <p class="soft small hint">
-        Optional. JPEG, PNG, WebP, TIFF or AVIF, up to {{ session.config.maxUploadMb }} MB each. Date and GPS are read
-        from the photo.
+        Optional. JPEG, PNG, WebP, TIFF or AVIF<template v-if="session.config.maxUploadMb > 0">, up to
+        {{ session.config.maxUploadMb }} MB each</template>. Date and GPS are read from the photo.
       </p>
       <p v-if="prefilled" class="notice small" role="status">{{ prefilled }}</p>
     </section>

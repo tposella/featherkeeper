@@ -11,6 +11,8 @@ import path from 'node:path';
  */
 export function createStorage(dataDir) {
   const root = path.resolve(dataDir, 'photos');
+  // Uploads stream here first. Same filesystem as photos/, so moving a file in is instant.
+  const tmpRoot = path.resolve(dataDir, 'tmp');
 
   function dirFor(key) {
     if (!/^[0-9a-f]{2}\/[0-9a-f-]{36}$/.test(key)) throw new Error('Invalid storage key');
@@ -21,14 +23,24 @@ export function createStorage(dataDir) {
     root,
     async ensureReady() {
       await mkdir(root, { recursive: true });
+      // Anything left in tmp is from an upload interrupted by a restart.
+      await rm(tmpRoot, { recursive: true, force: true });
+      await mkdir(tmpRoot, { recursive: true });
+    },
+    tempPath() {
+      return path.join(tmpRoot, `upload-${randomUUID()}`);
     },
     newKey() {
       const id = randomUUID();
       return `${id.slice(0, 2)}/${id}`;
     },
-    async save(key, files) {
+    /** files: { name: Buffer } written out; moves: { name: tempPath } moved in without copying. */
+    async save(key, files, moves = {}) {
       const dir = dirFor(key);
       await mkdir(dir, { recursive: true });
+      for (const [name, from] of Object.entries(moves)) {
+        await rename(from, path.join(dir, name));
+      }
       for (const [name, data] of Object.entries(files)) {
         const tmp = path.join(dir, `.${name}.tmp`);
         await writeFile(tmp, data);

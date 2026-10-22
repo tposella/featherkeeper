@@ -42,7 +42,8 @@ export function loadConfig(env = process.env) {
       password: env.ADMIN_PASSWORD ?? '',
       displayName: env.ADMIN_NAME ?? 'Admin',
     },
-    maxUploadMb: int(env.MAX_UPLOAD_MB, 25),
+    // Largest photo upload in MB; 0 means no limit. 100 matches Cloudflare's free-plan request limit.
+    maxUploadMb: Math.max(0, int(env.MAX_UPLOAD_MB, 100)),
     ebird: {
       apiKey: env.EBIRD_API_KEY ?? '',
       baseUrl: env.EBIRD_BASE_URL ?? 'https://api.ebird.org/v2',

@@ -10,7 +10,7 @@ export const session = reactive({
     needsSetup: false,
     ebirdEnabled: false,
     identifyEnabled: false,
-    maxUploadMb: 25,
+    maxUploadMb: 100,
     version: '',
   },
 });

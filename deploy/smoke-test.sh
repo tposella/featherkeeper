@@ -65,6 +65,12 @@ photo=$(curl -sS -b "$JAR" -F "file=@$IMG;type=image/jpeg" "$BASE/api/sightings/
 photo_id=$(sed -E 's/.*"photo":\{"id":([0-9]+).*/\1/' <<<"${photo%$'\n'*}")
 curl -fsS -b "$JAR" -o /dev/null "$BASE/api/photos/$photo_id/thumb" && pass "photo uploaded and thumbnail served" || fail "thumbnail"
 
+# A large photo (uncompressed 4000x4000 TIFF, about 48 MB) to check upload limits end to end.
+docker compose exec -T api node -e "require('sharp')({create:{width:4000,height:4000,channels:3,background:'#7d97a8'}}).tiff({compression:'none'}).toBuffer().then(b=>process.stdout.write(b))" >"$IMG"
+size_mb=$(( $(stat -c %s "$IMG") / 1024 / 1024 ))
+big=$(curl -sS -b "$JAR" -F "file=@$IMG;type=image/tiff" "$BASE/api/sightings/$sighting_id/photos" -o /dev/null -w '%{http_code}')
+[[ $big == 201 ]] && pass "large photo uploaded (${size_mb} MB)" || fail "large photo upload (${size_mb} MB) -> HTTP $big"
+
 [[ $(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/catalogues/$slug") == 404 ]] && pass "private catalogue hidden from visitors" || fail "privacy"
 
 echo "All checks passed."

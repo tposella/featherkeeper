@@ -1,6 +1,9 @@
+import { createWriteStream } from 'node:fs';
+import { rm, stat } from 'node:fs/promises';
+import { pipeline } from 'node:stream/promises';
 import sharp from 'sharp';
 import { loadCatalogue, locationsVisible, requireEdit } from '../lib/access.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { badRequest, HttpError, notFound } from '../lib/errors.js';
 import { processImage } from '../lib/images.js';
 import * as out from '../lib/serialize.js';
 
@@ -30,15 +33,29 @@ async function loadSighting(db, id, user) {
   return { sighting: row, catalogue, access };
 }
 
-async function readUpload(request) {
+/**
+ * Stream the uploaded file to a temporary file, so even very large photos never sit in memory.
+ * Returns { path, size, filename, cleanup }. Call cleanup() when done (it's safe to call twice).
+ */
+async function readUpload(request, storage, maxUploadMb) {
   const file = await request.file();
   if (!file) throw badRequest('Attach a photo in the "file" field');
-  const buffer = await file.toBuffer();
-  if (!buffer.length) throw badRequest('The uploaded file is empty');
-  return { buffer, filename: file.filename ?? '' };
+  const path = storage.tempPath();
+  const cleanup = () => rm(path, { force: true });
+  try {
+    await pipeline(file.file, createWriteStream(path));
+    if (file.file.truncated) throw new HttpError(413, `Photos can be at most ${maxUploadMb} MB`, 'too_large');
+    const { size } = await stat(path);
+    if (!size) throw badRequest('The uploaded file is empty');
+    return { path, size, filename: file.filename ?? '', cleanup };
+  } catch (err) {
+    await cleanup();
+    if (err.code === 'FST_REQ_FILE_TOO_LARGE') throw new HttpError(413, `Photos can be at most ${maxUploadMb} MB`, 'too_large');
+    throw err;
+  }
 }
 
-export default async function sightingRoutes(app, { db, storage, identifier }) {
+export default async function sightingRoutes(app, { db, storage, identifier, config }) {
   // All sightings in a catalogue (used by the map and the recent-activity list).
   app.get('/catalogues/:slug/sightings', { schema: { params: slugParam } }, async (request) => {
     const { catalogue, access } = await loadCatalogue(db, request.params.slug, request.user);
@@ -165,13 +182,13 @@ export default async function sightingRoutes(app, { db, storage, identifier }) {
     const { sighting, access } = await loadSighting(db, request.params.id, user);
     requireEdit(access, user);
 
-    const { buffer, filename } = await readUpload(request);
-    const img = await processImage(buffer);
+    const upload = await readUpload(request, storage, config.maxUploadMb);
     const key = storage.newKey();
-    await storage.save(key, { [`original.${img.ext}`]: buffer, 'display.webp': img.display, 'thumb.webp': img.thumb });
-
     let row;
     try {
+      const img = await processImage(upload.path);
+      // The original is moved into place, never copied; derivatives are small buffers.
+      await storage.save(key, { 'display.webp': img.display, 'thumb.webp': img.thumb }, { [`original.${img.ext}`]: upload.path });
       row = await db.tx(async (t) => {
         const p = await t.one(
           `INSERT INTO photos (sighting_id, storage_key, original_name, mime_type, size_bytes, width, height,
@@ -180,9 +197,9 @@ export default async function sightingRoutes(app, { db, storage, identifier }) {
           [
             sighting.id,
             key,
-            filename.slice(0, 255),
+            upload.filename.slice(0, 255),
             img.mime,
-            buffer.length,
+            upload.size,
             img.width,
             img.height,
             img.takenAt,
@@ -209,6 +226,8 @@ export default async function sightingRoutes(app, { db, storage, identifier }) {
     } catch (err) {
       await storage.remove(key).catch(() => {});
       throw err;
+    } finally {
+      await upload.cleanup();
     }
     return reply.code(201).send({ photo: out.photo(row, { showLocation: true, canDownloadOriginal: true }) });
   });
@@ -284,18 +303,20 @@ export default async function sightingRoutes(app, { db, storage, identifier }) {
       const user = request.requireUser();
       const { catalogue, access } = await loadCatalogue(db, request.params.slug, user);
       requireEdit(access, user);
-      const { buffer } = await readUpload(request);
+      const upload = await readUpload(request, storage, config.maxUploadMb);
 
       // Send a 1024 px JPEG with no metadata: faster, and no GPS leaves your server.
       let small;
       try {
-        small = await sharp(buffer, { failOn: 'none' })
+        small = await sharp(upload.path, { failOn: 'none' })
           .rotate()
           .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
           .jpeg({ quality: 88 })
           .toBuffer();
       } catch {
         throw badRequest("That file isn't an image we can read");
+      } finally {
+        await upload.cleanup();
       }
       const predictions = await identifier.identify(small, 'image/jpeg');
 

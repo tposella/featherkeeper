@@ -37,7 +37,11 @@ export async function buildApp({ config, db, storage, ebird, geocoder, identifie
   await app.register(cookie);
   await app.register(rateLimit, { global: false });
   await app.register(multipart, {
-    limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 1, fields: 10 },
+    limits: {
+      fileSize: config.maxUploadMb > 0 ? config.maxUploadMb * 1024 * 1024 : Number.POSITIVE_INFINITY,
+      files: 1,
+      fields: 10,
+    },
   });
   await app.register(authPlugin, deps);
 
