@@ -177,3 +177,8 @@ test('habitat text prefers sentences about the kind of place', async () => {
   assert.equal(habitatSentences(text), 'It nests in open woodland and gardens, often near lakes.');
   assert.equal(habitatSentences('Found from Alaska to Mexico.'), 'Found from Alaska to Mexico.');
 });
+
+test('XMP-style dates are understood, with their own offset', () => {
+  assert.equal(exifDateToIso('2023-06-11T05:58:00-06:00'), '2023-06-11T11:58:00.000Z');
+  assert.equal(exifDateToIso('2023-06-11T05:58'), '2023-06-11T05:58:00.000Z');
+});

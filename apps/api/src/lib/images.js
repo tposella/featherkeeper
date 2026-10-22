@@ -21,11 +21,13 @@ function detectFormat(meta) {
 /** "2024:05:18 07:42:10" (+ optional "-07:00") -> ISO string, or null. */
 export function exifDateToIso(value, offset) {
   if (!value) return null;
-  const m = String(value).match(/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  // EXIF: "2024:05:18 07:42:10"; XMP: "2024-05-18T07:42:10-06:00" (its own offset wins).
+  const m = String(value).match(/^(\d{4})[:-](\d{2})[:-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-]\d{2}:\d{2})?/);
   if (!m) return null;
-  const [, y, mo, d, h, mi, s] = m;
+  const [, y, mo, d, h, mi, sec = '00', own] = m;
+  const s = sec;
   if (y === '0000') return null;
-  const tz = /^[+-]\d{2}:\d{2}$/.test(offset ?? '') ? offset : 'Z';
+  const tz = own ?? (/^[+-]\d{2}:\d{2}$/.test(offset ?? '') ? offset : 'Z');
   const date = new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}${tz}`);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
@@ -44,7 +46,7 @@ export async function readExif(input) {
       tiff: true,
       exif: true,
       gps: true,
-      xmp: false,
+      xmp: true,
       icc: false,
       iptc: false,
       reviveValues: false,
@@ -81,7 +83,7 @@ export async function readExif(input) {
   };
 
   return {
-    takenAt: exifDateToIso(raw.DateTimeOriginal ?? raw.CreateDate, raw.OffsetTimeOriginal),
+    takenAt: exifDateToIso(raw.DateTimeOriginal ?? raw.CreateDate ?? raw.DateCreated ?? raw.ModifyDate, raw.OffsetTimeOriginal),
     camera: camera || null,
     lens: exif.lens,
     latitude: validGps ? latitude : null,

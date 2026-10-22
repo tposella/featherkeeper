@@ -69,7 +69,7 @@ async function onFiles(event) {
   // Prefill from the photos' metadata without overwriting what the user typed. Date and location
   // can come from different photos (e.g. a phone shot with GPS next to a camera shot without).
   const found = { date: null, location: null, camera: '', names: [] };
-  for (const { file } of ok) {
+  for (const file of ok) {
     const meta = await readPhotoMetadata(file);
     if (!found.camera && meta.camera) found.camera = meta.camera;
     if (!found.date && meta.localDateTime) {
