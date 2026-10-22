@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api.js';
 import { useCatalogue } from '../catalogue-context.js';
+import AiSuggestions from '../components/AiSuggestions.vue';
 import LocationPicker from '../components/LocationPicker.vue';
 import { readPhotoMetadata } from '../exif.js';
 import { fromLocalInput } from '../format.js';
@@ -34,9 +35,10 @@ api
   })
   .catch(() => {});
 
-const suggestions = ref([]);
-const identifying = ref(false);
-const identifyError = ref('');
+// AI identification of the first photo: what was suggested and what the user decided.
+const aiDecision = ref(null);
+const speciesSearch = ref(null);
+const firstFile = computed(() => files.value[0]?.file ?? null);
 
 const selected = computed(() => species.value.find((s) => s.id === speciesId.value) ?? null);
 const matches = computed(() => {
@@ -84,7 +86,7 @@ async function onFiles(event) {
 function removeFile(i) {
   URL.revokeObjectURL(files.value[i].url);
   files.value.splice(i, 1);
-  suggestions.value = [];
+  aiDecision.value = null;
 }
 onUnmounted(() => files.value.forEach((f) => URL.revokeObjectURL(f.url)));
 
@@ -93,37 +95,15 @@ function choose(s) {
   speciesQuery.value = '';
 }
 
-async function identify() {
-  identifyError.value = '';
-  suggestions.value = [];
-  identifying.value = true;
-  try {
-    const res = await api.upload(`/catalogues/${catalogue.value.slug}/identify`, files.value[0].file);
-    suggestions.value = res.suggestions;
-    if (!res.suggestions.length) identifyError.value = 'No suggestions for this photo.';
-  } catch (err) {
-    identifyError.value = err.message;
-  } finally {
-    identifying.value = false;
-  }
+function onAccepted(id) {
+  speciesId.value = id;
+  speciesQuery.value = '';
+  reloadDex();
 }
 
-async function pickSuggestion(s) {
-  if (s.inCatalogue) {
-    speciesId.value = s.speciesId;
-    return;
-  }
-  if (!s.speciesId && !(s.commonName && s.scientificName)) return;
-  try {
-    const body = s.speciesId ? { speciesId: s.speciesId } : { commonName: s.commonName, scientificName: s.scientificName };
-    const res = await api.post(`/catalogues/${catalogue.value.slug}/species`, body);
-    await reloadDex();
-    speciesId.value = res.entry.id;
-    s.inCatalogue = true;
-    s.speciesId = res.entry.id;
-  } catch (err) {
-    identifyError.value = err.message;
-  }
+function onNoneOfThese() {
+  speciesId.value = null;
+  speciesSearch.value?.focus();
 }
 
 async function save() {
@@ -146,7 +126,8 @@ async function save() {
     sightingId = sighting.id;
     for (let i = 0; i < files.value.length; i += 1) {
       progress.value = `Uploading photo ${i + 1} of ${files.value.length}...`;
-      await api.upload(`/sightings/${sightingId}/photos`, files.value[i].file);
+      const fields = i === 0 && aiDecision.value ? { ai: JSON.stringify(aiDecision.value) } : {};
+      await api.upload(`/sightings/${sightingId}/photos`, files.value[i].file, fields);
     }
     await Promise.all([reload(), reloadDex()]);
     router.push({ name: 'species', params: { slug: catalogue.value.slug, speciesId: speciesId.value } });
@@ -188,32 +169,17 @@ async function save() {
 
     <section>
       <h3>Species</h3>
-      <div v-if="session.config.identifyEnabled && files.length" class="identify">
-        <button class="btn" type="button" :disabled="identifying" @click="identify">
-          {{ identifying ? 'Identifying...' : 'Suggest species from the first photo' }}
-        </button>
-        <p v-if="identifyError" class="soft small" role="status">{{ identifyError }}</p>
-        <ul v-if="suggestions.length" class="suggestions">
-          <li v-for="s in suggestions" :key="(s.scientificName || '') + s.commonName">
-            <button
-              type="button"
-              class="suggestion"
-              :class="{ on: s.speciesId && s.speciesId === speciesId }"
-              @click="pickSuggestion(s)"
-            >
-              <span>
-                <strong>{{ s.commonName }}</strong>
-                <span class="sci soft small"> {{ s.scientificName }}</span>
-              </span>
-              <span class="small">
-                {{ Math.round(s.confidence * 100) }}%
-                <template v-if="!s.inCatalogue">, not in this catalogue: click to add</template>
-              </span>
-            </button>
-          </li>
-        </ul>
-        <p v-if="suggestions.length" class="soft small">Suggestions can be wrong. Check before you save.</p>
-      </div>
+      <AiSuggestions
+        v-if="session.config.identifyEnabled && firstFile"
+        :catalogue="catalogue.slug"
+        :file="firstFile"
+        :latitude="latitude"
+        :longitude="longitude"
+        :selected-species-id="speciesId"
+        @accepted="onAccepted"
+        @decision="aiDecision = $event"
+        @none="onNoneOfThese"
+      />
 
       <div v-if="selected" class="chosen">
         <img v-if="selected.coverUrl" :src="selected.coverUrl" alt="" />
@@ -226,7 +192,13 @@ async function save() {
       <div v-else class="combo">
         <label class="field">
           <span>Find a species in this catalogue</span>
-          <input v-model="speciesQuery" type="search" placeholder="Type a common or scientific name" autocomplete="off" />
+          <input
+            ref="speciesSearch"
+            v-model="speciesQuery"
+            type="search"
+            placeholder="Type a common or scientific name"
+            autocomplete="off"
+          />
         </label>
         <ul v-if="matches.length" class="matches">
           <li v-for="s in matches" :key="s.id">
@@ -304,10 +276,6 @@ label.btn {
   object-fit: cover;
   border-radius: var(--radius);
 }
-.identify {
-  margin-bottom: 20px;
-}
-.suggestions,
 .matches {
   list-style: none;
   padding: 0;
@@ -315,27 +283,16 @@ label.btn {
   display: grid;
   gap: 6px;
 }
-.suggestion,
 .matches button {
   width: 100%;
   font: inherit;
   color: inherit;
   text-align: left;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
   padding: 8px 12px;
   border: 1px solid var(--rule);
   border-radius: var(--radius);
   background: var(--paper-raised);
   cursor: pointer;
-}
-.suggestion.on {
-  border-color: var(--jay);
-  background: var(--jay-wash);
-}
-.matches button {
-  display: block;
 }
 .chosen {
   display: flex;

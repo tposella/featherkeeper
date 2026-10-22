@@ -352,6 +352,12 @@ const routes = [
     const c = getCatalogue(slug);
     requireEdit(c);
     let sp = body.speciesId ? species.find((s) => s.id === body.speciesId) : null;
+    if (!sp && body.ebirdCode) sp = species.find((s) => s.ebird_code === body.ebirdCode);
+    if (!sp && body.ebirdCode === 'borchi2') {
+      sp = { id: newId(), ebird_code: 'borchi2', common_name: 'Boreal Chickadee', scientific_name: 'Poecile hudsonicus',
+        family_common: 'Tits, Chickadees, and Titmice', family_scientific: 'Paridae', taxon_order: 'Passeriformes', taxon_sort: 3105 };
+      species.push(sp);
+    }
     if (!sp) {
       sp = species.find((s) => s.scientific_name.toLowerCase() === (body.scientificName ?? '').toLowerCase());
     }
@@ -554,20 +560,37 @@ const routes = [
     photos.splice(photos.indexOf(p), 1);
     return { ok: true };
   }],
-  ['POST', /^\/catalogues\/([\w-]+)\/identify$/, async ([slug]) => {
+  ['POST', /^\/catalogues\/([\w-]+)\/identify$/, async ([slug], body) => {
     const c = getCatalogue(slug);
     requireEdit(c);
-    await wait(900);
-    const pick = (code, confidence) => {
+    await wait(1400);
+    const lat = Number(body.get?.('latitude'));
+    const hasPin = Number.isFinite(lat) && body.get('latitude') !== null;
+    const location = hasPin
+      ? { source: 'pin', latitude: lat, longitude: Number(body.get('longitude')) }
+      : c.area
+        ? { source: 'catalogue', latitude: c.area.latitude, longitude: c.area.longitude }
+        : null;
+    const pick = (code, confidence, nearby) => {
       const sp = species.find((s) => s.ebird_code === code);
-      return { commonName: sp.common_name, scientificName: sp.scientific_name, confidence, speciesId: sp.id, inCatalogue: c.dex.has(sp.id) };
+      return {
+        commonName: sp.common_name, scientificName: sp.scientific_name, ebirdCode: code, confidence,
+        speciesId: sp.id, inCatalogue: c.dex.has(sp.id), nearby: location ? nearby : null,
+      };
     };
     return {
       provider: 'demo',
+      model: 'hf-hub:imageomics/bioclip-2 (demo)',
+      location,
+      pool: location
+        ? { usedLocation: true, candidates: 271, recentNearby: 64, recordedNearby: 263, radiusKm: 25 }
+        : { usedLocation: false, candidates: c.dex.size, recentNearby: 0, recordedNearby: 0, radiusKm: 25 },
       suggestions: [
-        pick('bkcchi', 0.87),
-        pick('mouchi', 0.09),
-        { commonName: 'Boreal Chickadee', scientificName: 'Poecile hudsonicus', confidence: 0.03, speciesId: null, inCatalogue: false },
+        pick('bkcchi', 0.81, 'recent'),
+        pick('mouchi', 0.14, 'area'),
+        { commonName: 'Boreal Chickadee', scientificName: 'Poecile hudsonicus', ebirdCode: 'borchi2', confidence: 0.03,
+          speciesId: null, inCatalogue: false, nearby: location ? 'elsewhere' : null },
+        pick('rebnut', 0.01, 'recent'),
       ],
     };
   }],

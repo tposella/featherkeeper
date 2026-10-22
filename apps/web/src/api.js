@@ -44,8 +44,10 @@ export const api = {
   post: (url, body) => request('POST', url, body ?? {}),
   patch: (url, body) => request('PATCH', url, body),
   del: (url) => request('DELETE', url),
-  upload(url, file) {
+  /** Multipart upload. Text fields go before the file so the server can read them alongside it. */
+  upload(url, file, fields = {}) {
     const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) form.append(k, v);
     form.append('file', file);
     return request('POST', url, form);
   },

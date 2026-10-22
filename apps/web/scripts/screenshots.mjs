@@ -43,6 +43,19 @@ for (const scheme of ['light', 'dark']) {
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-${name}.png`, fullPage: true });
     }
     if (scheme === 'light') {
+      // AI suggestions for an unidentified photo, then accepting the top match.
+      await page.goto(new URL('#/c/bow-valley/log', base).href);
+      const png = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAGklEQVR4nGNgoBpgZGRkZGRkYGBgYGRkZgYAAU0AF0w0OTQAAAAASUVORK5CYII=',
+        'base64',
+      );
+      await page.locator('input[type=file]').first().setInputFiles({ name: 'unknown-bird.png', mimeType: 'image/png', buffer: png });
+      await page.getByText('Strong match').first().waitFor({ timeout: 8000 });
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-ai-suggestions.png`, fullPage: true });
+      await page.getByRole('button', { name: 'Accept' }).first().click();
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-ai-accepted.png`, fullPage: true });
+
       // New catalogue built from the birds around a town.
       await page.goto(new URL('#/new', base).href);
       await page.getByLabel('Name', { exact: true }).fill('Cochrane birds');
