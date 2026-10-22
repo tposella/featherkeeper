@@ -45,6 +45,21 @@ for (const scheme of ['light', 'dark']) {
       await page.waitForTimeout(name.startsWith('species') ? 1800 : 700);
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-${name}.png`, fullPage: true });
     }
+    if (scheme === 'light' && process.env.FIXTURES && vpName === 'desktop') {
+      // Does the log form pick up date, time and place from real camera metadata?
+      for (const name of ['camera.jpg', 'phone.jpg', 'xmp.jpg']) {
+        await page.goto(new URL('#/c/bow-valley/log', base).href);
+        await page.waitForTimeout(400);
+        await page.locator('input[type=file]').first().setInputFiles(`${process.env.FIXTURES}/${name}`);
+        await page.waitForTimeout(1500);
+        const date = await page.locator('input[type=datetime-local]').inputValue();
+        const lat = await page.getByLabel('Latitude').inputValue();
+        const place = await page.getByLabel('Place name').inputValue();
+        const summary = (await page.locator('.from-photo').textContent().catch(() => '')).replace(/\s+/g, ' ').trim();
+        console.log(`EXIF ${name}: date="${date}" lat="${lat}" place="${place}" summary="${summary}"`);
+        await page.screenshot({ path: `${out}/exif-${name.replace('.jpg', '')}.png`, fullPage: true });
+      }
+    }
     if (scheme === 'light') {
       // AI suggestions for an unidentified photo, then accepting the top match.
       await page.goto(new URL('#/c/bow-valley/log', base).href);

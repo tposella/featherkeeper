@@ -49,6 +49,24 @@ jobs:
           set -o pipefail
           VITE_DEMO=true npm run build 2>&1 | tee "$REPORT/build.log"
 
+      - name: Make test photos with camera metadata
+        run: |
+          sudo apt-get install -y -qq libimage-exiftool-perl imagemagick >/dev/null
+          mkdir -p "$REPORT/fixtures"
+          cd "$REPORT/fixtures"
+          # A DSLR-style JPEG: date with time zone, GPS, camera and lens.
+          convert -size 1200x800 gradient:skyblue-darkgreen camera.jpg
+          exiftool -q -overwrite_original -Make=Canon -Model="Canon EOS R7" -LensModel="RF100-500mm F4.5-7.1 L IS USM" \
+            -DateTimeOriginal="2024:05:18 07:42:10" -OffsetTimeOriginal="-06:00" -CreateDate="2024:05:18 07:42:10" \
+            -GPSLatitude=51.1652 -GPSLatitudeRef=N -GPSLongitude=114.3824 -GPSLongitudeRef=W camera.jpg
+          # A phone-style JPEG: date only in DateTimeOriginal, no GPS.
+          convert -size 1000x750 gradient:khaki-sienna phone.jpg
+          exiftool -q -overwrite_original -Make=Apple -Model="iPhone 15" -DateTimeOriginal="2025:09:02 18:05:33" phone.jpg
+          # A Lightroom-style export: date only in XMP and ModifyDate.
+          convert -size 900x600 gradient:gray-white xmp.jpg
+          exiftool -q -overwrite_original -all= -XMP-xmp:CreateDate="2023:06:11 05:58:00" -XMP-photoshop:DateCreated="2023:06:11 05:58:00" -ModifyDate="2023:06:12 20:00:00" xmp.jpg
+          for f in *.jpg; do echo "== $f"; exiftool -s -DateTimeOriginal -CreateDate -ModifyDate -DateCreated -GPSPosition -Model "$f"; done | tee metadata.txt
+
       - name: Take screenshots
         run: |
           set -o pipefail
@@ -56,7 +74,7 @@ jobs:
           npx playwright install --with-deps chromium >/dev/null
           npx vite preview --port 4173 --strictPort &
           npx --yes wait-on@8 "http://localhost:4173$VITE_BASE"
-          node scripts/screenshots.mjs "http://localhost:4173$VITE_BASE" "$REPORT/screenshots" 2>&1 | tee "$REPORT/screenshots.log"
+          FIXTURES="$REPORT/fixtures" node scripts/screenshots.mjs "http://localhost:4173$VITE_BASE" "$REPORT/screenshots" 2>&1 | tee "$REPORT/screenshots.log"
 
       - name: Publish report to the ci-report branch
         if: always()
