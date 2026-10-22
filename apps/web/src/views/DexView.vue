@@ -28,9 +28,13 @@ const families = computed(() => {
   return [...seen.entries()].map(([name, sci]) => ({ name, sci }));
 });
 
+// Counts follow the family filter, so "Not yet" means not yet within that family.
 const counts = computed(() => {
-  const c = { all: species.value.length, photographed: 0, logged: 0, missing: 0 };
-  for (const s of species.value) c[s.status] += 1;
+  const pool = family.value
+    ? species.value.filter((s) => (s.familyCommon || s.familyScientific) === family.value)
+    : species.value;
+  const c = { all: pool.length, photographed: 0, logged: 0, missing: 0 };
+  for (const s of pool) c[s.status] += 1;
   return c;
 });
 
