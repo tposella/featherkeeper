@@ -1,0 +1,77 @@
+# Starts the full stack with the BioCLIP 2 identifier, imports real eBird species,
+# and measures identification accuracy, speed and memory on real bird photos.
+# Heavy (downloads the model), so it runs only when identification code changes.
+name: AI identification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/identifier/**'
+      - 'apps/api/src/lib/candidates.js'
+      - 'apps/api/src/integrations/identify.js'
+      - 'apps/api/src/routes/sightings.js'
+      - '.github/workflows/ai.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      REPORT: ${{ github.workspace }}/ci-report
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure .env with AI on
+        env:
+          EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
+        run: |
+          mkdir -p "$REPORT"
+          cp .env.example .env
+          sed -i "s#^PUBLIC_URL=.*#PUBLIC_URL=http://localhost:8080#" .env
+          sed -i "s#^POSTGRES_PASSWORD=.*#POSTGRES_PASSWORD=$(openssl rand -hex 24)#" .env
+          sed -i "s#^EBIRD_API_KEY=.*#EBIRD_API_KEY=${EBIRD_API_KEY}#" .env
+          sed -i "s#^COMPOSE_PROFILES=.*#COMPOSE_PROFILES=ai#" .env
+          sed -i "s#^IDENTIFY_PROVIDER=.*#IDENTIFY_PROVIDER=bioclip#" .env
+
+      - name: Build and start the stack (downloads the model)
+        run: |
+          set -o pipefail
+          start=$(date +%s)
+          docker compose up -d --build --wait --wait-timeout 1500 2>&1 | tail -20 | tee "$REPORT/compose.log"
+          echo "stack ready after $(( $(date +%s) - start )) s" | tee -a "$REPORT/compose.log"
+          docker compose exec -T identifier python -c "import json,urllib.request;print(json.load(urllib.request.urlopen('http://127.0.0.1:8000/health')))" | tee -a "$REPORT/compose.log"
+          docker images --format '{{.Repository}} {{.Size}}' | grep featherkeeper | tee -a "$REPORT/compose.log"
+
+      - name: Measure accuracy
+        run: |
+          set -o pipefail
+          ( while true; do docker stats --no-stream --format '{{.Name}} {{.MemUsage}} {{.CPUPerc}}' >> "$REPORT/memory-samples.log"; sleep 3; done ) &
+          python3 services/identifier/eval/evaluate.py http://localhost:8080 "$REPORT/accuracy.md" 2>&1 | tee "$REPORT/eval.log"
+          kill %1 || true
+          echo "peak memory per container (MiB):" > "$REPORT/memory.txt"
+          awk '{ split($2, a, "MiB|GiB"); v = a[1]; if ($2 ~ /GiB/) v = v * 1024; if (v > max[$1]) max[$1] = v } END { for (k in max) printf "%s %.0f\n", k, max[k] }' "$REPORT/memory-samples.log" | sort | tee -a "$REPORT/memory.txt"
+          nproc | sed 's/^/CPU cores: /' | tee -a "$REPORT/memory.txt"
+
+      - name: Collect logs
+        if: always()
+        run: docker compose logs --no-color > "$REPORT/containers.log" 2>&1 || true
+
+      - name: Publish report to the ci-report-ai branch
+        if: always()
+        run: |
+          cd "$REPORT"
+          echo "commit: ${{ github.sha }}" > status.txt
+          echo "ai: ${{ job.status }}" >> status.txt
+          git init -q -b ci-report-ai
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "AI CI report for ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-report-ai

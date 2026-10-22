@@ -56,7 +56,8 @@ export function loadConfig(env = process.env) {
       provider: identifyProvider,
       url: env.IDENTIFY_URL ?? '',
       apiKey: env.IDENTIFY_API_KEY ?? '',
-      timeoutMs: int(env.IDENTIFY_TIMEOUT_MS, 30000),
+      // The first identification encodes every candidate name, which takes a while on CPU.
+      timeoutMs: int(env.IDENTIFY_TIMEOUT_MS, 180000),
     },
   };
 }

@@ -37,6 +37,9 @@ export const fakeEbird = {
       },
     };
   },
+  async recentSpeciesNear() {
+    return ['amerob']; // a robin was reported nearby this month
+  },
   async taxonomy(codes) {
     const all = {
       amerob: ['American Robin', 'Turdus migratorius', 'Thrushes and Allies', 'Turdidae', 'Passeriformes', 30000],
@@ -63,11 +66,22 @@ export const fakeGeocoder = {
 export const fakeIdentifier = {
   enabled: true,
   provider: 'fake',
-  async identify() {
-    return [
-      { scientificName: 'Turdus migratorius', commonName: 'American Robin', confidence: 0.91 },
-      { scientificName: 'Ixoreus naevius', commonName: 'Varied Thrush', confidence: 0.05 },
-    ];
+  usesCandidates: true,
+  lastCandidates: null,
+  async identify(image, mime, { candidates } = {}) {
+    fakeIdentifier.lastCandidates = candidates;
+    // Pretend the photo looks most like a robin, then a chickadee, then something exotic.
+    const pick = (sci) => candidates?.find((c) => c.scientificName.toLowerCase() === sci.toLowerCase());
+    const robin = pick('Turdus migratorius');
+    const chickadee = pick('Poecile atricapillus');
+    return {
+      model: 'fake-bioclip',
+      predictions: [
+        robin && { id: robin.id, scientificName: robin.scientificName, commonName: robin.commonName, confidence: 0.82 },
+        chickadee && { id: chickadee.id, scientificName: chickadee.scientificName, commonName: chickadee.commonName, confidence: 0.11 },
+        { id: null, scientificName: 'Ixoreus naevius', commonName: 'Varied Thrush', confidence: 0.04 },
+      ].filter(Boolean),
+    };
   },
 };
 
@@ -137,10 +151,13 @@ export function client(app) {
     post: (url, body) => call('POST', url, body),
     patch: (url, body) => call('PATCH', url, body),
     delete: (url) => call('DELETE', url),
-    async upload(url, buffer, filename = 'bird.jpg', type = 'image/jpeg') {
+    async upload(url, buffer, filename = 'bird.jpg', type = 'image/jpeg', fields = {}) {
       const boundary = `----fk${Date.now()}`;
+      const fieldParts = Object.entries(fields)
+        .map(([k, v]) => `--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`)
+        .join('');
       const head = Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${type}\r\n\r\n`,
+        `${fieldParts}--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${type}\r\n\r\n`,
       );
       const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
       return call('POST', url, Buffer.concat([head, buffer, tail]), {

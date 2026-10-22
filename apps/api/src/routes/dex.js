@@ -143,6 +143,7 @@ export default async function dexRoutes(app, { db, ebird }) {
           type: 'object',
           properties: {
             speciesId: { type: 'integer' },
+            ebirdCode: { type: 'string', pattern: '^[a-z0-9]{1,12}$' },
             commonName: { type: 'string', minLength: 1, maxLength: 200 },
             scientificName: { type: 'string', minLength: 1, maxLength: 200 },
             familyCommon: { type: 'string', maxLength: 200 },
@@ -157,6 +158,17 @@ export default async function dexRoutes(app, { db, ebird }) {
       const b = request.body;
 
       let speciesId = b.speciesId;
+      if (!speciesId && b.ebirdCode) {
+        // Added by eBird code (e.g. an accepted AI suggestion): take names and taxonomy from eBird.
+        const existing = await db.one('SELECT id FROM species WHERE ebird_code = $1', [b.ebirdCode]);
+        if (existing) {
+          speciesId = existing.id;
+        } else {
+          const [taxon] = await ebird.taxonomy([b.ebirdCode]);
+          if (!taxon) throw notFound('eBird has no species with that code');
+          speciesId = await db.tx((t) => upsertTaxon(t, taxon));
+        }
+      }
       if (speciesId) {
         if (!(await db.one('SELECT 1 FROM species WHERE id = $1', [speciesId]))) throw notFound('Species not found');
       } else {

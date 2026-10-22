@@ -44,6 +44,21 @@ services:
       api:
         condition: service_healthy
 
+  # AI species identification (BioCLIP 2). Off unless COMPOSE_PROFILES=ai is set in .env.
+  # Needs about 4 GB of RAM; the model (about 1.7 GB) downloads into the "models" volume on first start.
+  identifier:
+    profiles: [ai]
+    build: ./services/identifier
+    image: featherkeeper-identifier:local
+    restart: unless-stopped
+    environment:
+      MODEL: ${IDENTIFIER_MODEL:-hf-hub:imageomics/bioclip-2}
+      TEMPERATURE: ${IDENTIFIER_TEMPERATURE:-1.0}
+      TORCH_THREADS: ${IDENTIFIER_THREADS:-}
+    volumes:
+      - models:/models
+
 volumes:
   db-data:
   photos:
+  models:

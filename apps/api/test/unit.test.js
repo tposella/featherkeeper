@@ -56,9 +56,10 @@ test('http identifier normalises different response shapes', async () => {
     );
   const id = createIdentifier({ provider: 'http', url: 'http://x/identify', apiKey: '', timeoutMs: 1000 }, fakeFetch);
   assert.equal(id.enabled, true);
-  const out = await id.identify(Buffer.from('x'), 'image/jpeg');
+  const { predictions: out } = await id.identify(Buffer.from('x'), 'image/jpeg');
   assert.equal(out[0].commonName, 'American Robin');
   assert.equal(out[1].confidence, 0.12);
+  assert.equal(id.usesCandidates, false);
   assert.equal(createIdentifier({ provider: 'none' }).enabled, false);
   assert.equal(createIdentifier({ provider: 'http', url: '' }).enabled, false);
 });
@@ -76,4 +77,25 @@ test('eBird client retries after being rate-limited', async () => {
   const { codes } = await ebird.speciesCodesFor({ regionCode: 'CA-AB' });
   assert.deepEqual(codes, ['amerob', 'bkbmag1']);
   assert.ok(calls >= 2);
+});
+
+test('bioclip identifier sends candidates and defaults to the bundled container', async () => {
+  let sent;
+  const fakeFetch = async (url, init) => {
+    sent = { url, candidates: JSON.parse(init.body.get('candidates')) };
+    return new Response(
+      JSON.stringify({ model: 'bioclip-2', predictions: [{ id: 'ebird:amerob', scientificName: 'Turdus migratorius', commonName: 'American Robin', confidence: 0.9 }] }),
+      { headers: { 'content-type': 'application/json' } },
+    );
+  };
+  const id = createIdentifier({ provider: 'bioclip', url: '', timeoutMs: 1000 }, fakeFetch);
+  assert.equal(id.enabled, true);
+  assert.equal(id.usesCandidates, true);
+  const res = await id.identify(Buffer.from('x'), 'image/jpeg', {
+    candidates: [{ id: 'ebird:amerob', scientificName: 'Turdus migratorius', commonName: 'American Robin', prior: 1 }],
+  });
+  assert.equal(sent.url, 'http://identifier:8000/identify');
+  assert.equal(sent.candidates[0].prior, 1);
+  assert.equal(res.model, 'bioclip-2');
+  assert.equal(res.predictions[0].id, 'ebird:amerob');
 });

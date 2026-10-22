@@ -167,6 +167,19 @@ export function createEbirdClient({ apiKey, baseUrl }, fetchImpl = globalThis.fe
       };
     },
 
+    /** Species codes reported within radiusKm of a point in the last `days` days (max 30). */
+    async recentSpeciesNear(latitude, longitude, radiusKm = 25, days = 30) {
+      requireEnabled();
+      const lat = latitude.toFixed(2);
+      const lng = longitude.toFixed(2);
+      const dist = Math.min(50, Math.max(1, Math.round(radiusKm)));
+      const back = Math.min(30, Math.max(1, Math.round(days)));
+      return cache.get(`recent:${lat},${lng},${dist},${back}`, async () => {
+        const rows = await get(`/data/obs/geo/recent?lat=${lat}&lng=${lng}&dist=${dist}&back=${back}&fmt=json`);
+        return [...new Set((Array.isArray(rows) ? rows : []).map((r) => r.speciesCode).filter(Boolean))];
+      });
+    },
+
     /** Taxonomy rows for the given species codes, full species only (no hybrids, spuhs, slashes). */
     async taxonomy(codes) {
       requireEnabled();

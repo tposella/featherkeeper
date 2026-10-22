@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
-import { client, makeJpeg, setup } from './helpers.js';
+import { client, fakeIdentifier, makeJpeg, setup } from './helpers.js';
 
 let ctx;
 let owner;
@@ -275,12 +275,58 @@ describe('dex, sightings and photos', () => {
     assert.equal(res.status, 409);
   });
 
-  test('identification suggestions are matched to the dex', async () => {
+  test('identification without a location compares against the catalogue only', async () => {
     const res = await editor.upload('/api/catalogues/cochrane-backyard/identify', await makeJpeg(300, 200));
-    assert.equal(res.status, 200);
-    assert.equal(res.body.suggestions[0].speciesId, robinId);
-    assert.equal(res.body.suggestions[0].inCatalogue, true);
-    assert.equal(res.body.suggestions[1].speciesId, null);
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.location, null);
+    assert.equal(res.body.pool.usedLocation, false);
+    assert.equal(fakeIdentifier.lastCandidates.length, 3, 'just the three dex species');
+    assert.ok(fakeIdentifier.lastCandidates.every((c) => c.prior === 1));
+    const [first, second, third] = res.body.suggestions;
+    assert.equal(first.speciesId, robinId);
+    assert.equal(first.inCatalogue, true);
+    assert.equal(first.confidence, 0.82);
+    assert.equal(second.commonName, 'Black-capped Chickadee');
+    assert.equal(third.speciesId, null, 'not a known species');
+  });
+
+  test('a map pin makes eBird records near it the prior', async () => {
+    const res = await editor.upload(
+      '/api/catalogues/cochrane-backyard/identify',
+      await makeJpeg(300, 200),
+      'bird.jpg',
+      'image/jpeg',
+      { latitude: '51.19', longitude: '-114.47' },
+    );
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.location.source, 'pin');
+    assert.equal(res.body.pool.usedLocation, true);
+    const prior = Object.fromEntries(fakeIdentifier.lastCandidates.map((c) => [c.id.replace('ebird:', ''), c.prior]));
+    assert.equal(prior.amerob, 1, 'seen nearby this month');
+    assert.equal(prior.blkchi, 0.4, 'recorded nearby');
+    assert.equal(prior.baleag, 0.08, 'in the dex, not recorded nearby');
+    assert.equal(res.body.suggestions[0].nearby, 'recent');
+    assert.equal(res.body.suggestions[1].nearby, 'area');
+  });
+
+  test('the AI decision is saved with the uploaded photo', async () => {
+    const ai = JSON.stringify({
+      model: 'fake-bioclip',
+      suggestions: [{ ebirdCode: 'amerob', scientificName: 'Turdus migratorius', commonName: 'American Robin', confidence: 0.82 }],
+      accepted: 'amerob',
+      rejected: [],
+    });
+    const up = await editor.upload(`/api/sightings/${sightingId}/photos`, await makeJpeg(), 'robin.jpg', 'image/jpeg', { ai });
+    assert.equal(up.status, 201);
+    const row = await ctx.db.one('SELECT ai_suggestions FROM photos WHERE id = $1', [up.body.photo.id]);
+    assert.equal(row.ai_suggestions.accepted, 'amerob');
+    assert.equal(row.ai_suggestions.suggestions[0].confidence, 0.82);
+  });
+
+  test('a species can be added by its eBird code', async () => {
+    const res = await owner.post('/api/catalogues/cochrane-backyard-2/species', { ebirdCode: 'baleag' });
+    assert.equal(res.status, 201);
+    assert.equal(res.body.entry.commonName, 'Bald Eagle');
   });
 
   test('deleting a sighting removes its photos', async () => {
