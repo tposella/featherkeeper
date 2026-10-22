@@ -23,6 +23,7 @@ const catalogues = [
     name: 'Bow Valley birds',
     description: 'Everything I photograph between Banff and Calgary.',
     regionCode: 'CA-AB',
+    area: { label: 'Cochrane', latitude: 51.19, longitude: -114.47, radiusKm: 25 },
     visibility: 'public',
     hideLocations: false,
     createdAt: '2025-03-02T17:00:00Z',
@@ -246,6 +247,7 @@ function serializeCatalogue(c) {
     regionCode: c.regionCode,
     visibility: c.visibility,
     hideLocations: c.hideLocations,
+    area: c.area ? (showLocations(c) ? c.area : { ...c.area, latitude: null, longitude: null }) : null,
     createdAt: c.createdAt,
     updatedAt: c.createdAt,
     ownerName: Object.values(USERS).find((u) => u.id === owner.userId).displayName,
@@ -271,6 +273,7 @@ const routes = [
     needsSetup: false,
     maxUploadMb: 25,
     ebirdEnabled: true,
+    placeSearchEnabled: true,
     identifyEnabled: true,
   })],
   ['GET', /^\/auth\/me$/, () => ({ user: me() })],
@@ -406,38 +409,52 @@ const routes = [
     };
   }],
 
-  ['POST', /^\/catalogues\/([\w-]+)\/import\/ebird\/preview$/, async ([slug], body) => {
-    const c = getCatalogue(slug);
-    requireEdit(c);
-    await wait(500);
+  ['GET', /^\/places$/, async (m, body, query) => {
+    if (!me()) throw new DemoError(401, 'Sign in required');
+    await wait(400);
+    const q = (query.get('q') ?? '').trim();
+    const known = [
+      { name: 'Cochrane', label: 'Cochrane, Rocky View County, Alberta, Canada', latitude: 51.1894, longitude: -114.4682 },
+      { name: 'Canmore', label: 'Canmore, Bow Valley, Alberta, Canada', latitude: 51.0892, longitude: -115.3593 },
+      { name: 'Calgary', label: 'Calgary, Alberta, Canada', latitude: 51.0447, longitude: -114.0719 },
+    ];
+    const hits = known.filter((p) => p.label.toLowerCase().includes(q.toLowerCase().split(',')[0]));
+    // Anything else: pretend it's somewhere near Calgary so the demo still works.
+    return { places: hits.length ? hits : [{ name: q, label: `${q} (demo location)`, latitude: 51.05, longitude: -114.07 }] };
+  }],
+  ['POST', /^\/ebird\/preview$/, async (m, body) => {
+    if (!me()) throw new DemoError(401, 'Sign in required');
+    await wait(900);
+    const c = body.catalogue ? getCatalogue(body.catalogue) : null;
     const all = [
       ...species.filter((s) => s.ebird_code).map((s) => ({
-        ebirdCode: s.ebird_code,
-        commonName: s.common_name,
-        scientificName: s.scientific_name,
-        familyCommon: s.family_common,
-        familyScientific: s.family_scientific,
-        taxonOrder: s.taxon_order,
-        taxonSort: s.taxon_sort,
-        inCatalogue: c.dex.has(s.id),
+        ebirdCode: s.ebird_code, commonName: s.common_name, scientificName: s.scientific_name,
+        familyCommon: s.family_common, familyScientific: s.family_scientific, taxonOrder: s.taxon_order, taxonSort: s.taxon_sort,
       })),
       ...IMPORTABLE.map(([code, com, sci, famC, famS, order, sort]) => ({
-        ebirdCode: code,
-        commonName: com,
-        scientificName: sci,
-        familyCommon: famC,
-        familyScientific: famS,
-        taxonOrder: order,
-        taxonSort: sort,
-        inCatalogue: species.some((s) => s.ebird_code === code && c.dex.has(s.id)),
+        ebirdCode: code, commonName: com, scientificName: sci, familyCommon: famC, familyScientific: famS, taxonOrder: order, taxonSort: sort,
       })),
     ].sort((a, b) => a.taxonSort - b.taxonSort);
-    return { regionCode: body.regionCode.toUpperCase(), species: all };
+    // A smaller radius finds fewer species, so the demo trims the list.
+    const keep = body.regionCode ? all.length : Math.round(all.length * Math.min(1, 0.45 + (body.radiusKm ?? 25) / 50));
+    const list = all.slice(0, keep).map((t) => ({
+      ...t,
+      inCatalogue: Boolean(c && species.some((s) => s.ebird_code === t.ebirdCode && c.dex.has(s.id))),
+    }));
+    const source = body.regionCode
+      ? { kind: 'region', regionCode: body.regionCode, regionName: body.regionCode === 'CA-AB' ? 'Alberta' : body.regionCode }
+      : {
+          kind: 'area', latitude: body.latitude, longitude: body.longitude, radiusKm: body.radiusKm ?? 25,
+          hotspotsFound: 31, hotspotsUsed: 25,
+          topHotspots: [{ name: 'Glenbow Ranch PP', species: 187 }, { name: 'Cochrane Ranche', species: 142 }, { name: 'Bow River--Mitford Park', species: 128 }],
+          regionCode: 'CA-AB-RV', regionName: 'Rocky View County',
+        };
+    return { source, species: list };
   }],
   ['POST', /^\/catalogues\/([\w-]+)\/import\/ebird$/, async ([slug], body) => {
     const c = getCatalogue(slug);
     requireEdit(c);
-    await wait(600);
+    await wait(700);
     let added = 0;
     for (const code of body.codes ?? []) {
       let sp = species.find((s) => s.ebird_code === code);
@@ -452,6 +469,10 @@ const routes = [
         added += 1;
       }
     }
+    if (body.latitude !== undefined) {
+      c.area = { label: body.areaLabel ?? '', latitude: body.latitude, longitude: body.longitude, radiusKm: body.radiusKm ?? 25 };
+    }
+    if (!c.regionCode) c.regionCode = body.regionCode ?? 'CA-AB';
     return { added, alreadyPresent: 0, total: added };
   }],
 

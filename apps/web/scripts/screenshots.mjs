@@ -43,6 +43,16 @@ for (const scheme of ['light', 'dark']) {
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-${name}.png`, fullPage: true });
     }
     if (scheme === 'light') {
+      // New catalogue built from the birds around a town.
+      await page.goto(new URL('#/new', base).href);
+      await page.getByLabel('Name', { exact: true }).fill('Cochrane birds');
+      await page.getByPlaceholder('Cochrane, Alberta').fill('Cochrane');
+      await page.getByRole('button', { name: 'Find', exact: true }).click();
+      await page.getByRole('button', { name: /Cochrane, Rocky View/ }).click();
+      await page.getByRole('button', { name: 'Find species' }).click();
+      await page.waitForTimeout(1600);
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-new-catalogue-from-town.png`, fullPage: true });
+
       // The public view of the dex, as a signed-out visitor sees it.
       await page.goto(new URL('#/c/bow-valley', base).href);
       await page.getByRole('radio', { name: 'Visitor (signed out)' }).click();

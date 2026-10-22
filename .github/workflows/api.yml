@@ -1,0 +1,78 @@
+# Runs the API test suite against a real Postgres. If the EBIRD_API_KEY repository
+# secret is set, the live eBird tests run too. Logs are pushed to the ci-report-api branch.
+name: API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - '.github/workflows/api.yml'
+  pull_request:
+    paths:
+      - 'apps/api/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: featherkeeper
+          POSTGRES_PASSWORD: featherkeeper
+          POSTGRES_DB: featherkeeper_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U featherkeeper"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://featherkeeper:featherkeeper@localhost:5432/featherkeeper_test
+      EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
+      REPORT: ${{ github.workspace }}/ci-report
+    defaults:
+      run:
+        working-directory: apps/api
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          mkdir -p "$REPORT"
+          set -o pipefail
+          npm install --no-audit --no-fund 2>&1 | tee "$REPORT/install.log"
+          cp package-lock.json "$REPORT/package-lock.json"
+
+      - name: Run tests
+        run: |
+          set -o pipefail
+          echo "live eBird tests: $([ -n "$EBIRD_API_KEY" ] && echo enabled || echo skipped, no EBIRD_API_KEY secret)" | tee "$REPORT/test.log"
+          npm test 2>&1 | tee -a "$REPORT/test.log"
+
+      - name: Publish report to the ci-report-api branch
+        if: always() && github.event_name != 'pull_request'
+        working-directory: ${{ github.workspace }}
+        run: |
+          cd "$REPORT"
+          echo "commit: ${{ github.sha }}" > status.txt
+          echo "tests: ${{ job.status }}" >> status.txt
+          git init -q -b ci-report-api
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "API CI report for ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-report-api

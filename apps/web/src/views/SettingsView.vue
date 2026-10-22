@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api.js';
 import { useCatalogue } from '../catalogue-context.js';
+import EbirdImport from '../components/EbirdImport.vue';
 import VisibilityPicker from '../components/VisibilityPicker.vue';
 import { session } from '../session.js';
 
@@ -42,50 +43,18 @@ async function saveDetails() {
 }
 
 // ---- eBird import ---------------------------------------------------------
-const region = ref(catalogue.value.regionCode ?? '');
-const preview = ref(null);
-const picked = ref(new Set());
 const importMsg = ref('');
 const importErr = ref('');
 const importing = ref(false);
+const importRound = ref(0); // remounts the panel after an import so its list is fresh
 
-const newCount = computed(() => preview.value?.species.filter((s) => !s.inCatalogue).length ?? 0);
-
-async function loadPreview() {
+async function runImport(request) {
   importMsg.value = importErr.value = '';
   importing.value = true;
   try {
-    preview.value = await api.post(`/catalogues/${catalogue.value.slug}/import/ebird/preview`, {
-      regionCode: region.value,
-    });
-    picked.value = new Set(preview.value.species.filter((s) => !s.inCatalogue).map((s) => s.ebirdCode));
-  } catch (err) {
-    importErr.value = err.message;
-  } finally {
-    importing.value = false;
-  }
-}
-
-function toggle(code) {
-  const next = new Set(picked.value);
-  if (next.has(code)) next.delete(code);
-  else next.add(code);
-  picked.value = next;
-}
-function pickAll(on) {
-  picked.value = new Set(on ? preview.value.species.filter((s) => !s.inCatalogue).map((s) => s.ebirdCode) : []);
-}
-
-async function runImport() {
-  importErr.value = '';
-  importing.value = true;
-  try {
-    const res = await api.post(`/catalogues/${catalogue.value.slug}/import/ebird`, {
-      regionCode: preview.value.regionCode,
-      codes: [...picked.value],
-    });
+    const res = await api.post(`/catalogues/${catalogue.value.slug}/import/ebird`, request);
     importMsg.value = `Added ${res.added} species to the dex.`;
-    preview.value = null;
+    importRound.value += 1;
     await Promise.all([reload(), reloadDex()]);
   } catch (err) {
     importErr.value = err.message;
@@ -262,44 +231,17 @@ async function deleteCatalogue() {
             eBird import is switched off on this site. The site admin can turn it on by setting EBIRD_API_KEY.
           </p>
           <template v-else>
-            <p class="soft small">Imports every species eBird has recorded in a region, in taxonomic order.</p>
             <div v-if="importErr" class="notice error" role="alert">{{ importErr }}</div>
             <div v-if="importMsg" class="notice" role="status">{{ importMsg }}</div>
-            <form class="row" @submit.prevent="loadPreview">
-              <label class="field">
-                <span>Region code</span>
-                <input v-model="region" type="text" maxlength="20" placeholder="CA-AB" required />
-              </label>
-              <button class="btn" type="submit" :disabled="importing">Preview species</button>
-            </form>
-
-            <div v-if="preview" class="preview">
-              <p>
-                eBird lists <strong>{{ preview.species.length }}</strong> species for {{ preview.regionCode }};
-                {{ newCount }} are new to this dex. {{ picked.size }} selected.
-              </p>
-              <div class="row">
-                <button class="btn quiet" type="button" @click="pickAll(true)">Select all new</button>
-                <button class="btn quiet" type="button" @click="pickAll(false)">Select none</button>
-              </div>
-              <ul class="pick-list">
-                <li v-for="s in preview.species" :key="s.ebirdCode">
-                  <label :class="{ have: s.inCatalogue }">
-                    <input
-                      type="checkbox"
-                      :checked="s.inCatalogue || picked.has(s.ebirdCode)"
-                      :disabled="s.inCatalogue"
-                      @change="toggle(s.ebirdCode)"
-                    />
-                    <span>{{ s.commonName }}</span>
-                    <span class="sci soft small">{{ s.scientificName }}</span>
-                  </label>
-                </li>
-              </ul>
-              <button class="btn primary" type="button" :disabled="importing || !picked.size" @click="runImport">
-                Import {{ picked.size }} species
-              </button>
-            </div>
+            <EbirdImport
+              :key="importRound"
+              :catalogue="catalogue.slug"
+              :initial-area="catalogue.area"
+              :initial-region="catalogue.regionCode ?? ''"
+              :busy="importing"
+              :submit-label="(n) => `Add ${n} species`"
+              @submit="runImport"
+            />
           </template>
         </div>
 
@@ -420,30 +362,6 @@ section {
 }
 .row > .btn {
   margin-top: 8px;
-}
-.preview {
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-top: 8px;
-}
-.pick-list {
-  list-style: none;
-  padding: 0;
-  margin: 10px 0 14px;
-  max-height: 360px;
-  overflow: auto;
-  columns: 2 260px;
-}
-.pick-list label {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  padding: 2px 0;
-  break-inside: avoid;
-}
-.pick-list label.have {
-  color: var(--ink-soft);
 }
 .results,
 .members {

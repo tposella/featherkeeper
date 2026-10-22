@@ -1,0 +1,28 @@
+{
+  "name": "@featherkeeper/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Featherkeeper API server",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "node src/db/migrate-cli.js",
+    "test": "node --test --test-concurrency=1 test/",
+    "lint": "node --check src/server.js"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/multipart": "^9.0.3",
+    "@fastify/rate-limit": "^10.2.2",
+    "exifr": "^7.1.3",
+    "fastify": "^5.2.1",
+    "pg": "^8.13.1",
+    "sharp": "^0.34.1"
+  }
+}

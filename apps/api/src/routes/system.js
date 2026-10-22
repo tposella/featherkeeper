@@ -1,0 +1,29 @@
+import { readFileSync } from 'node:fs';
+
+const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+
+export default async function systemRoutes(app, { db, config, ebird, geocoder, identifier }) {
+  // Used by Docker health checks and uptime monitors.
+  app.get('/health', async (request, reply) => {
+    try {
+      await db.query('SELECT 1');
+      return { status: 'ok' };
+    } catch {
+      return reply.code(503).send({ status: 'database_unavailable' });
+    }
+  });
+
+  // Public settings the frontend needs before anyone signs in.
+  app.get('/config', async () => {
+    const { count } = await db.one('SELECT count(*)::int AS count FROM users');
+    return {
+      version,
+      allowRegistration: config.allowRegistration || count === 0,
+      needsSetup: count === 0,
+      maxUploadMb: config.maxUploadMb,
+      ebirdEnabled: ebird.enabled,
+      placeSearchEnabled: geocoder.enabled,
+      identifyEnabled: identifier.enabled,
+    };
+  });
+}
