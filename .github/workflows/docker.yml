@@ -1,0 +1,68 @@
+# Builds the Docker images, starts the full stack with docker compose exactly as a
+# self-hoster would, and runs deploy/smoke-test.sh against it.
+# The log is pushed to the ci-report-docker branch.
+name: Docker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'docker-compose.yml'
+      - 'deploy/**'
+      - '.env.example'
+      - '.github/workflows/docker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stack:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      REPORT: ${{ github.workspace }}/ci-report
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure .env like a fresh install
+        env:
+          EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
+        run: |
+          mkdir -p "$REPORT"
+          cp .env.example .env
+          sed -i "s#^PUBLIC_URL=.*#PUBLIC_URL=http://localhost:8080#" .env
+          sed -i "s#^POSTGRES_PASSWORD=.*#POSTGRES_PASSWORD=$(openssl rand -hex 24)#" .env
+          sed -i "s#^EBIRD_API_KEY=.*#EBIRD_API_KEY=${EBIRD_API_KEY}#" .env
+
+      - name: Build and start the stack
+        run: |
+          set -o pipefail
+          docker compose up -d --build --wait --wait-timeout 300 2>&1 | tee "$REPORT/compose.log"
+          docker compose ps | tee -a "$REPORT/compose.log"
+
+      - name: Smoke test
+        run: |
+          set -o pipefail
+          bash deploy/smoke-test.sh http://localhost:8080 2>&1 | tee "$REPORT/smoke.log"
+
+      - name: Collect logs
+        if: always()
+        run: |
+          docker compose logs --no-color > "$REPORT/containers.log" 2>&1 || true
+          docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep featherkeeper >> "$REPORT/compose.log" || true
+
+      - name: Publish report to the ci-report-docker branch
+        if: always()
+        run: |
+          cd "$REPORT"
+          echo "commit: ${{ github.sha }}" > status.txt
+          echo "stack: ${{ job.status }}" >> status.txt
+          git init -q -b ci-report-docker
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Docker CI report for ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-report-docker

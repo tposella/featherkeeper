@@ -1,0 +1,49 @@
+# Featherkeeper: docker compose up -d --build
+# Settings come from .env (copy .env.example). Only the web port is published.
+
+name: featherkeeper
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-featherkeeper}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-featherkeeper}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: ./apps/api
+    image: featherkeeper-api:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      DATA_DIR: /data
+    volumes:
+      # A named volume by default. Set PHOTOS_DIR in .env to a host folder (owned by uid 1000) to use that instead.
+      - ${PHOTOS_DIR:-photos}:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./apps/web
+    image: featherkeeper-web:local
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-8080}:8080'
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  photos:
