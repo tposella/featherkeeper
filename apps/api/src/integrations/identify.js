@@ -25,8 +25,14 @@ async function post(config, form, fetchImpl) {
       signal: AbortSignal.timeout(config.timeoutMs),
     });
   } catch (err) {
-    const why = err.name === 'TimeoutError' ? 'it took too long to answer' : err.message;
-    throw new HttpError(502, `Identification service unreachable: ${why}`);
+    if (err.name === 'TimeoutError') throw new HttpError(504, 'The identification service took too long to answer. Try again.');
+    if (config.provider === 'bioclip') {
+      throw new HttpError(
+        502,
+        'Cannot reach the identifier container. Check that .env has COMPOSE_PROFILES=ai, then run docker compose up -d.',
+      );
+    }
+    throw new HttpError(502, `Identification service unreachable: ${err.message}`);
   }
   if (res.status === 503) {
     const body = await res.json().catch(() => null);
