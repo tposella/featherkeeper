@@ -81,7 +81,7 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgb(10 14 12 / 0.9);
+  background: rgb(10 14 12 / 0.97);
   display: grid;
   place-items: center;
   padding: 16px;
