@@ -19,8 +19,8 @@ export async function readPhotoMetadata(file) {
     const raw = tags?.DateTimeOriginal ?? tags?.CreateDate;
     const m = typeof raw === 'string' && raw.match(/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2})/);
     if (m && m[1] !== '0000') result.localDateTime = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}`;
-  } catch {
-    /* no EXIF */
+  } catch (err) {
+    console.error('EXIF read failed:', err?.name, err?.message, err?.stack?.split('\n').slice(0, 3).join(' | '));
   }
   try {
     const gps = await exifr.gps(file);
@@ -28,8 +28,8 @@ export async function readPhotoMetadata(file) {
       result.latitude = Math.round(gps.latitude * 1e6) / 1e6;
       result.longitude = Math.round(gps.longitude * 1e6) / 1e6;
     }
-  } catch {
-    /* no GPS */
+  } catch (err) {
+    console.error('GPS read failed:', err?.name, err?.message);
   }
   return result;
 }
