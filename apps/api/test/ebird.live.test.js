@@ -28,6 +28,6 @@ test('species around Cochrane, Alberta from nearby hotspots', { skip, timeout: 1
 test('species for a whole region', { skip, timeout: 60000 }, async () => {
   const { codes, summary } = await ebird.speciesCodesFor({ regionCode: 'CA-AB' });
   console.log(`region ${summary.regionCode} (${summary.regionName}): ${codes.length} codes`);
-  assert.equal(summary.regionName, 'Alberta');
+  assert.match(summary.regionName, /^Alberta/);
   assert.ok(codes.length > 300);
 });

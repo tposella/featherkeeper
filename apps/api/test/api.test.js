@@ -196,7 +196,7 @@ describe('dex, sightings and photos', () => {
       commonName: 'Robin',
       scientificName: 'turdus migratorius',
     });
-    assert.equal(res.status, 403, 'editor is not a member of the second catalogue');
+    assert.equal(res.status, 404, 'a private catalogue is invisible to non-members');
     const own = await owner.post('/api/catalogues/cochrane-backyard-2/species', {
       commonName: 'Robin',
       scientificName: 'turdus migratorius',
