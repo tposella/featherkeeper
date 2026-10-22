@@ -94,12 +94,18 @@ def wiki_photo(title):
     src = (summary.get("thumbnail") or {}).get("source")
     if not src:
         return None
-    # Ask for a 1024 px rendition (thumbnail URLs look like .../320px-Name.jpg).
+    # Wikimedia serves only standard thumbnail widths; 960 px is one (URLs look like .../330px-Name.jpg).
+    urls = [src]
     if "px-" in src:
         head, tail = src.rsplit("/", 1)
-        src = f"{head}/1024px-{tail.split('px-', 1)[1]}"
-    with urllib.request.urlopen(urllib.request.Request(src, headers={"User-Agent": UA}), timeout=60) as res:
-        return res.read()
+        urls.insert(0, f"{head}/960px-{tail.split('px-', 1)[1]}")
+    for url in urls:
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=60) as res:
+                return res.read()
+        except urllib.error.HTTPError:
+            continue
+    return None
 
 
 def rank_of(expected, suggestions):
@@ -149,6 +155,9 @@ def main():
             f"province: #{row['prov_rank'] or '-'} ({row['prov_top']}, {tb:.1f}s)",
             flush=True,
         )
+
+    if len(rows) < len(SPECIES) // 2:
+        raise SystemExit(f"Only {len(rows)} of {len(SPECIES)} test photos could be fetched; not a meaningful result.")
 
     def acc(key, k):
         return sum(1 for r in rows if r[key] and r[key] <= k) / max(1, len(rows))
