@@ -41,6 +41,15 @@ export const fakeEbird = {
     // A hotspot only near the Glenbow Ranch test point.
     return Math.abs(latitude - 51.1652) < 0.01 ? { name: 'Glenbow Ranch Provincial Park', locId: 'L1', distanceKm: 0.3 } : null;
   },
+  async recentObservations() {
+    return [
+      { ebirdCode: 'amerob', commonName: 'American Robin', scientificName: 'Turdus migratorius', observedAt: '2026-10-20 08:15', where: 'Glenbow Ranch PP', howMany: 3 },
+      { ebirdCode: 'bohwax', commonName: 'Bohemian Waxwing', scientificName: 'Bombycilla garrulus', observedAt: '2026-10-18 13:02', where: 'Cochrane Ranche', howMany: 40 },
+    ];
+  },
+  async speciesReports() {
+    return [{ where: 'Glenbow Ranch PP', observedAt: '2026-10-20 08:15', howMany: 3 }];
+  },
   async recentSpeciesNear() {
     return ['amerob']; // a robin was reported nearby this month
   },
@@ -67,6 +76,36 @@ export const fakeGeocoder = {
   },
   async reverse(latitude) {
     return latitude > 0 ? { name: 'Cochrane', label: 'Cochrane, Rocky View County, Alberta, Canada' } : null;
+  },
+};
+
+export const fakeInat = {
+  enabled: true,
+  async monthlySpecies() {
+    return [
+      { scientificName: 'Poecile atricapillus', commonName: 'Black-capped Chickadee', observations: 42 },
+      { scientificName: 'Turdus migratorius', commonName: 'American Robin', observations: 10 },
+    ];
+  },
+  async taxonId() {
+    return { id: 12727, wikipediaUrl: 'https://en.wikipedia.org/wiki/American_robin' };
+  },
+  async monthHistogram() {
+    return [1, 1, 5, 30, 60, 55, 50, 40, 30, 12, 3, 1];
+  },
+  async hourHistogram() {
+    const hours = new Array(24).fill(0);
+    hours[7] = 12;
+    hours[8] = 10;
+    hours[17] = 6;
+    return { hours, sample: 28 };
+  },
+};
+
+export const fakeWikipedia = {
+  enabled: true,
+  async habitat() {
+    return { text: 'Breeds in woodland, gardens and parks.', section: 'Habitat', url: 'https://en.wikipedia.org/wiki/American_robin#Habitat', title: 'American robin' };
   },
 };
 
@@ -115,6 +154,8 @@ export async function setup() {
     ebird: fakeEbird,
     geocoder: fakeGeocoder,
     identifier: fakeIdentifier,
+    inat: fakeInat,
+    wikipedia: fakeWikipedia,
     logger: false,
   });
   await app.ready();

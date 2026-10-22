@@ -339,6 +339,39 @@ describe('dex, sightings and photos', () => {
     assert.equal(res.body.entry.commonName, 'Bald Eagle');
   });
 
+  test('in season: reported now, usually around this month, and nearby species not in the catalogue', async () => {
+    const res = await owner.get('/api/catalogues/cochrane-backyard-2/season?month=10&current=10');
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.area.kind, 'area');
+    assert.equal(res.body.area.label, 'Cochrane');
+    const byName = Object.fromEntries(res.body.species.map((s) => [s.commonName, s]));
+    assert.equal(byName['American Robin'].now.where, 'Glenbow Ranch PP');
+    assert.equal(byName['American Robin'].usual.observations, 10);
+    assert.equal(byName['Black-capped Chickadee'].now, null);
+    assert.equal(byName['Black-capped Chickadee'].usual.observations, 42);
+    assert.equal(byName['Bald Eagle'], undefined, 'neither reported nor usual');
+    assert.deepEqual(res.body.notInCatalogue.map((s) => s.commonName), ['Bohemian Waxwing']);
+
+    const may = await owner.get('/api/catalogues/cochrane-backyard-2/season?month=5&current=10');
+    assert.equal(may.body.sources.now, null, 'recent reports only make sense for the current month');
+    assert.ok(may.body.species.every((s) => s.now === null));
+  });
+
+  test('species insights: seasonality, time of day, habitat, recent reports', async () => {
+    const dex = await owner.get('/api/catalogues/cochrane-backyard-2/species');
+    const robin = dex.body.species.find((s) => s.ebirdCode === 'amerob');
+    const res = await anon.get(`/api/catalogues/cochrane-backyard-2/species/${robin.id}/insights`);
+    assert.equal(res.status, 404, 'private catalogue');
+    const ok = await owner.get(`/api/catalogues/cochrane-backyard-2/species/${robin.id}/insights`);
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    assert.equal(ok.body.months.length, 12);
+    assert.equal(ok.body.hours.sample, 28);
+    assert.match(ok.body.habitat.text, /woodland/);
+    assert.equal(ok.body.reports[0].where, 'Glenbow Ranch PP');
+    assert.equal(ok.body.links.ebird, 'https://ebird.org/species/amerob');
+    assert.ok(Array.isArray(ok.body.yours));
+  });
+
   test('deleting a sighting removes its photos', async () => {
     assert.equal((await stranger.delete(`/api/sightings/${sightingId}`)).status, 403);
     assert.equal((await editor.delete(`/api/sightings/${sightingId}`)).status, 200);

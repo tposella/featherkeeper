@@ -57,6 +57,11 @@ export function loadConfig(env = process.env) {
       enabled: bool(env.REFERENCE_PHOTOS, true),
       userAgent: `Featherkeeper/0.1 (+${publicUrl})`,
     },
+    // "In season" and "when and where to find it": iNaturalist counts and Wikipedia habitat text.
+    insights: {
+      enabled: bool(env.SPECIES_INSIGHTS, true),
+      userAgent: `Featherkeeper/0.1 (+${publicUrl})`,
+    },
     identify: {
       provider: identifyProvider,
       url: env.IDENTIFY_URL ?? '',

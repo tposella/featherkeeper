@@ -144,3 +144,28 @@ test('distanceKm', async () => {
   assert.ok(d > 28 && d < 33, `got ${d}`);
   assert.equal(distanceKm(51, -114, 51, -114), 0);
 });
+
+test('Wikipedia habitat text is cleaned and trimmed to whole sentences', async () => {
+  const { stripHtml, firstSentences } = await import('../src/integrations/wikipedia.js');
+  const html = '<h3>Habitat</h3><p>The robin breeds in woodland<sup>[3]</sup> and &amp; gardens. It winters south.</p>';
+  assert.equal(stripHtml(html), 'The robin breeds in woodland and & gardens. It winters south.');
+  assert.equal(firstSentences('One two. Three four. Five six.', 20), 'One two. Three four.');
+});
+
+test('iNaturalist monthly species folds subspecies into species', async () => {
+  const { createInaturalistClient } = await import('../src/integrations/inat.js');
+  const fakeFetch = async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          { count: 30, taxon: { name: 'Junco hyemalis', rank: 'species', preferred_common_name: 'Dark-eyed Junco' } },
+          { count: 12, taxon: { name: 'Junco hyemalis oreganus', rank: 'subspecies' } },
+          { count: 5, taxon: { name: 'Corvus', rank: 'genus' } },
+        ],
+      }),
+      { headers: { 'content-type': 'application/json' } },
+    );
+  const inat = createInaturalistClient({ enabled: true, userAgent: 'test' }, fakeFetch);
+  const list = await inat.monthlySpecies({ latitude: 51.19, longitude: -114.47, radiusKm: 25, month: 5 });
+  assert.deepEqual(list, [{ scientificName: 'Junco hyemalis', commonName: 'Dark-eyed Junco', observations: 42 }]);
+});

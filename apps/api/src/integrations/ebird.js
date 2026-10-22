@@ -175,6 +175,49 @@ export function createEbirdClient({ apiKey, baseUrl }, fetchImpl = globalThis.fe
       };
     },
 
+    /**
+     * The most recent report of each species in the last `days` days (max 30), around a point
+     * ({ latitude, longitude, radiusKm }) or in a region ({ regionCode }).
+     * Returns [{ ebirdCode, commonName, scientificName, observedAt, where, howMany }].
+     */
+    async recentObservations(source, days = 30) {
+      requireEnabled();
+      const back = Math.min(30, Math.max(1, Math.round(days)));
+      let path;
+      if (source.regionCode) {
+        path = `/data/obs/${encodeURIComponent(source.regionCode)}/recent?back=${back}&fmt=json`;
+      } else {
+        const dist = Math.min(50, Math.max(1, Math.round(source.radiusKm ?? 25)));
+        path = `/data/obs/geo/recent?lat=${source.latitude.toFixed(2)}&lng=${source.longitude.toFixed(2)}&dist=${dist}&back=${back}&fmt=json`;
+      }
+      const rows = await cache.get(`recentobs:${path}`, () => get(path));
+      return (Array.isArray(rows) ? rows : []).map((r) => ({
+        ebirdCode: r.speciesCode,
+        commonName: r.comName,
+        scientificName: r.sciName,
+        observedAt: r.obsDt ?? null,
+        // Private (backyard) locations aren't named.
+        where: r.locationPrivate ? null : (r.locName ?? null),
+        howMany: typeof r.howMany === 'number' ? r.howMany : null,
+      }));
+    },
+
+    /** Recent reports of one species (last 30 days), around a point or in a region, newest first. */
+    async speciesReports(ebirdCode, source, days = 30) {
+      requireEnabled();
+      const back = Math.min(30, Math.max(1, Math.round(days)));
+      const code = encodeURIComponent(ebirdCode);
+      const path = source.regionCode
+        ? `/data/obs/${encodeURIComponent(source.regionCode)}/recent/${code}?back=${back}&fmt=json`
+        : `/data/obs/geo/recent/${code}?lat=${source.latitude.toFixed(2)}&lng=${source.longitude.toFixed(2)}` +
+          `&dist=${Math.min(50, Math.max(1, Math.round(source.radiusKm ?? 25)))}&back=${back}&fmt=json`;
+      const rows = await cache.get(`reports:${path}`, () => get(path));
+      return (Array.isArray(rows) ? rows : [])
+        .filter((r) => !r.locationPrivate)
+        .map((r) => ({ where: r.locName ?? null, observedAt: r.obsDt ?? null, howMany: typeof r.howMany === 'number' ? r.howMany : null }))
+        .sort((a, b) => String(b.observedAt).localeCompare(String(a.observedAt)));
+    },
+
     /** The nearest eBird hotspot within maxKm of a point, or null. */
     async nearestHotspot(latitude, longitude, maxKm = 1) {
       requireEnabled();

@@ -26,7 +26,7 @@ export const ebirdSourceBody = {
   anyOf: [{ required: ['regionCode'] }, { required: ['latitude', 'longitude'] }],
 };
 
-const DEX_SQL = `
+export const DEX_SQL = `
   SELECT sp.*, cs.notes, cs.added_at,
          coalesce(st.sighting_count, 0)::int AS sighting_count,
          coalesce(st.photo_count, 0)::int AS photo_count,
@@ -47,7 +47,7 @@ const DEX_SQL = `
     ) st ON true
    WHERE cs.catalogue_id = $1`;
 
-function dexEntry(r) {
+export function dexEntry(r) {
   return {
     ...out.species(r),
     notes: r.notes,
