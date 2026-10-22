@@ -1,0 +1,244 @@
+/* Featherkeeper — field-guide palette and type */
+
+:root {
+  --paper: #edf0ea;
+  --paper-raised: #f7f8f5;
+  --ink: #1e2a23;
+  --ink-soft: #5d6a62;
+  --rule: #c8d0c6;
+  --jay: #2c6a8a;
+  --jay-wash: #d5e3ea;
+  --goldfinch: #c4912a;
+  --goldfinch-wash: #f1e4c4;
+  --danger: #a33b2f;
+  --focus: #2c6a8a;
+
+  --font-display: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'Atkinson Hyperlegible', system-ui, sans-serif;
+
+  --step--1: 0.875rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.563rem;
+  --step-3: 1.953rem;
+  --step-4: 2.441rem;
+
+  --radius: 6px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --measure: 68ch;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #141b17;
+    --paper-raised: #1b2420;
+    --ink: #e2e8e3;
+    --ink-soft: #9aa79f;
+    --rule: #2f3a34;
+    --jay: #6fa8c6;
+    --jay-wash: #1d3340;
+    --goldfinch: #dcae4c;
+    --goldfinch-wash: #3a3018;
+    --danger: #e07a6c;
+    --focus: #8cc0dc;
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.5em;
+}
+h1 {
+  font-size: var(--step-4);
+  font-variation-settings: 'wdth' 90;
+}
+h2 {
+  font-size: var(--step-2);
+}
+h3 {
+  font-size: var(--step-1);
+}
+p {
+  margin: 0 0 1em;
+  max-width: var(--measure);
+}
+a {
+  color: var(--jay);
+  text-underline-offset: 0.15em;
+}
+.sci {
+  font-style: italic;
+}
+.soft {
+  color: var(--ink-soft);
+}
+.small {
+  font-size: var(--step--1);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px var(--gutter) 80px;
+}
+.page.narrow {
+  max-width: 560px;
+}
+
+/* ---- Buttons and forms ---------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.55em 1.05em;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1.2;
+}
+.btn:hover {
+  border-color: var(--ink-soft);
+}
+.btn.primary {
+  background: var(--jay);
+  border-color: var(--jay);
+  color: #fff;
+}
+.btn.primary:hover {
+  filter: brightness(1.08);
+}
+.btn.danger {
+  color: var(--danger);
+  border-color: currentColor;
+  background: transparent;
+}
+.btn.quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--jay);
+  padding-inline: 0.4em;
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.field > span:first-child {
+  font-weight: 700;
+}
+.field .hint {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='search'],
+input[type='number'],
+input[type='datetime-local'],
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0.55em 0.7em;
+  width: 100%;
+}
+textarea {
+  min-height: 7em;
+  resize: vertical;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--jay);
+}
+.row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.row > .field {
+  flex: 1 1 180px;
+}
+
+.notice {
+  border-left: 4px solid var(--jay);
+  background: var(--jay-wash);
+  padding: 12px 16px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin-bottom: 20px;
+}
+.notice.error {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, var(--paper));
+}
+
+.empty {
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+  padding: 32px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
