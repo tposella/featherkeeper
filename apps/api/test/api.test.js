@@ -186,6 +186,16 @@ describe('dex, sightings and photos', () => {
     assert.equal(cat.body.catalogue.regionCode, 'CA-AB-RV');
   });
 
+  test('a point gets a place name: nearest hotspot first, then the town', async () => {
+    assert.equal((await anon.get('/api/places/reverse?latitude=51.1652&longitude=-114.3824')).status, 401);
+    const park = await owner.get('/api/places/reverse?latitude=51.1652&longitude=-114.3824');
+    assert.deepEqual(park.body.suggestion, { name: 'Glenbow Ranch Provincial Park', source: 'hotspot' });
+    const town = await owner.get('/api/places/reverse?latitude=51.19&longitude=-114.47');
+    assert.deepEqual(town.body.suggestion, { name: 'Cochrane', source: 'map' });
+    const nowhere = await owner.get('/api/places/reverse?latitude=-51.19&longitude=-114.47');
+    assert.equal(nowhere.body.suggestion, null);
+  });
+
   test('an import needs a region or a place', async () => {
     const res = await owner.post('/api/catalogues/cochrane-backyard-2/import/ebird', { radiusKm: 10 });
     assert.equal(res.status, 400);

@@ -6,7 +6,7 @@ import { useCatalogue } from '../catalogue-context.js';
 import AiSuggestions from '../components/AiSuggestions.vue';
 import LocationPicker from '../components/LocationPicker.vue';
 import { readPhotoMetadata } from '../exif.js';
-import { fromLocalInput } from '../format.js';
+import { formatDate, fromLocalInput } from '../format.js';
 import { session } from '../session.js';
 
 const { catalogue, species, reload, reloadDex } = useCatalogue();
@@ -21,7 +21,10 @@ const latitude = ref(null);
 const longitude = ref(null);
 const locationName = ref('');
 const notes = ref('');
-const prefilled = ref('');
+// What was read from the photos: { date, location, camera, names, checked }.
+const fromPhoto = ref(null);
+const naming = ref(false);
+const placeSource = ref(''); // 'hotspot' | 'map' | 'none'
 const error = ref('');
 const progress = ref('');
 const busy = ref(false);
@@ -63,23 +66,47 @@ async function onFiles(event) {
   const ok = picked.filter((f) => f.size <= maxBytes && !/\.hei[cf]$/i.test(f.name));
   files.value.push(...ok.map((file) => ({ file, url: URL.createObjectURL(file) })));
 
-  // Prefill from the first photo that has metadata, without overwriting what the user typed.
+  // Prefill from the photos' metadata without overwriting what the user typed. Date and location
+  // can come from different photos (e.g. a phone shot with GPS next to a camera shot without).
+  const found = { date: null, location: null, camera: '', names: [] };
   for (const { file } of ok) {
     const meta = await readPhotoMetadata(file);
-    const filled = [];
-    if (!observedAt.value && meta.localDateTime) {
-      observedAt.value = meta.localDateTime;
-      filled.push('date');
+    if (!found.camera && meta.camera) found.camera = meta.camera;
+    if (!found.date && meta.localDateTime) {
+      found.date = meta.localDateTime;
+      found.names.push(file.name);
     }
-    if (latitude.value === null && meta.latitude !== null) {
-      latitude.value = meta.latitude;
-      longitude.value = meta.longitude;
-      filled.push('location');
+    if (!found.location && meta.latitude !== null) {
+      found.location = { latitude: meta.latitude, longitude: meta.longitude };
+      if (!found.names.includes(file.name)) found.names.push(file.name);
     }
-    if (filled.length) {
-      prefilled.value = `Filled in the ${filled.join(' and ')} from ${file.name}.`;
-      break;
+    if (found.date && found.location) break;
+  }
+  if (found.date && !observedAt.value) observedAt.value = found.date;
+  if (found.location && latitude.value === null) {
+    latitude.value = found.location.latitude;
+    longitude.value = found.location.longitude;
+  }
+  fromPhoto.value = { ...found, checked: ok.length };
+  if (found.location && !locationName.value.trim()) await nameThisPlace();
+}
+
+// Turn the pin into a place name: the nearest eBird hotspot within 1 km, otherwise a park or town.
+async function nameThisPlace() {
+  if (latitude.value === null) return;
+  naming.value = true;
+  try {
+    const res = await api.get(`/places/reverse?latitude=${latitude.value}&longitude=${longitude.value}`);
+    if (res.suggestion) {
+      locationName.value = res.suggestion.name;
+      placeSource.value = res.suggestion.source;
+    } else {
+      placeSource.value = 'none';
     }
+  } catch {
+    placeSource.value = 'none';
+  } finally {
+    naming.value = false;
   }
 }
 
@@ -164,7 +191,25 @@ async function save() {
         Optional. JPEG, PNG, WebP, TIFF or AVIF<template v-if="session.config.maxUploadMb > 0">, up to
         {{ session.config.maxUploadMb }} MB each</template>. Date and GPS are read from the photo.
       </p>
-      <p v-if="prefilled" class="notice small" role="status">{{ prefilled }}</p>
+      <div v-if="fromPhoto" class="from-photo small" role="status">
+        <template v-if="fromPhoto.date || fromPhoto.location">
+          <strong>From the photo:</strong>
+          <span v-if="fromPhoto.date">{{ formatDate(fromPhoto.date, true) }}</span>
+          <span v-if="fromPhoto.location">
+            {{ fromPhoto.location.latitude.toFixed(5) }}, {{ fromPhoto.location.longitude.toFixed(5) }}
+          </span>
+          <span v-if="fromPhoto.camera" class="soft">{{ fromPhoto.camera }}</span>
+          <span v-if="!fromPhoto.location" class="warn">
+            No GPS location in {{ fromPhoto.checked === 1 ? 'this photo' : 'these photos' }}; set the pin on the map below.
+          </span>
+          <span v-if="!fromPhoto.date" class="warn">No date in the photo; enter it below.</span>
+        </template>
+        <template v-else>
+          <strong>No date or location found in {{ fromPhoto.checked === 1 ? 'this photo' : 'these photos' }}.</strong>
+          Phones often remove location when sharing a photo, and editing apps can strip it on export (in Lightroom,
+          check that Metadata includes location). Enter them below instead.
+        </template>
+      </div>
     </section>
 
     <section>
@@ -224,7 +269,15 @@ async function save() {
       <LocationPicker v-model:latitude="latitude" v-model:longitude="longitude" :near="near" />
       <label class="field place">
         <span>Place name</span>
-        <input v-model="locationName" type="text" maxlength="300" placeholder="Glenbow Ranch, west trail" />
+        <span class="place-row">
+          <input v-model="locationName" type="text" maxlength="300" placeholder="Glenbow Ranch, west trail" @input="placeSource = ''" />
+          <button class="btn" type="button" :disabled="latitude === null || naming" @click="nameThisPlace">
+            {{ naming ? 'Looking up...' : 'Name this place' }}
+          </button>
+        </span>
+        <span v-if="placeSource === 'hotspot'" class="hint">Named after the nearest eBird hotspot. Edit it if you like.</span>
+        <span v-else-if="placeSource === 'map'" class="hint">Named from OpenStreetMap. Edit it if you like.</span>
+        <span v-else-if="placeSource === 'none'" class="hint">No named place found near the pin; type one in.</span>
       </label>
       <p v-if="catalogue.hideLocations" class="soft small">
         This catalogue hides exact locations from viewers. Only you and other editors see the map pin.
@@ -318,5 +371,26 @@ label.btn {
 }
 .place {
   margin-top: 12px;
+}
+.place-row {
+  display: flex;
+  gap: 8px;
+}
+.place-row input {
+  flex: 1;
+}
+.from-photo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 4px solid var(--jay);
+  background: var(--jay-wash);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.from-photo .warn {
+  flex-basis: 100%;
+  color: var(--ink);
 }
 </style>

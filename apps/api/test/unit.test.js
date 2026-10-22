@@ -136,3 +136,11 @@ test('reference photos come from iNaturalist, openly licensed only, with credit'
   await ref.forSpecies('turdus migratorius');
   assert.equal(calls.length, before, 'second lookup is cached');
 });
+
+test('distanceKm', async () => {
+  const { distanceKm } = await import('../src/integrations/ebird.js');
+  // Cochrane to Calgary city centre is roughly 30 km.
+  const d = distanceKm(51.1894, -114.4682, 51.0447, -114.0719);
+  assert.ok(d > 28 && d < 33, `got ${d}`);
+  assert.equal(distanceKm(51, -114, 51, -114), 0);
+});

@@ -27,6 +27,14 @@ function createCache(ttlMs, maxEntries = 500) {
   };
 }
 
+/** Great-circle distance in km. */
+export function distanceKm(lat1, lng1, lat2, lng2) {
+  const rad = (d) => (d * Math.PI) / 180;
+  const a =
+    Math.sin(rad(lat2 - lat1) / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lng2 - lng1) / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(a));
+}
+
 async function mapLimit(items, limit, fn) {
   const results = new Array(items.length);
   let next = 0;
@@ -165,6 +173,18 @@ export function createEbirdClient({ apiKey, baseUrl }, fetchImpl = globalThis.fe
           regionName: district ? await regionName(district) : null,
         },
       };
+    },
+
+    /** The nearest eBird hotspot within maxKm of a point, or null. */
+    async nearestHotspot(latitude, longitude, maxKm = 1) {
+      requireEnabled();
+      const spots = await nearbyHotspots(latitude, longitude, Math.max(1, Math.ceil(maxKm) + 1));
+      let best = null;
+      for (const h of spots) {
+        const km = distanceKm(latitude, longitude, h.latitude, h.longitude);
+        if (km <= maxKm && (!best || km < best.distanceKm)) best = { name: h.name, locId: h.locId, distanceKm: Math.round(km * 100) / 100 };
+      }
+      return best;
     },
 
     /** Species codes reported within radiusKm of a point in the last `days` days (max 30). */

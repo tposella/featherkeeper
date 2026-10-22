@@ -37,6 +37,10 @@ export const fakeEbird = {
       },
     };
   },
+  async nearestHotspot(latitude) {
+    // A hotspot only near the Glenbow Ranch test point.
+    return Math.abs(latitude - 51.1652) < 0.01 ? { name: 'Glenbow Ranch Provincial Park', locId: 'L1', distanceKm: 0.3 } : null;
+  },
   async recentSpeciesNear() {
     return ['amerob']; // a robin was reported nearby this month
   },
@@ -60,6 +64,9 @@ export const fakeGeocoder = {
   enabled: true,
   async search(q) {
     return [{ label: `${q}, Alberta, Canada`, name: q, latitude: 51.19, longitude: -114.47, kind: 'town' }];
+  },
+  async reverse(latitude) {
+    return latitude > 0 ? { name: 'Cochrane', label: 'Cochrane, Rocky View County, Alberta, Canada' } : null;
   },
 };
 

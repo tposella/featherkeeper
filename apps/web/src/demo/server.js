@@ -429,6 +429,19 @@ const routes = [
     // Anything else: pretend it's somewhere near Calgary so the demo still works.
     return { places: hits.length ? hits : [{ name: q, label: `${q} (demo location)`, latitude: 51.05, longitude: -114.07 }] };
   }],
+  ['GET', /^\/places\/reverse$/, async (m, body, query) => {
+    if (!me()) throw new DemoError(401, 'Sign in required');
+    await wait(300);
+    const lat = Number(query.get('latitude'));
+    const lng = Number(query.get('longitude'));
+    let best = null;
+    for (const p of PLACES) {
+      const d = Math.hypot(p.lat - lat, (p.lng - lng) * Math.cos((lat * Math.PI) / 180)) * 111;
+      if (!best || d < best.d) best = { ...p, d };
+    }
+    if (best && best.d < 1) return { suggestion: { name: best.name, source: 'hotspot' } };
+    return { suggestion: { name: best && best.d < 30 ? 'Near ' + best.name.split(',')[0] : 'Somewhere in Alberta', source: 'map' } };
+  }],
   ['POST', /^\/ebird\/preview$/, async (m, body) => {
     if (!me()) throw new DemoError(401, 'Sign in required');
     await wait(900);
