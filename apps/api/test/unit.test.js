@@ -62,3 +62,18 @@ test('http identifier normalises different response shapes', async () => {
   assert.equal(createIdentifier({ provider: 'none' }).enabled, false);
   assert.equal(createIdentifier({ provider: 'http', url: '' }).enabled, false);
 });
+
+test('eBird client retries after being rate-limited', async () => {
+  const { createEbirdClient } = await import('../src/integrations/ebird.js');
+  let calls = 0;
+  const fakeFetch = async () => {
+    calls += 1;
+    if (calls === 1) return new Response('slow down', { status: 429, headers: { 'retry-after': '1' } });
+    return new Response(JSON.stringify(['amerob', 'bkbmag1']), { headers: { 'content-type': 'application/json' } });
+  };
+  const ebird = createEbirdClient({ apiKey: 'test', baseUrl: 'https://example.invalid' }, fakeFetch);
+  // Region lookups fall back to the code when region info fails, so only spplist matters here.
+  const { codes } = await ebird.speciesCodesFor({ regionCode: 'CA-AB' });
+  assert.deepEqual(codes, ['amerob', 'bkbmag1']);
+  assert.ok(calls >= 2);
+});

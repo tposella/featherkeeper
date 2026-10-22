@@ -6,7 +6,10 @@ export const REGION_PATTERN = /^([A-Z]{2}(-[A-Z0-9]{1,3}){0,2}|L\d+)$/;
 export const MAX_RADIUS_KM = 50;
 // Hotspots are ranked by all-time species count and the richest ones are combined.
 // More hotspots add few new species but cost one API call each.
-const MAX_HOTSPOTS = 25;
+const MAX_HOTSPOTS = 20;
+// Parallel requests to eBird; it rate-limits bursts, so keep this small.
+const CONCURRENCY = 2;
+const MAX_ATTEMPTS = 4;
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 
 /** Small time-limited cache so a preview followed by an import doesn't hit eBird twice. */
@@ -47,20 +50,29 @@ export function createEbirdClient({ apiKey, baseUrl }, fetchImpl = globalThis.fe
   const cache = createCache(CACHE_TTL_MS);
 
   async function get(pathAndQuery) {
-    let res;
-    try {
-      res = await fetchImpl(`${baseUrl}${pathAndQuery}`, {
-        headers: { 'X-eBirdApiToken': apiKey, Accept: 'application/json' },
-        signal: AbortSignal.timeout(30000),
-      });
-    } catch (err) {
-      throw new HttpError(502, `Could not reach eBird: ${err.message}`);
+    for (let attempt = 1; ; attempt += 1) {
+      let res;
+      try {
+        res = await fetchImpl(`${baseUrl}${pathAndQuery}`, {
+          headers: { 'X-eBirdApiToken': apiKey, Accept: 'application/json' },
+          signal: AbortSignal.timeout(30000),
+        });
+      } catch (err) {
+        throw new HttpError(502, `Could not reach eBird: ${err.message}`);
+      }
+      // Rate limited or briefly unavailable: wait (as told, or with backoff) and retry.
+      if ((res.status === 429 || res.status === 503) && attempt < MAX_ATTEMPTS) {
+        const retryAfter = Number(res.headers.get('retry-after'));
+        const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1500 * 2 ** (attempt - 1);
+        await new Promise((r) => setTimeout(r, Math.min(waitMs, 15000)));
+        continue;
+      }
+      if (res.status === 400 || res.status === 404) throw new HttpError(400, 'eBird did not recognise that region');
+      if (res.status === 401 || res.status === 403) throw new HttpError(502, 'eBird rejected the API key. Check EBIRD_API_KEY.');
+      if (res.status === 429) throw new HttpError(503, 'eBird is rate-limiting requests. Try again in a minute.');
+      if (!res.ok) throw new HttpError(502, `eBird returned HTTP ${res.status}`);
+      return res.json();
     }
-    if (res.status === 400 || res.status === 404) throw new HttpError(400, 'eBird did not recognise that region');
-    if (res.status === 401 || res.status === 403) throw new HttpError(502, 'eBird rejected the API key. Check EBIRD_API_KEY.');
-    if (res.status === 429) throw new HttpError(503, 'eBird is rate-limiting requests. Try again in a minute.');
-    if (!res.ok) throw new HttpError(502, `eBird returned HTTP ${res.status}`);
-    return res.json();
   }
 
   function requireEnabled() {
@@ -135,7 +147,7 @@ export function createEbirdClient({ apiKey, baseUrl }, fetchImpl = globalThis.fe
         throw new HttpError(404, 'eBird has no hotspots within that distance. Try a larger radius or a whole region.', 'no_hotspots');
       }
       const used = [...hotspots].sort((a, b) => b.speciesAllTime - a.speciesAllTime).slice(0, MAX_HOTSPOTS);
-      const lists = await mapLimit(used, 4, (h) => speciesCodes(h.locId));
+      const lists = await mapLimit(used, CONCURRENCY, (h) => speciesCodes(h.locId));
       const codes = [...new Set(lists.flat())];
       const district = mostCommon(hotspots.map((h) => h.subnational2)) ?? mostCommon(hotspots.map((h) => h.subnational1));
       return {
