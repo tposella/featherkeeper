@@ -24,6 +24,23 @@ export function stripHtml(html) {
     .trim();
 }
 
+// Words that describe the kind of place a bird lives, as opposed to its range.
+const HABITAT_WORDS =
+  /\b(habitat|woodland|forest|wood|tree|trees|shrub|scrub|thicket|grassland|prairie|meadow|field|farmland|marsh|wetland|swamp|bog|lake|pond|river|stream|creek|shore|coast|beach|estuar|water|reservoir|garden|park|urban|suburb|town|city|cliff|mountain|alpine|tundra|desert|riparian|conifer|deciduous|open country|edge)/i;
+
+/** Prefer sentences about the kind of place (woodland, lakes...) over range, keeping their order. */
+export function habitatSentences(text, maxChars = MAX_CHARS) {
+  const sentences = (text.match(/[^.!?]+[.!?]+(\s|$)/g) ?? [text]).map((x) => x.trim());
+  const about = sentences.filter((x) => HABITAT_WORDS.test(x));
+  if (!about.length) return firstSentences(text, maxChars);
+  let out = '';
+  for (const x of about) {
+    if ((out ? `${out} ${x}` : x).length > maxChars) break;
+    out = out ? `${out} ${x}` : x;
+  }
+  return out || firstSentences(text, maxChars);
+}
+
 /** The first sentences that fit in MAX_CHARS. */
 export function firstSentences(text, maxChars = MAX_CHARS) {
   const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g) ?? [text];
@@ -62,7 +79,7 @@ export function createWikipediaClient({ enabled = true, userAgent }, fetchImpl =
     const text = stripHtml(section.parse?.text ?? '');
     if (text.length < 40) return null;
     return {
-      text: firstSentences(text),
+      text: habitatSentences(text),
       section: stripHtml(pick.line),
       url: `https://en.wikipedia.org/wiki/${encodeURIComponent(pageTitle.replace(/ /g, '_'))}#${encodeURIComponent(pick.anchor ?? '')}`,
       title: pageTitle,

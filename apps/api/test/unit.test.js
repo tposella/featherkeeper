@@ -169,3 +169,11 @@ test('iNaturalist monthly species folds subspecies into species', async () => {
   const list = await inat.monthlySpecies({ latitude: 51.19, longitude: -114.47, radiusKm: 25, month: 5 });
   assert.deepEqual(list, [{ scientificName: 'Junco hyemalis', commonName: 'Dark-eyed Junco', observations: 42 }]);
 });
+
+test('habitat text prefers sentences about the kind of place', async () => {
+  const { habitatSentences } = await import('../src/integrations/wikipedia.js');
+  const text =
+    'The species breeds from Alaska to Mexico. Most migrate south in winter. It nests in open woodland and gardens, often near lakes. Eggs are blue.';
+  assert.equal(habitatSentences(text), 'It nests in open woodland and gardens, often near lakes.');
+  assert.equal(habitatSentences('Found from Alaska to Mexico.'), 'Found from Alaska to Mexico.');
+});

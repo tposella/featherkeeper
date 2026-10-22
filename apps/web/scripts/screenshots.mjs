@@ -42,7 +42,7 @@ for (const scheme of ['light', 'dark']) {
       if (scheme === 'dark' && !['dex', 'species-photographed', 'home'].includes(name)) continue;
       await page.goto(new URL(hash, base).href);
       await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(700);
+      await page.waitForTimeout(name.startsWith('species') ? 1800 : 700);
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-${name}.png`, fullPage: true });
     }
     if (scheme === 'light') {
