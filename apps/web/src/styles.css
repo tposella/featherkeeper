@@ -141,6 +141,12 @@ a {
   border-color: var(--jay);
   color: #fff;
 }
+@media (prefers-color-scheme: dark) {
+  /* The dark-mode jay blue is light, so primary buttons take dark text. */
+  .btn.primary {
+    color: var(--paper);
+  }
+}
 .btn.primary:hover {
   filter: brightness(1.08);
 }

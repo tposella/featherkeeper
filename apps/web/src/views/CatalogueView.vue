@@ -67,7 +67,7 @@ provide(CATALOGUE_KEY, { catalogue, species, reload, reloadDex });
             :total="catalogue.stats.species"
           />
           <RouterLink
-            v-if="catalogue.access.canEdit"
+            v-if="catalogue.access.canEdit && $route.name !== 'log'"
             :to="{ name: 'log', params: { slug } }"
             class="btn primary log"
           >
@@ -77,7 +77,13 @@ provide(CATALOGUE_KEY, { catalogue, species, reload, reloadDex });
       </header>
 
       <nav class="tabs" aria-label="Catalogue sections">
-        <RouterLink :to="{ name: 'dex', params: { slug } }" exact-active-class="on">Dex</RouterLink>
+        <RouterLink
+          :to="{ name: 'dex', params: { slug } }"
+          :class="{ on: ['dex', 'species'].includes($route.name) }"
+          :aria-current="['dex', 'species'].includes($route.name) ? 'page' : undefined"
+        >
+          Dex
+        </RouterLink>
         <RouterLink :to="{ name: 'map', params: { slug } }" active-class="on">Map</RouterLink>
         <RouterLink :to="{ name: 'recent', params: { slug } }" active-class="on">Recent sightings</RouterLink>
         <RouterLink

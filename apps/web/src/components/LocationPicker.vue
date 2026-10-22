@@ -6,6 +6,8 @@ import { TILE_ATTRIBUTION, TILE_URL } from '../map-tiles.js';
 // v-model:latitude / v-model:longitude. Click the map to place the pin.
 const latitude = defineModel('latitude', { default: null });
 const longitude = defineModel('longitude', { default: null });
+// Where to centre the map before a pin is placed, e.g. the catalogue's latest sighting.
+const props = defineProps({ near: { type: Object, default: null } });
 
 const el = ref(null);
 const locating = ref(false);
@@ -43,6 +45,12 @@ onMounted(() => {
 onUnmounted(() => map?.remove());
 
 watch([latitude, longitude], () => placeMarker(true));
+watch(
+  () => props.near,
+  (near) => {
+    if (map && near && latitude.value === null) map.setView([near.latitude, near.longitude], 10);
+  },
+);
 
 function useMyLocation() {
   geoError.value = '';

@@ -25,6 +25,15 @@ const error = ref('');
 const progress = ref('');
 const busy = ref(false);
 
+// Centre the location map on the catalogue's most recent sighting with coordinates.
+const near = ref(null);
+api
+  .get(`/catalogues/${catalogue.value.slug}/sightings`)
+  .then((res) => {
+    near.value = res.sightings.find((s) => s.latitude !== null) ?? null;
+  })
+  .catch(() => {});
+
 const suggestions = ref([]);
 const identifying = ref(false);
 const identifyError = ref('');
@@ -240,7 +249,7 @@ async function save() {
         <span>Date and time</span>
         <input v-model="observedAt" type="datetime-local" />
       </label>
-      <LocationPicker v-model:latitude="latitude" v-model:longitude="longitude" />
+      <LocationPicker v-model:latitude="latitude" v-model:longitude="longitude" :near="near" />
       <label class="field place">
         <span>Place name</span>
         <input v-model="locationName" type="text" maxlength="300" placeholder="Glenbow Ranch, west trail" />
