@@ -311,6 +311,10 @@ label.btn {
 }
 .chosen > span {
   flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
 }
 .place {
   margin-top: 12px;
