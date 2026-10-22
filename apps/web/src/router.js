@@ -13,6 +13,7 @@ const routes = [
     props: true,
     children: [
       { path: '', name: 'dex', component: () => import('./views/DexView.vue') },
+      { path: 'families', name: 'families', component: () => import('./views/FamiliesView.vue') },
       { path: 'map', name: 'map', component: () => import('./views/MapView.vue') },
       { path: 'recent', name: 'recent', component: () => import('./views/RecentView.vue') },
       { path: 'log', name: 'log', component: () => import('./views/LogSightingView.vue'), meta: { auth: true } },

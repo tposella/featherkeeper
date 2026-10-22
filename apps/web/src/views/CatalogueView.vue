@@ -84,6 +84,7 @@ provide(CATALOGUE_KEY, { catalogue, species, reload, reloadDex });
         >
           Dex
         </RouterLink>
+        <RouterLink :to="{ name: 'families', params: { slug } }" active-class="on">Families</RouterLink>
         <RouterLink :to="{ name: 'map', params: { slug } }" active-class="on">Map</RouterLink>
         <RouterLink :to="{ name: 'recent', params: { slug } }" active-class="on">Recent sightings</RouterLink>
         <RouterLink

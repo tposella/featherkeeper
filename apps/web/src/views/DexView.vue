@@ -1,5 +1,6 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useCatalogue } from '../catalogue-context.js';
 import { plateNumber } from '../format.js';
 
@@ -7,7 +8,13 @@ const { catalogue, species } = useCatalogue();
 
 const query = ref('');
 const status = ref('all');
-const family = ref('');
+const route = useRoute();
+const router = useRouter();
+// The family filter lives in the URL (?family=...), so the Families view can link straight to it.
+const family = ref(typeof route.query.family === 'string' ? route.query.family : '');
+watch(family, (value) => {
+  router.replace({ query: { ...route.query, family: value || undefined } });
+});
 
 // Plate numbers follow taxonomic order across the whole dex, so they stay put while filtering.
 const numbered = computed(() => species.value.map((s, i) => ({ ...s, plate: i + 1 })));
