@@ -7,7 +7,7 @@ A self-hosted birding log that works like a pokédex. Keep catalogues of the spe
 ## Try the demo
 
 Every push to `main` builds the frontend with sample data and publishes it to GitHub Pages:
-**https://tyler-posella.github.io/featherkeeper/**
+**https://tposella.github.io/featherkeeper/**
 
 The demo needs no server. Use the banner at the top to view it as the owner, an editor, or a signed-out visitor. Photos are placeholders and changes reset when you reload.
 
