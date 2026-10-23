@@ -1,5 +1,4 @@
-# One-off: fetch the official AGPL-3.0 text from gnu.org onto the license-text branch.
-# Removed again once LICENSE is in the repo.
+# One-off: fetch the official AGPL-3.0 text onto the license-text branch. Removed once LICENSE is in the repo.
 name: Fetch licence text
 on:
   push:
@@ -13,12 +12,15 @@ jobs:
     steps:
       - run: |
           mkdir out && cd out
-          curl -fsSL https://www.gnu.org/licenses/agpl-3.0.txt -o LICENSE
-          head -3 LICENSE
-          wc -l LICENSE
-          sha256sum LICENSE | tee LICENSE.sha256
+          {
+            curl -fsSL --retry 3 https://www.gnu.org/licenses/agpl-3.0.txt -o LICENSE && echo "source: gnu.org"
+          } || {
+            curl -fsSL --retry 3 https://raw.githubusercontent.com/spdx/license-list-data/main/text/AGPL-3.0-only.txt -o LICENSE && echo "source: spdx"
+          } || echo "both downloads failed"
+          { echo "run: ${{ github.run_id }}"; ls -l; head -3 LICENSE 2>/dev/null; wc -l LICENSE 2>/dev/null; sha256sum LICENSE 2>/dev/null; } > report.txt 2>&1
+          cat report.txt
           git init -q -b license-text
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A && git commit -q -m "AGPL-3.0 text from gnu.org"
+          git add -A && git commit -q -m "AGPL-3.0 text"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" license-text
