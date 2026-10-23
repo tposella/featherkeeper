@@ -107,6 +107,8 @@ Featherkeeper turns that into something more fun and more useful:
 - Map of all sightings, and a recent-sightings feed.
 
 **Look and feel**
+- Works on phones: a bottom navigation bar with a raised **Log** button and a **More** sheet, a compact
+  header, full-screen photo viewing with swipe, and finger-sized buttons. Desktop keeps the tabs.
 - Light and dark mode. Follows your system setting by default, with a toggle in the header that your
   browser remembers.
 

@@ -853,7 +853,7 @@ function exifLine(p) {
 @media (max-width: 640px) {
   .lightbox {
     padding: 0;
-    background: rgb(10 14 12 / 0.97);
+    background: #0a0e0c;
     place-items: stretch;
     overflow-y: auto;
   }
