@@ -13,9 +13,11 @@ export function createGeocoder({ url, userAgent }, fetchImpl = globalThis.fetch)
 
   return {
     enabled,
-    async search(query, language = 'en') {
+    /** near: optional { latitude, longitude } to prefer results around that point. */
+    async search(query, language = 'en', near = null) {
       if (!enabled) throw new HttpError(503, 'Place search is switched off on this site. Click the map instead.');
-      const key = `${language}:${query.toLowerCase()}`;
+      const bias = near ? `${near.latitude.toFixed(1)},${near.longitude.toFixed(1)}` : '';
+      const key = `${language}:${bias}:${query.toLowerCase()}`;
       if (cache.has(key)) return cache.get(key);
 
       // Stay within the public server's one-request-per-second policy.
@@ -24,6 +26,12 @@ export function createGeocoder({ url, userAgent }, fetchImpl = globalThis.fetch)
       lastCall = Date.now();
 
       const params = new URLSearchParams({ q: query, format: 'jsonv2', limit: '6', addressdetails: '0' });
+      if (near) {
+        // A ~100 km box around the point; bounded=0 keeps results elsewhere, just ranked lower.
+        const d = 0.9;
+        params.set('viewbox', [near.longitude - d * 1.6, near.latitude + d, near.longitude + d * 1.6, near.latitude - d].join(','));
+        params.set('bounded', '0');
+      }
       let res;
       try {
         res = await fetchImpl(`${url.replace(/\/+$/, '')}/search?${params}`, {

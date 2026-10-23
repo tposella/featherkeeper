@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
-import { client, fakeIdentifier, makeJpeg, setup } from './helpers.js';
+import { client, fakeGeocoder, fakeIdentifier, makeJpeg, setup } from './helpers.js';
 
 let ctx;
 let owner;
@@ -194,6 +194,19 @@ describe('dex, sightings and photos', () => {
     assert.deepEqual(town.body.suggestion, { name: 'Cochrane', source: 'map' });
     const nowhere = await owner.get('/api/places/reverse?latitude=-51.19&longitude=-114.47');
     assert.equal(nowhere.body.suggestion, null);
+  });
+
+  test('place search puts eBird hotspots near the catalogue first', async () => {
+    const res = await owner.get('/api/places?q=glenbow&catalogue=cochrane-backyard-2');
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.places[0].name, 'Glenbow Ranch Provincial Park');
+    assert.equal(res.body.places[0].source, 'hotspot');
+    assert.match(res.body.places[0].label, /214 species/);
+    assert.equal(res.body.places[1].source, 'map');
+    assert.deepEqual(fakeGeocoder.lastNear, { latitude: 51.19, longitude: -114.47 }, 'biased to the catalogue area');
+    const plain = await owner.get('/api/places?q=Cochrane');
+    assert.ok(plain.body.places.every((p) => p.source === 'map'));
+    assert.equal((await stranger.get('/api/places?q=glenbow&catalogue=cochrane-backyard-2')).status, 404, 'private catalogue');
   });
 
   test('an import needs a region or a place', async () => {

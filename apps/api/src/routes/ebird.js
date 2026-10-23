@@ -1,8 +1,14 @@
 import { loadCatalogue } from '../lib/access.js';
+import { catalogueArea } from '../lib/area.js';
+import { HttpError } from '../lib/errors.js';
 import { ebirdSourceBody } from './dex.js';
 
 export default async function ebirdRoutes(app, { db, ebird, geocoder }) {
-  // Find a city or place by name, for centring the area picker.
+  /**
+   * Find a place by name. With `catalogue`, eBird hotspots near that catalogue's area come first
+   * (birders' place names), then towns, parks and addresses from the geocoder, biased to the area.
+   * Each result: { name, label, latitude, longitude, source: 'hotspot' | 'map', kind }.
+   */
   app.get(
     '/places',
     {
@@ -11,14 +17,45 @@ export default async function ebirdRoutes(app, { db, ebird, geocoder }) {
         querystring: {
           type: 'object',
           required: ['q'],
-          properties: { q: { type: 'string', minLength: 2, maxLength: 200 } },
+          properties: {
+            q: { type: 'string', minLength: 2, maxLength: 200 },
+            catalogue: { type: 'string', maxLength: 64 },
+          },
         },
       },
     },
     async (request) => {
       request.requireUser();
+      const q = request.query.q.trim();
       const language = String(request.headers['accept-language'] ?? 'en').split(',')[0].slice(0, 20);
-      return { places: await geocoder.search(request.query.q.trim(), language) };
+
+      let near = null;
+      if (request.query.catalogue) {
+        const { catalogue } = await loadCatalogue(db, request.query.catalogue, request.user);
+        const area = await catalogueArea(db, catalogue.id);
+        if (area && area.kind !== 'region') near = { latitude: area.latitude, longitude: area.longitude };
+      }
+
+      const [hotspots, places] = await Promise.all([
+        near && ebird.enabled ? ebird.searchHotspots(q, near.latitude, near.longitude, 50).catch(() => []) : [],
+        geocoder.enabled ? geocoder.search(q, language, near).catch((err) => ({ error: err.message })) : [],
+      ]);
+      if (!Array.isArray(places) && !hotspots.length) {
+        throw new HttpError(502, places.error);
+      }
+      return {
+        places: [
+          ...hotspots.map((h) => ({
+            name: h.name,
+            label: `eBird hotspot, ${h.speciesAllTime} species, ${h.distanceKm.toFixed(0)} km away`,
+            latitude: h.latitude,
+            longitude: h.longitude,
+            source: 'hotspot',
+            kind: 'hotspot',
+          })),
+          ...(Array.isArray(places) ? places : []).map((p) => ({ ...p, source: 'map' })),
+        ],
+      };
     },
   );
 

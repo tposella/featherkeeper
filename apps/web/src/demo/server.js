@@ -422,15 +422,31 @@ const routes = [
   ['GET', /^\/places$/, async (m, body, query) => {
     if (!me()) throw new DemoError(401, 'Sign in required');
     await wait(400);
-    const q = (query.get('q') ?? '').trim();
+    const q = (query.get('q') ?? '').trim().toLowerCase();
+    const words = q.split(/\s+/).filter(Boolean);
+    const hotspots = query.get('catalogue')
+      ? PLACES.filter((p) => words.every((w) => p.name.toLowerCase().includes(w))).map((p, i) => ({
+          name: p.name,
+          label: `eBird hotspot, ${190 - i * 23} species, ${(8 + i * 11) % 60} km away`,
+          latitude: p.lat,
+          longitude: p.lng,
+          source: 'hotspot',
+          kind: 'hotspot',
+        }))
+      : [];
     const known = [
       { name: 'Cochrane', label: 'Cochrane, Rocky View County, Alberta, Canada', latitude: 51.1894, longitude: -114.4682 },
       { name: 'Canmore', label: 'Canmore, Bow Valley, Alberta, Canada', latitude: 51.0892, longitude: -115.3593 },
       { name: 'Calgary', label: 'Calgary, Alberta, Canada', latitude: 51.0447, longitude: -114.0719 },
+      { name: 'Glenbow Ranch Provincial Park', label: 'Glenbow Ranch Provincial Park, Rocky View County, Alberta, Canada', latitude: 51.1587, longitude: -114.3797 },
+      { name: 'Bow River', label: 'Bow River, Alberta, Canada', latitude: 51.0499, longitude: -114.0503 },
     ];
-    const hits = known.filter((p) => p.label.toLowerCase().includes(q.toLowerCase().split(',')[0]));
+    const map = known
+      .filter((p) => words.every((w) => p.label.toLowerCase().includes(w)))
+      .map((p) => ({ ...p, source: 'map', kind: 'place' }));
+    const places = [...hotspots, ...map];
     // Anything else: pretend it's somewhere near Calgary so the demo still works.
-    return { places: hits.length ? hits : [{ name: q, label: `${q} (demo location)`, latitude: 51.05, longitude: -114.07 }] };
+    return { places: places.length ? places : [{ name: query.get('q'), label: `${query.get('q')} (demo location)`, latitude: 51.05, longitude: -114.07, source: 'map', kind: 'place' }] };
   }],
   ['GET', /^\/places\/reverse$/, async (m, body, query) => {
     if (!me()) throw new DemoError(401, 'Sign in required');

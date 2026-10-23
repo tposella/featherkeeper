@@ -61,6 +61,22 @@ for (const scheme of ['light', 'dark']) {
       }
     }
     if (scheme === 'light') {
+      // Searching for the sighting's location by name.
+      await page.goto(new URL('#/c/bow-valley', base).href);
+      await page.goto(new URL('#/c/bow-valley/log', base).href);
+      await page.waitForTimeout(600);
+      await page.getByPlaceholder('A park, hotspot, lake or town').fill('glenbow');
+      await page.getByPlaceholder('A park, hotspot, lake or town').press('Enter');
+      await page.locator('.results button').first().waitFor({ timeout: 5000 });
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-location-search.png`, fullPage: true });
+      await page.locator('.results button').first().click();
+      await page.waitForTimeout(800);
+      console.log(
+        `LOCATION search: place="${await page.getByLabel('Place name').inputValue()}" ` +
+          `lat="${await page.getByLabel('Latitude').inputValue()}" stillOnLogPage=${page.url().includes('/log')}`,
+      );
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-location-chosen.png`, fullPage: true });
+
       // A species with several photos: the album, and choosing a thumbnail.
       await page.goto(new URL('#/c/bow-valley/species/21', base).href);
       await page.waitForTimeout(1800);

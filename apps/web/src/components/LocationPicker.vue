@@ -1,13 +1,51 @@
 <script setup>
 import L from 'leaflet';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { api } from '../api.js';
+import { session } from '../session.js';
 import { TILE_ATTRIBUTION, TILE_URL } from '../map-tiles.js';
 
 // v-model:latitude / v-model:longitude. Click the map to place the pin.
 const latitude = defineModel('latitude', { default: null });
 const longitude = defineModel('longitude', { default: null });
 // Where to centre the map before a pin is placed, e.g. the catalogue's latest sighting.
-const props = defineProps({ near: { type: Object, default: null } });
+// catalogue: slug, so the search can put eBird hotspots near that catalogue first.
+const props = defineProps({ near: { type: Object, default: null }, catalogue: { type: String, default: null } });
+// Emitted when a search result is chosen, so the form can use its name: { name, source }.
+const emit = defineEmits(['place']);
+
+// ---- Search for a place --------------------------------------------------------
+const query = ref('');
+const results = ref([]);
+const searching = ref(false);
+const searchMsg = ref('');
+const chosen = ref('');
+
+async function search() {
+  const q = query.value.trim();
+  searchMsg.value = '';
+  results.value = [];
+  if (q.length < 2) return;
+  searching.value = true;
+  try {
+    const params = new URLSearchParams({ q, ...(props.catalogue ? { catalogue: props.catalogue } : {}) });
+    results.value = (await api.get(`/places?${params}`)).places;
+    if (!results.value.length) searchMsg.value = 'No places found. Try a nearby town, or add the province.';
+  } catch (err) {
+    searchMsg.value = err.message;
+  } finally {
+    searching.value = false;
+  }
+}
+
+function choose(p) {
+  latitude.value = round(p.latitude);
+  longitude.value = round(p.longitude);
+  chosen.value = p.name;
+  query.value = '';
+  results.value = [];
+  emit('place', { name: p.name, source: p.source });
+}
 
 const el = ref(null);
 const locating = ref(false);
@@ -76,6 +114,7 @@ function useMyLocation() {
 function clear() {
   latitude.value = null;
   longitude.value = null;
+  chosen.value = '';
 }
 
 function onNumber(which, event) {
@@ -87,17 +126,45 @@ function onNumber(which, event) {
 
 <template>
   <div class="picker">
-    <div ref="el" class="map" aria-label="Map: click to set the sighting location"></div>
-    <div class="row coords">
+    <!-- Not a <form>: this sits inside the sighting form, and Enter must search, not save. -->
+    <div v-if="session.config.placeSearchEnabled !== false" class="search" role="search">
       <label class="field">
-        <span>Latitude</span>
-        <input type="number" step="any" min="-90" max="90" :value="latitude ?? ''" @change="onNumber('lat', $event)" />
+        <span>Search for a place</span>
+        <span class="search-row">
+          <input
+            v-model="query"
+            type="search"
+            placeholder="A park, hotspot, lake or town"
+            autocomplete="off"
+            @keydown.enter.prevent="search"
+          />
+          <button class="btn" type="button" :disabled="searching || query.trim().length < 2" @click="search">
+            {{ searching ? 'Searching...' : 'Search' }}
+          </button>
+        </span>
       </label>
-      <label class="field">
-        <span>Longitude</span>
-        <input type="number" step="any" min="-180" max="180" :value="longitude ?? ''" @change="onNumber('lng', $event)" />
-      </label>
+      <p v-if="searchMsg" class="soft small" role="status">{{ searchMsg }}</p>
+      <ul v-if="results.length" class="results">
+        <li v-for="p in results" :key="`${p.source}:${p.latitude},${p.longitude}`">
+          <button type="button" @click="choose(p)">
+            <span class="name">
+              <strong>{{ p.name }}</strong>
+              <span v-if="p.source === 'hotspot'" class="tag small">eBird hotspot</span>
+            </span>
+            <span class="soft small">{{ p.label }}</span>
+          </button>
+        </li>
+      </ul>
     </div>
+
+    <div ref="el" class="map" aria-label="Map: click to set the sighting location"></div>
+    <p class="soft small hint">
+      <template v-if="latitude === null">Search above, click the map, or use your current location.</template>
+      <template v-else>
+        Pin at {{ latitude.toFixed(5) }}, {{ longitude.toFixed(5) }}<template v-if="chosen"> ({{ chosen }})</template>. Click
+        the map to move it.
+      </template>
+    </p>
     <div class="row">
       <button class="btn" type="button" :disabled="locating" @click="useMyLocation">
         {{ locating ? 'Finding you...' : 'Use my location' }}
@@ -105,6 +172,19 @@ function onNumber(which, event) {
       <button v-if="latitude !== null" class="btn quiet" type="button" @click="clear">Clear location</button>
       <span v-if="geoError" class="soft small" role="status">{{ geoError }}</span>
     </div>
+    <details class="coords-box">
+      <summary class="small">Enter coordinates</summary>
+      <div class="row coords">
+        <label class="field">
+          <span>Latitude</span>
+          <input type="number" step="any" min="-90" max="90" :value="latitude ?? ''" @change="onNumber('lat', $event)" />
+        </label>
+        <label class="field">
+          <span>Longitude</span>
+          <input type="number" step="any" min="-180" max="180" :value="longitude ?? ''" @change="onNumber('lng', $event)" />
+        </label>
+      </div>
+    </details>
   </div>
 </template>
 
@@ -118,5 +198,69 @@ function onNumber(which, event) {
 }
 .coords .field {
   margin-bottom: 8px;
+}
+.search .field {
+  margin-bottom: 6px;
+}
+.search-row {
+  display: flex;
+  gap: 8px;
+}
+.search-row input {
+  flex: 1;
+}
+.results {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.results button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--paper-raised);
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.results li:last-child button {
+  border-bottom: 0;
+}
+.results button:hover,
+.results button:focus-visible {
+  background: var(--jay-wash);
+}
+.name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tag {
+  color: var(--jay);
+  border: 1px solid var(--jay);
+  border-radius: 999px;
+  padding: 0 8px;
+}
+.hint {
+  margin: -4px 0 10px;
+}
+.coords-box {
+  margin-top: 12px;
+}
+.coords-box summary {
+  cursor: pointer;
+  color: var(--jay);
+  font-weight: 700;
+}
+.coords-box .coords {
+  margin-top: 8px;
 }
 </style>

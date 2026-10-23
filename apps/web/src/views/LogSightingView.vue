@@ -91,6 +91,14 @@ async function onFiles(event) {
   if (found.location && !locationName.value.trim()) await nameThisPlace();
 }
 
+// A place picked from the search: use its name unless the user has typed their own.
+function onPlaceChosen(place) {
+  if (!locationName.value.trim() || placeSource.value) {
+    locationName.value = place.name;
+    placeSource.value = place.source;
+  }
+}
+
 // Turn the pin into a place name: the nearest eBird hotspot within 1 km, otherwise a park or town.
 async function nameThisPlace() {
   if (latitude.value === null) return;
@@ -266,7 +274,13 @@ async function save() {
         <span>Date and time</span>
         <input v-model="observedAt" type="datetime-local" />
       </label>
-      <LocationPicker v-model:latitude="latitude" v-model:longitude="longitude" :near="near" />
+      <LocationPicker
+        v-model:latitude="latitude"
+        v-model:longitude="longitude"
+        :near="near"
+        :catalogue="catalogue.slug"
+        @place="onPlaceChosen"
+      />
       <label class="field place">
         <span>Place name</span>
         <span class="place-row">

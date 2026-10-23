@@ -37,6 +37,10 @@ export const fakeEbird = {
       },
     };
   },
+  async searchHotspots(query) {
+    const all = [{ name: 'Glenbow Ranch Provincial Park', latitude: 51.1652, longitude: -114.3824, speciesAllTime: 214, distanceKm: 7.1 }];
+    return all.filter((h) => h.name.toLowerCase().includes(query.toLowerCase()));
+  },
   async nearestHotspot(latitude) {
     // A hotspot only near the Glenbow Ranch test point.
     return Math.abs(latitude - 51.1652) < 0.01 ? { name: 'Glenbow Ranch Provincial Park', locId: 'L1', distanceKm: 0.3 } : null;
@@ -71,7 +75,9 @@ export const fakeEbird = {
 
 export const fakeGeocoder = {
   enabled: true,
-  async search(q) {
+  lastNear: null,
+  async search(q, language, near) {
+    fakeGeocoder.lastNear = near ?? null;
     return [{ label: `${q}, Alberta, Canada`, name: q, latitude: 51.19, longitude: -114.47, kind: 'town' }];
   },
   async reverse(latitude) {

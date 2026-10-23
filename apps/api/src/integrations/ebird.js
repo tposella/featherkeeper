@@ -218,6 +218,18 @@ export function createEbirdClient({ apiKey, baseUrl }, fetchImpl = globalThis.fe
         .sort((a, b) => String(b.observedAt).localeCompare(String(a.observedAt)));
     },
 
+    /** eBird hotspots within radiusKm of a point whose name contains every word of the query. */
+    async searchHotspots(query, latitude, longitude, radiusKm = 50) {
+      requireEnabled();
+      const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+      const spots = await nearbyHotspots(latitude, longitude, Math.min(50, radiusKm));
+      return spots
+        .filter((h) => words.every((w) => h.name.toLowerCase().includes(w)))
+        .map((h) => ({ ...h, distanceKm: distanceKm(latitude, longitude, h.latitude, h.longitude) }))
+        .sort((a, b) => b.speciesAllTime - a.speciesAllTime)
+        .slice(0, 6);
+    },
+
     /** The nearest eBird hotspot within maxKm of a point, or null. */
     async nearestHotspot(latitude, longitude, maxKm = 1) {
       requireEnabled();
