@@ -245,6 +245,8 @@ for (const scheme of ['light', 'dark']) {
 
       // AI suggestions for an unidentified photo, then accepting the top match.
       await page.goto(new URL('#/c/bow-valley/log', base).href);
+      // Wait for the log page itself, so the previous page's "Add photos" field isn't picked by mistake.
+      await page.getByRole('heading', { name: 'Log a sighting' }).waitFor();
       const png = Buffer.from(
         'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAIAAABxZ0isAAAAGklEQVR4nGNgoBpgZGRkZGRkYGBgYGRkZgYAAU0AF0w0OTQAAAAASUVORK5CYII=',
         'base64',
