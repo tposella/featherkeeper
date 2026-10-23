@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { api } from '../api.js';
 import { useCatalogue } from '../catalogue-context.js';
 import SpeciesInsights from '../components/SpeciesInsights.vue';
+import EditSighting from '../components/EditSighting.vue';
 import ThumbnailPicker from '../components/ThumbnailPicker.vue';
 import { formatDate, plateNumber } from '../format.js';
 
@@ -30,6 +31,18 @@ const allPhotos = computed(() => {
 });
 const cover = computed(() => allPhotos.value.find((p) => p.id === entry.value?.coverPhotoId) ?? null);
 const picking = ref(false);
+const editing = ref(null); // the sighting being edited
+const moved = ref(null); // { speciesId, commonName } after moving a sighting to another species
+
+async function onSightingSaved(updated) {
+  const was = editing.value;
+  editing.value = null;
+  if (updated.speciesId !== was.speciesId) {
+    const to = species.value.find((x) => x.id === updated.speciesId);
+    moved.value = { speciesId: updated.speciesId, commonName: to?.commonName ?? 'another species' };
+  }
+  await refreshAll();
+}
 const savingCover = ref(false);
 const showAllAlbum = ref(false);
 const ALBUM_PREVIEW = 12;
@@ -173,6 +186,13 @@ function exifLine(p) {
 <template>
   <div>
     <div v-if="error" class="notice error" role="alert">{{ error }}</div>
+    <div v-if="moved" class="notice" role="status">
+      Sighting moved to
+      <RouterLink :to="{ name: 'species', params: { slug: catalogue.slug, speciesId: moved.speciesId } }">
+        {{ moved.commonName }}</RouterLink
+      >.
+      <button class="btn quiet small" type="button" @click="moved = null">Dismiss</button>
+    </div>
 
     <template v-if="entry">
       <section class="hero">
@@ -296,6 +316,7 @@ function exifLine(p) {
                     @change="addPhotos(s, $event)"
                   />
                 </label>
+                <button class="btn quiet" type="button" @click="editing = s">Edit</button>
                 <button class="btn quiet danger-text" type="button" @click="deleteSighting(s)">Delete</button>
               </div>
             </div>
@@ -343,6 +364,15 @@ function exifLine(p) {
         </figcaption>
       </figure>
     </div>
+
+    <EditSighting
+      v-if="editing"
+      :sighting="editing"
+      :catalogue="catalogue"
+      :species="species"
+      @saved="onSightingSaved"
+      @close="editing = null"
+    />
 
     <ThumbnailPicker
       v-if="picking && entry"

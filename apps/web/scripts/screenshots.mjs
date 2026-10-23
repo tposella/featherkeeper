@@ -77,6 +77,28 @@ for (const scheme of ['light', 'dark']) {
       );
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-location-chosen.png`, fullPage: true });
 
+      // Editing a sighting: change the notes and place, then move it to another species.
+      await page.goto(new URL('#/c/bow-valley', base).href);
+      await page.goto(new URL('#/c/bow-valley/species/21', base).href);
+      await page.waitForTimeout(1500);
+      await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+      await page.waitForTimeout(600);
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-edit-sighting.png`, fullPage: true });
+      await page.getByRole('dialog').getByLabel('Notes').fill('Edited in the screenshot test.');
+      await page.getByRole('button', { name: 'Save changes' }).click();
+      await page.waitForTimeout(900);
+      const notesShown = await page.getByText('Edited in the screenshot test.').count();
+      await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+      await page.getByRole('button', { name: 'Change species' }).click();
+      await page.getByPlaceholder('Type a common or scientific name').fill('raven');
+      await page.getByRole('dialog').getByRole('button', { name: /Common Raven/ }).click();
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-edit-sighting-move.png`, fullPage: true });
+      await page.getByRole('button', { name: 'Save changes' }).click();
+      await page.waitForTimeout(900);
+      const movedNotice = await page.getByText('Sighting moved to').count();
+      console.log(`EDIT notesShown=${notesShown} movedNotice=${movedNotice} dialogOpen=${await page.getByRole('dialog').count()}`);
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-edit-sighting-moved.png`, fullPage: true });
+
       // A species with several photos: the album, and choosing a thumbnail.
       await page.goto(new URL('#/c/bow-valley/species/21', base).href);
       await page.waitForTimeout(1800);

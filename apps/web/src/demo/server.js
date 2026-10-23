@@ -553,6 +553,24 @@ const routes = [
     sightings.push(s);
     return { sighting: { ...serializeSighting(s, c), photos: [] } };
   }],
+  ['PATCH', /^\/sightings\/(\d+)$/, async ([id], body) => {
+    const s = sightings.find((x) => x.id === Number(id));
+    if (!s) throw new DemoError(404, 'Sighting not found');
+    const c = getCatalogue(s.catalogueId);
+    requireEdit(c);
+    await wait(300);
+    if ('latitude' in body !== 'longitude' in body || (body.latitude === null) !== (body.longitude === null)) {
+      if ('latitude' in body || 'longitude' in body) throw new DemoError(400, 'Give both latitude and longitude, or neither');
+    }
+    if (body.speciesId !== undefined && !c.dex.has(body.speciesId)) throw new DemoError(400, 'That species is not in this catalogue');
+    if (body.speciesId !== undefined && body.speciesId !== s.speciesId) {
+      const old = c.dex.get(s.speciesId);
+      if (old && photos.some((p) => p.id === old.coverPhotoId && p.sightingId === s.id)) old.coverPhotoId = null;
+      s.speciesId = body.speciesId;
+    }
+    for (const k of ['observedAt', 'latitude', 'longitude', 'locationName', 'notes']) if (k in body) s[k] = body[k];
+    return { sighting: serializeSighting(s, c) };
+  }],
   ['DELETE', /^\/sightings\/(\d+)$/, ([id]) => {
     const s = sightings.find((x) => x.id === Number(id));
     if (!s) throw new DemoError(404, 'Sighting not found');

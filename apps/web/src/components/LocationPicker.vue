@@ -79,6 +79,8 @@ onMounted(() => {
     longitude.value = round(e.latlng.lng);
   });
   placeMarker(true);
+  // In a dialog the map can mount before its box has its final size.
+  setTimeout(() => map?.invalidateSize(), 60);
 });
 onUnmounted(() => map?.remove());
 

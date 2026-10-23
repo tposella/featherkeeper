@@ -320,6 +320,47 @@ describe('dex, sightings and photos', () => {
     assert.equal(entry.coverPhotoId, photoId);
   });
 
+  test('editing a sighting: details, clearing the location, and moving it to another species', async () => {
+    const url = `/api/sightings/${sightingId}`;
+    assert.equal((await stranger.patch(url, { notes: 'x' })).status, 403);
+    assert.equal((await anon.patch(url, { notes: 'x' })).status, 401);
+
+    const res = await editor.patch(url, {
+      observedAt: '2026-05-19T15:10:00.000Z',
+      locationName: 'Glenbow Ranch, west trail',
+      notes: 'Pair carrying nesting material.',
+      latitude: 51.1652,
+      longitude: -114.3824,
+    });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.sighting.observedAt, '2026-05-19T15:10:00.000Z');
+    assert.equal(res.body.sighting.locationName, 'Glenbow Ranch, west trail');
+    assert.equal(res.body.sighting.latitude, 51.1652);
+
+    const cleared = await editor.patch(url, { latitude: null, longitude: null, observedAt: null });
+    assert.equal(cleared.body.sighting.latitude, null);
+    assert.equal(cleared.body.sighting.observedAt, null);
+    assert.equal((await editor.patch(url, { latitude: 51 })).status, 400, 'latitude without longitude');
+
+    // Move it to the chickadee and back; the robin's chosen thumbnail is released when its photo leaves.
+    const dex = (await editor.get('/api/catalogues/cochrane-backyard/species')).body.species;
+    const chickadee = dex.find((s) => s.ebirdCode === 'blkchi');
+    await editor.patch(`/api/catalogues/cochrane-backyard/species/${robinId}`, { coverPhotoId: photoId });
+    const moved = await editor.patch(url, { speciesId: chickadee.id });
+    assert.equal(moved.body.sighting.speciesId, chickadee.id);
+    const robin = (await editor.get(`/api/catalogues/cochrane-backyard/species/${robinId}`)).body;
+    assert.equal(robin.sightings.length, 0);
+    assert.equal(robin.entry.coverChosen, false);
+    assert.equal(robin.entry.status, 'missing');
+    const chick = (await editor.get(`/api/catalogues/cochrane-backyard/species/${chickadee.id}`)).body;
+    assert.equal(chick.entry.status, 'photographed');
+    await editor.patch(url, { speciesId: robinId });
+
+    const otherCat = (await owner.get('/api/catalogues/cochrane-backyard-2/species')).body.species;
+    const notInDex = otherCat.find((s) => s.commonName === 'Snowy Owl');
+    assert.equal((await editor.patch(url, { speciesId: notInDex.id })).status, 400, 'species must be in this catalogue');
+  });
+
   test('a species with sightings cannot be removed from the dex', async () => {
     const res = await editor.delete(`/api/catalogues/cochrane-backyard/species/${robinId}`);
     assert.equal(res.status, 409);

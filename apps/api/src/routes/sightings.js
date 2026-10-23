@@ -172,7 +172,18 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
         if (!inDex) throw badRequest('That species is not in this catalogue');
       }
       const setCoords = 'latitude' in b || 'longitude' in b;
-      const row = await db.one(
+      const movingSpecies = b.speciesId !== undefined && b.speciesId !== sighting.species_id;
+      const row = await db.tx(async (t) => {
+        if (movingSpecies) {
+          // Its photos leave the old species, so they can't stay that species' chosen thumbnail.
+          await t.query(
+            `UPDATE catalogue_species SET cover_photo_id = NULL
+              WHERE catalogue_id = $1 AND species_id = $2
+                AND cover_photo_id IN (SELECT id FROM photos WHERE sighting_id = $3)`,
+            [catalogue.id, sighting.species_id, sighting.id],
+          );
+        }
+        return t.one(
         `UPDATE sightings SET
            species_id = coalesce($2, species_id),
            observed_at = CASE WHEN $3 THEN $4::timestamptz ELSE observed_at END,
@@ -193,7 +204,9 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
           b.locationName?.trim() ?? null,
           b.notes ?? null,
         ],
-      );
+        );
+      });
+      await db.query('UPDATE catalogues SET updated_at = now() WHERE id = $1', [catalogue.id]);
       return { sighting: out.sighting(row, { showLocation: true }) };
     },
   );
