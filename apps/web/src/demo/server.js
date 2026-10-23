@@ -270,7 +270,7 @@ function serializeCatalogue(c) {
     regionCode: c.regionCode,
     visibility: c.visibility,
     hideLocations: c.hideLocations,
-    dexStyle: c.dexStyle ?? 'slots',
+    dexStyle: c.dexStyle ?? 'examples',
     area: c.area ? (showLocations(c) ? c.area : { ...c.area, latitude: null, longitude: null }) : null,
     createdAt: c.createdAt,
     updatedAt: c.createdAt,

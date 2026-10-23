@@ -16,7 +16,7 @@ export function catalogue(c, extra = {}) {
     regionCode: c.region_code,
     visibility: c.visibility,
     hideLocations: c.hide_locations,
-    dexStyle: c.dex_style ?? 'slots',
+    dexStyle: c.dex_style ?? 'examples',
     area:
       c.area_latitude === null || c.area_latitude === undefined
         ? null

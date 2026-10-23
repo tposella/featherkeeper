@@ -163,21 +163,14 @@ describe('dex, sightings and photos', () => {
     robinId = dex.body.species.find((s) => s.ebirdCode === 'amerob').id;
   });
 
-  test('greyed-examples view: example photos are fetched in the background and stored', async () => {
-    const url = '/api/catalogues/cochrane-backyard/species';
-    const plain = await anon.get(url);
-    assert.equal(plain.body.examplesPending, 0, 'nothing is fetched unless the examples view asks');
-    assert.ok(plain.body.species.every((s) => s.example === null));
-
-    const asked = await anon.get(`${url}?examples=1`);
-    assert.equal(asked.body.examplesPending, 3);
+  test('example photos are fetched in the background as soon as species are added', async () => {
     await ctx.examples.idle();
-
-    const done = await anon.get(`${url}?examples=1`);
-    assert.equal(done.body.examplesPending, 0, 'a species with no photo found is not retried straight away');
-    const robin = done.body.species.find((s) => s.ebirdCode === 'amerob');
-    const eagle = done.body.species.find((s) => s.ebirdCode === 'baleag');
-    assert.equal(eagle.example, null);
+    const url = '/api/catalogues/cochrane-backyard/species';
+    const dex = await anon.get(url);
+    assert.equal(dex.body.examplesPending, 0);
+    const robin = dex.body.species.find((s) => s.ebirdCode === 'amerob');
+    const eagle = dex.body.species.find((s) => s.ebirdCode === 'baleag');
+    assert.equal(eagle.example, null, 'no photo found for the eagle');
     assert.equal(robin.example.licence, 'CC BY-NC', 'the first photo that downloads is used');
     assert.match(robin.example.credit, /A\. Birder/);
     const img = await anon.get(robin.example.url);
@@ -187,20 +180,27 @@ describe('dex, sightings and photos', () => {
     assert.equal((await anon.get(`/api/species/${eagle.id}/example`)).status, 404);
 
     const calls = fakeReference.calls;
-    await anon.get(`${url}?examples=1`);
+    const asked = await anon.get(`${url}?examples=1`);
+    assert.equal(asked.body.examplesPending, 0, 'a species with no photo found is not retried straight away');
     await ctx.examples.idle();
     assert.equal(fakeReference.calls, calls, 'stored examples are not looked up again');
+
+    // Missing ones (e.g. after an upgrade) are found and queued at startup.
+    await ctx.db.query('DELETE FROM species_examples WHERE species_id = $1', [robin.id]);
+    assert.equal(await ctx.examples.prepare(), 1);
+    await ctx.examples.idle();
+    assert.ok((await anon.get(url)).body.species.find((s) => s.ebirdCode === 'amerob').example);
   });
 
   test('the default dex view is a catalogue setting for the owner', async () => {
     const url = '/api/catalogues/cochrane-backyard';
-    assert.equal((await anon.get(url)).body.catalogue.dexStyle, 'slots');
-    assert.equal((await editor.patch(url, { dexStyle: 'examples' })).status, 403);
+    assert.equal((await anon.get(url)).body.catalogue.dexStyle, 'examples', 'greyed examples by default');
+    assert.equal((await editor.patch(url, { dexStyle: 'slots' })).status, 403);
     assert.equal((await owner.patch(url, { dexStyle: 'colour' })).status, 400);
-    const res = await owner.patch(url, { dexStyle: 'examples' });
+    const res = await owner.patch(url, { dexStyle: 'slots' });
     assert.equal(res.status, 200);
-    assert.equal(res.body.catalogue.dexStyle, 'examples');
-    await owner.patch(url, { dexStyle: 'slots' });
+    assert.equal(res.body.catalogue.dexStyle, 'slots');
+    await owner.patch(url, { dexStyle: 'examples' });
   });
 
   test('eBird import from a place saves the area on the catalogue', async () => {

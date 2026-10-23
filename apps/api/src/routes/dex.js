@@ -245,6 +245,7 @@ export default async function dexRoutes(app, { db, ebird, examples }) {
         [catalogue.id, speciesId],
       );
       await db.query('UPDATE catalogues SET updated_at = now() WHERE id = $1', [catalogue.id]);
+      if (inserted) examples?.queue([speciesId]); // get its example photo ready
       const entry = await db.one(`${DEX_SQL} AND cs.species_id = $2`, [catalogue.id, speciesId]);
       return reply.code(inserted ? 201 : 200).send({ entry: dexEntry(entry), added: Boolean(inserted) });
     },
@@ -357,7 +358,7 @@ export default async function dexRoutes(app, { db, ebird, examples }) {
       const codes = wanted ? sourceCodes.filter((c) => wanted.has(c)) : sourceCodes;
       const taxa = codes.length ? await ebird.taxonomy(codes) : [];
 
-      return db.tx(async (t) => {
+      const result = await db.tx(async (t) => {
         let added = 0;
         for (const taxon of taxa) {
           const speciesId = await upsertTaxon(t, taxon);
@@ -384,6 +385,9 @@ export default async function dexRoutes(app, { db, ebird, examples }) {
         }
         return { added, alreadyPresent: taxa.length - added, total: taxa.length, source: summary };
       });
+      // Start fetching example photos for the new species now, so the dex is ready when it's opened.
+      await examples?.prepare(catalogue.id).catch((err) => request.log.warn({ err: err.message }, 'could not queue example photos'));
+      return result;
     },
   );
 }

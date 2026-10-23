@@ -62,6 +62,14 @@ export async function buildApp({
   deps.examples =
     examples ?? createExamples({ db, reference: deps.reference, userAgent: config.reference.userAgent, log: app.log });
 
+  // Once the server is listening, start fetching any example photos still missing (e.g. after an upgrade).
+  app.addHook('onListen', async () => {
+    deps.examples
+      .prepare()
+      .then((n) => n && app.log.info(`Fetching example photos for ${n} species in the background`))
+      .catch((err) => app.log.warn({ err: err.message }, 'could not queue example photos'));
+  });
+
   await app.register(cookie);
   await app.register(rateLimit, { global: false });
   await app.register(multipart, {

@@ -15,7 +15,7 @@ const notFound = ref(false);
 // How the dex shows species you haven't photographed: 'slots' (empty frames) or 'examples'
 // (a greyed-out example photo). The catalogue sets the default; each viewer can switch, and
 // their choice is remembered in this browser.
-const dexStyle = ref('slots');
+const dexStyle = ref('examples');
 const examplesPending = ref(0);
 const styleKey = () => `featherkeeper:dex-style:${props.slug}`;
 function loadDexStyle() {
@@ -25,7 +25,7 @@ function loadDexStyle() {
   } catch {
     /* storage unavailable */
   }
-  dexStyle.value = saved === 'slots' || saved === 'examples' ? saved : catalogue.value?.dexStyle ?? 'slots';
+  dexStyle.value = saved === 'slots' || saved === 'examples' ? saved : catalogue.value?.dexStyle ?? 'examples';
 }
 function setDexStyle(style) {
   dexStyle.value = style;

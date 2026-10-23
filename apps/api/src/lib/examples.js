@@ -1,7 +1,8 @@
 import sharp from 'sharp';
 
 /**
- * Example photos for the dex's "greyed examples" view. Species are queued when a dex is viewed in
+ * Example photos for the dex's "greyed examples" view (the default). Species are queued as soon as
+ * they're added to a catalogue, at startup for anything still missing, and whenever a dex is viewed in
  * that style; a slow background worker looks each one up with the reference client, downloads one
  * openly licensed photo, shrinks it to a 480 px WebP and stores it in species_examples with its credit.
  * One species at a time with a pause between, to stay well inside iNaturalist's rate limits.
@@ -85,6 +86,22 @@ export function createExamples({ db, reference, userAgent, log, fetchImpl = glob
         if (queue.length) work();
       }
       return queued.size;
+    },
+    /**
+     * Queue every species that still needs an example photo, in one catalogue or (with no id) in all
+     * of them. Returns how many are waiting.
+     */
+    async prepare(catalogueId = null) {
+      if (!this.enabled) return 0;
+      const rows = await db.many(
+        `SELECT DISTINCT cs.species_id AS id
+           FROM catalogue_species cs
+           LEFT JOIN species_examples ex ON ex.species_id = cs.species_id
+          WHERE ($1::bigint IS NULL OR cs.catalogue_id = $1)
+            AND (ex.species_id IS NULL OR (ex.image IS NULL AND ex.checked_at < now() - interval '1 day'))`,
+        [catalogueId],
+      );
+      return this.queue(rows.map((r) => r.id));
     },
     pending: () => queued.size,
     isQueued: (id) => queued.has(Number(id)),

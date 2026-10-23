@@ -69,11 +69,12 @@ Featherkeeper turns that into something more fun and more useful:
 
 **The dex**
 - A grid in field-guide (taxonomic) order with plate numbers (#001, #002...).
-- Two ways to show species you haven't photographed: **empty slots**, or **greyed examples**, like a
-  pokédex. With greyed examples, each one shows an openly licensed example photo in grey, and your own
-  photo replaces it in full colour once you add one. Owners set the default in Settings, and anyone can
-  switch on the Dex tab. Example photos are fetched once by your server, stored in the database as small
-  WebP files with the photographer's credit, and served from there.
+- Species you haven't photographed show as **greyed examples** by default, like a pokédex: an openly
+  licensed example photo in grey, replaced by your own photo in full colour once you add one. You can
+  switch to **empty slots** instead. Owners set the default in Settings, and anyone can switch on the Dex
+  tab. Your server fetches the example photos in the background as soon as species are added, and at
+  startup for any still missing. It stores them in the database as small WebP files with the
+  photographer's credit and serves them from there.
 - Filter by **Photographed / Seen, no photo / Not yet**, search by name or number, and filter by family.
 - **Families** view: progress per bird family (ducks, owls, woodpeckers...) with mini plates for every
   species, sortable by "most left to photograph" or "closest to complete".

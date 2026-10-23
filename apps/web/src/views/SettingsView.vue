@@ -20,7 +20,7 @@ const details = reactive({
   regionCode: catalogue.value.regionCode ?? '',
   visibility: catalogue.value.visibility,
   hideLocations: catalogue.value.hideLocations,
-  dexStyle: catalogue.value.dexStyle ?? 'slots',
+  dexStyle: catalogue.value.dexStyle ?? 'examples',
 });
 const detailsMsg = ref('');
 const detailsErr = ref('');
@@ -225,17 +225,17 @@ async function deleteCatalogue() {
               browser remembers their choice.
             </p>
             <label class="check">
-              <input v-model="details.dexStyle" type="radio" value="slots" name="dex-style" />
-              <span><strong>Empty slots</strong> <span class="soft small">An empty frame until you add a photo.</span></span>
-            </label>
-            <label class="check">
               <input v-model="details.dexStyle" type="radio" value="examples" name="dex-style" />
               <span>
-                <strong>Greyed examples</strong>
+                <strong>Greyed examples</strong> <span class="soft small">(default)</span>
                 <span class="soft small">
                   A greyed-out example photo from iNaturalist, replaced by your own photo in full colour once you have one.
                 </span>
               </span>
+            </label>
+            <label class="check">
+              <input v-model="details.dexStyle" type="radio" value="slots" name="dex-style" />
+              <span><strong>Empty slots</strong> <span class="soft small">An empty frame until you add a photo.</span></span>
             </label>
           </fieldset>
           <button class="btn primary" type="submit">Save settings</button>
