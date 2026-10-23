@@ -48,7 +48,10 @@ async function onSignOut() {
         </svg>
       </button>
       <template v-if="session.user">
-        <RouterLink to="/account" class="who">{{ session.user.displayName }}</RouterLink>
+        <RouterLink to="/account" class="who" :aria-label="`Account: ${session.user.displayName}`">
+          <span class="who-initial" aria-hidden="true">{{ (session.user.displayName || '?').trim().charAt(0).toUpperCase() }}</span>
+          <span class="who-name">{{ session.user.displayName }}</span>
+        </RouterLink>
         <button class="btn quiet" type="button" @click="onSignOut">Sign out</button>
       </template>
       <template v-else>
@@ -160,5 +163,52 @@ main:focus {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.who-initial {
+  display: none;
+}
+.topnav .btn {
+  white-space: nowrap;
+}
+/* Phones: a smaller header, and your initial instead of your full name. */
+@media (max-width: 640px) {
+  .topbar {
+    gap: 8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .brand {
+    font-size: var(--step-0);
+    gap: 8px;
+    min-width: 0;
+  }
+  .brand span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .topnav {
+    gap: 6px;
+    flex: none;
+  }
+  .who {
+    max-width: none;
+  }
+  .who-name {
+    display: none;
+  }
+  .who-initial {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--jay-wash);
+    color: var(--jay);
+  }
+  .topnav .btn {
+    padding-left: 0.7em;
+    padding-right: 0.7em;
+  }
 }
 </style>

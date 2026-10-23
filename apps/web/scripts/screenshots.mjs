@@ -34,7 +34,9 @@ const browser = await chromium.launch();
 for (const scheme of ['light', 'dark']) {
   for (const [vpName, viewport] of viewports) {
     if (scheme === 'dark' && vpName === 'mobile') continue;
-    const page = await browser.newPage({ viewport, colorScheme: scheme, deviceScaleFactor: 1 });
+    // The phone run behaves like a phone: touch, and the page laid out to the device width.
+    const phone = vpName === 'mobile';
+    const page = await browser.newPage({ viewport, colorScheme: scheme, deviceScaleFactor: 1, isMobile: phone, hasTouch: phone });
     page.on('pageerror', (err) => console.error(`[${vpName}/${scheme}] page error:`, err.message));
     page.on('console', (msg) => {
       if (msg.type() === 'error') console.error(`[${vpName}/${scheme}] console:`, msg.text());
@@ -45,6 +47,22 @@ for (const scheme of ['light', 'dark']) {
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(name.startsWith('species') ? 1800 : 700);
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-${name}.png`, fullPage: true });
+      if (phone) {
+        // Nothing should be wider than the screen (that makes the whole page scroll sideways).
+        const wide = await page.evaluate(() => {
+          const w = document.documentElement.clientWidth;
+          const out = [];
+          for (const el of document.querySelectorAll('body *')) {
+            const r = el.getBoundingClientRect();
+            if (r.width && r.right > w + 1 && getComputedStyle(el).position !== 'fixed') {
+              const cls = typeof el.className === 'string' && el.className ? `.${el.className.trim().split(/\s+/).join('.')}` : '';
+              out.push(`${el.tagName.toLowerCase()}${cls}(${Math.round(r.right)})`);
+            }
+          }
+          return { scrollWidth: document.documentElement.scrollWidth, width: w, offenders: out.slice(0, 6) };
+        });
+        console.log(`OVERFLOW ${name} scrollWidth=${wide.scrollWidth} width=${wide.width} ${wide.offenders.join(' ')}`);
+      }
     }
     if (scheme === 'light' && process.env.FIXTURES && vpName === 'desktop') {
       // Does the log form pick up date, time and place from real camera metadata?
@@ -131,6 +149,12 @@ for (const scheme of ['light', 'dark']) {
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-replace-marked.png` });
       await page.keyboard.press('Escape');
       const flags = await page.locator('.album-tile .flag').count();
+      if (phone) {
+        // On phones the less-used sections are in the bottom bar's More sheet.
+        await page.getByRole('button', { name: 'More' }).click();
+        await page.waitForTimeout(300);
+        await page.screenshot({ path: `${out}/${vpName}-${scheme}-more-sheet.png` });
+      }
       await page.getByRole('link', { name: /^To replace/ }).click();
       await page.waitForTimeout(900);
       const after = await page.locator('.list .card').count();
@@ -193,6 +217,31 @@ for (const scheme of ['light', 'dark']) {
         `THEME system=${scheme} startDark=${startDark} afterReload=${afterReload} bgChanged=${startBg !== toggledBg} ` +
           `backToSystem=${(await bg()) === startBg} stored=${await page.evaluate(() => localStorage.getItem('featherkeeper:theme'))}`,
       );
+
+      if (phone) {
+        // Bottom bar: every section reachable, Log in the middle, and swiping in the photo viewer.
+        await page.goto(new URL('#/c/bow-valley', base).href);
+        await page.waitForTimeout(900);
+        const bar = page.getByRole('navigation', { name: 'Catalogue sections' }).filter({ has: page.locator('.log-tab') });
+        const barItems = await bar.locator('a, button').allInnerTexts();
+        await bar.getByRole('link', { name: 'Families' }).click();
+        await page.waitForTimeout(600);
+        const onFamilies = page.url().includes('/families');
+        await page.goto(new URL('#/c/bow-valley/species/21', base).href);
+        await page.waitForTimeout(1500);
+        await page.locator('.album-tile').first().click();
+        await page.waitForTimeout(300);
+        const before = await page.locator('.lightbox .count').innerText();
+        const box = await page.locator('.lightbox .stage').boundingBox();
+        const y = box.y + box.height / 2;
+        await page.locator('.lightbox .stage').dispatchEvent('touchstart', { touches: [{ identifier: 1, clientX: box.x + box.width - 30, clientY: y }] });
+        await page.locator('.lightbox .stage').dispatchEvent('touchend', { changedTouches: [{ identifier: 1, clientX: box.x + 30, clientY: y }] });
+        await page.waitForTimeout(300);
+        const after = await page.locator('.lightbox .count').innerText();
+        await page.screenshot({ path: `${out}/${vpName}-${scheme}-lightbox-phone.png` });
+        await page.keyboard.press('Escape');
+        console.log(`PHONE bar=${JSON.stringify(barItems.map((t) => t.trim()))} onFamilies=${onFamilies} swipe="${before}" -> "${after}"`);
+      }
 
       // AI suggestions for an unidentified photo, then accepting the top match.
       await page.goto(new URL('#/c/bow-valley/log', base).href);

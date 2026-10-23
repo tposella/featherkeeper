@@ -165,4 +165,17 @@ header p {
   border-radius: 999px;
   padding: 1px 9px;
 }
+/* Phones: slides up from the bottom as a sheet. */
+@media (max-width: 640px) {
+  .overlay {
+    padding: 0;
+    place-items: end stretch;
+  }
+  .panel {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: 14px 14px 0 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  }
+}
 </style>

@@ -86,6 +86,18 @@ watch(lightbox, async (open, wasOpen) => {
     lastFocus?.focus?.();
   }
 });
+// Swipe left or right on the photo to move between photos (touch screens).
+let touch = null;
+function onTouchStart(e) {
+  if (e.touches.length === 1) touch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+}
+function onTouchEnd(e) {
+  if (!touch) return;
+  const dx = e.changedTouches[0].clientX - touch.x;
+  const dy = e.changedTouches[0].clientY - touch.y;
+  touch = null;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+}
 function onKey(e) {
   if (!lightbox.value) return;
   if (e.target.closest?.('input, textarea')) return; // typing a note
@@ -401,7 +413,7 @@ function exifLine(p) {
 
     <div v-if="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Photo" @click.self="lightbox = null">
       <figure>
-        <div class="stage">
+        <div class="stage" @touchstart.passive="onTouchStart" @touchend="onTouchEnd">
           <button v-if="allPhotos.length > 1" class="nav prev" type="button" aria-label="Previous photo" @click="step(-1)">&lsaquo;</button>
           <img :src="lightbox.urls.display" :alt="entry?.commonName" />
           <button v-if="allPhotos.length > 1" class="nav next" type="button" aria-label="Next photo" @click="step(1)">&rsaquo;</button>
@@ -834,6 +846,78 @@ function exifLine(p) {
 @media (max-width: 760px) {
   .hero {
     grid-template-columns: 1fr;
+  }
+}
+/* Phones: the photo viewer fills the screen, the photo gets as much room as possible, and the
+   buttons sit underneath in finger-sized rows. */
+@media (max-width: 640px) {
+  .lightbox {
+    padding: 0;
+    background: rgb(10 14 12 / 0.97);
+    place-items: stretch;
+    overflow-y: auto;
+  }
+  .lightbox figure {
+    min-height: 100%;
+    grid-template-rows: 1fr auto auto;
+    gap: 0;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .stage {
+    display: grid;
+    place-items: center;
+    touch-action: pan-y;
+  }
+  .lightbox img {
+    max-height: 68vh;
+    width: 100%;
+  }
+  .nav {
+    width: 38px;
+    height: 38px;
+    font-size: 1.5rem;
+  }
+  .lightbox figcaption {
+    display: grid;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+  .lightbox figcaption > .row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: 6px;
+  }
+  .lightbox figcaption .btn {
+    justify-content: center;
+  }
+  .lightbox .soft {
+    display: block;
+    margin: 2px 0 0;
+  }
+  .replace-bar {
+    padding: 10px 14px 14px;
+  }
+  .album-head {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 640px) {
+  .album-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .album-tile .badge,
+  .album-tile .flag {
+    font-size: 0.7rem;
+    padding: 0 7px;
+  }
+  .thumb img {
+    width: 96px;
+    height: 96px;
+  }
+  .s-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

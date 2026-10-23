@@ -306,4 +306,26 @@ section {
 .notice {
   margin: 10px 0 0;
 }
+/* Phones: a full-screen sheet with the Save button always in reach at the bottom. */
+@media (max-width: 640px) {
+  .overlay {
+    padding: 0;
+    place-items: stretch;
+  }
+  .panel {
+    width: 100%;
+    min-height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    padding: calc(14px + env(safe-area-inset-top)) 16px 0;
+  }
+  footer {
+    position: sticky;
+    bottom: 0;
+    margin: 16px -16px 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: var(--paper);
+    border-top: 1px solid var(--rule);
+  }
+}
 </style>

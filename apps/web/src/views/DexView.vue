@@ -336,4 +336,37 @@ const filters = [
     gap: 14px 10px;
   }
 }
+/* Phones: filters span the width, with finger-sized buttons. */
+@media (max-width: 640px) {
+  .controls {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .seg:not(.view) {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+  }
+  .seg-btn {
+    flex: 1 1 0;
+    min-height: 44px;
+    padding: 6px 8px;
+  }
+  .search {
+    flex: 1 1 100%;
+  }
+  .fam {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .view {
+    margin-left: 0;
+    min-height: 44px;
+  }
+}
+/* Hover outlines only where there's a mouse; on touch screens they stick after a tap. */
+@media (hover: none) {
+  .plate:hover .frame {
+    outline: none;
+  }
+}
 </style>

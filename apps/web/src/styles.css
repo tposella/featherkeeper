@@ -221,6 +221,35 @@ select:focus,
 textarea:focus {
   border-color: var(--jay);
 }
+/* ---- Phones and touch screens -------------------------------------------- */
+@media (max-width: 640px) {
+  /* 16px stops iOS from zooming the page when a field is tapped. */
+  input[type='text'],
+  input[type='email'],
+  input[type='password'],
+  input[type='search'],
+  input[type='number'],
+  input[type='datetime-local'],
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  /* Room for the bottom navigation bar on catalogue pages. */
+  body:has(.bottom-nav) {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+  .page {
+    padding-top: 16px;
+    padding-bottom: 32px;
+  }
+}
+/* Finger-sized targets wherever the pointer is a finger. */
+@media (pointer: coarse) {
+  .btn {
+    min-height: 44px;
+  }
+}
+
 .row {
   display: flex;
   gap: 12px;
