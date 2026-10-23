@@ -146,12 +146,15 @@ const filters = [
                 :title="`Example photo: ${s.example.credit}`"
                 loading="lazy"
               />
-              <span v-else class="placeholder">{{ s.familyCommon || s.familyScientific || 'Not yet photographed' }}</span>
+              <span v-else class="placeholder">{{ s.status === 'logged' ? 'Seen, not yet photographed' : 'Not yet photographed' }}</span>
             </div>
             <div class="label">
               <span class="no">{{ plateNumber(s.plate) }}</span>
               <span class="name">{{ s.commonName }}</span>
               <span class="sci small">{{ s.scientificName }}</span>
+              <span v-if="s.familyCommon || s.familyScientific" class="family small">
+                {{ s.familyCommon || s.familyScientific }}
+              </span>
             </div>
             <span v-if="s.status === 'logged'" class="flag small">Seen</span>
           </RouterLink>
@@ -286,6 +289,11 @@ const filters = [
 .sci {
   font-style: italic;
   color: var(--ink-soft);
+}
+.family {
+  color: var(--ink-soft);
+  margin-top: 2px;
+  line-height: 1.3;
 }
 .plate.missing .name {
   color: var(--ink-soft);
