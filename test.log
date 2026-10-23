@@ -1,0 +1,396 @@
+live eBird tests: enabled
+
+> @featherkeeper/api@0.1.0 test
+> node --test --test-concurrency=1 "test/**/*.test.js"
+
+TAP version 13
+# Subtest: accounts
+    # Subtest: first account becomes site admin
+    ok 1 - first account becomes site admin
+      ---
+      duration_ms: 59.841366
+      type: 'test'
+      ...
+    # Subtest: later accounts are not admins
+    ok 2 - later accounts are not admins
+      ---
+      duration_ms: 144.97917
+      type: 'test'
+      ...
+    # Subtest: duplicate email and short password are rejected
+    ok 3 - duplicate email and short password are rejected
+      ---
+      duration_ms: 48.62347
+      type: 'test'
+      ...
+    # Subtest: login, me and logout
+    ok 4 - login, me and logout
+      ---
+      duration_ms: 103.462755
+      type: 'test'
+      ...
+    1..4
+ok 1 - accounts
+  ---
+  duration_ms: 497.60813
+  type: 'suite'
+  ...
+# Subtest: catalogue visibility and roles
+    # Subtest: owner creates a private catalogue with a generated slug
+    ok 1 - owner creates a private catalogue with a generated slug
+      ---
+      duration_ms: 11.51864
+      type: 'test'
+      ...
+    # Subtest: private: only members and site admins can see it
+    ok 2 - private: only members and site admins can see it
+      ---
+      duration_ms: 6.818272
+      type: 'test'
+      ...
+    # Subtest: members: any signed-in user can view, visitors cannot
+    ok 3 - members: any signed-in user can view, visitors cannot
+      ---
+      duration_ms: 5.524401
+      type: 'test'
+      ...
+    # Subtest: public: logged-out visitors can view but not edit
+    ok 4 - public: logged-out visitors can view but not edit
+      ---
+      duration_ms: 6.121566
+      type: 'test'
+      ...
+    # Subtest: owner adds an editor; editor can edit content but not settings
+    ok 5 - owner adds an editor; editor can edit content but not settings
+      ---
+      duration_ms: 8.605636
+      type: 'test'
+      ...
+    # Subtest: slug changes are validated and must be unique
+    ok 6 - slug changes are validated and must be unique
+      ---
+      duration_ms: 3.041335
+      type: 'test'
+      ...
+    1..6
+ok 2 - catalogue visibility and roles
+  ---
+  duration_ms: 42.042693
+  type: 'suite'
+  ...
+# Subtest: dex, sightings and photos
+    # Subtest: eBird import from a region adds species in taxonomic order and is idempotent
+    ok 1 - eBird import from a region adds species in taxonomic order and is idempotent
+      ---
+      duration_ms: 31.165653
+      type: 'test'
+      ...
+    # Subtest: example photos are fetched in the background as soon as species are added
+    ok 2 - example photos are fetched in the background as soon as species are added
+      ---
+      duration_ms: 42.01944
+      type: 'test'
+      ...
+    # Subtest: the default dex view is a catalogue setting for the owner
+    ok 3 - the default dex view is a catalogue setting for the owner
+      ---
+      duration_ms: 6.96541
+      type: 'test'
+      ...
+    # Subtest: eBird import from a place saves the area on the catalogue
+    ok 4 - eBird import from a place saves the area on the catalogue
+      ---
+      duration_ms: 9.23522
+      type: 'test'
+      ...
+    # Subtest: a point gets a place name: nearest hotspot first, then the town
+    ok 5 - a point gets a place name: nearest hotspot first, then the town
+      ---
+      duration_ms: 2.712046
+      type: 'test'
+      ...
+    # Subtest: place search puts eBird hotspots near the catalogue first
+    ok 6 - place search puts eBird hotspots near the catalogue first
+      ---
+      duration_ms: 3.591201
+      type: 'test'
+      ...
+    # Subtest: an import needs a region or a place
+    ok 7 - an import needs a region or a place
+      ---
+      duration_ms: 0.895885
+      type: 'test'
+      ...
+    # Subtest: manual species entry reuses an existing scientific name
+    ok 8 - manual species entry reuses an existing scientific name
+      ---
+      duration_ms: 3.41584
+      type: 'test'
+      ...
+    # Subtest: sightings require the species to be in the dex
+    ok 9 - sightings require the species to be in the dex
+      ---
+      duration_ms: 6.551501
+      type: 'test'
+      ...
+    # Subtest: editor logs a sighting and uploads a photo
+    ok 10 - editor logs a sighting and uploads a photo
+      ---
+      duration_ms: 37.91773
+      type: 'test'
+      ...
+    # Subtest: non-images and oversized files are rejected
+    ok 11 - non-images and oversized files are rejected
+      ---
+      duration_ms: 7.823264
+      type: 'test'
+      ...
+    # Subtest: visitors get stripped derivatives; originals follow location privacy
+    ok 12 - visitors get stripped derivatives; originals follow location privacy
+      ---
+      duration_ms: 11.888153
+      type: 'test'
+      ...
+    # Subtest: species detail returns sightings with photos
+    ok 13 - species detail returns sightings with photos
+      ---
+      duration_ms: 2.7618
+      type: 'test'
+      ...
+    # Subtest: a photo can be marked to replace, listed, and unmarked
+    ok 14 - a photo can be marked to replace, listed, and unmarked
+      ---
+      duration_ms: 49.503422
+      type: 'test'
+      ...
+    # Subtest: the thumbnail is the newest photo until one is chosen, and can be reset
+    ok 15 - the thumbnail is the newest photo until one is chosen, and can be reset
+      ---
+      duration_ms: 34.942344
+      type: 'test'
+      ...
+    # Subtest: editing a sighting: details, clearing the location, and moving it to another species
+    ok 16 - editing a sighting: details, clearing the location, and moving it to another species
+      ---
+      duration_ms: 25.820832
+      type: 'test'
+      ...
+    # Subtest: a species with sightings cannot be removed from the dex
+    ok 17 - a species with sightings cannot be removed from the dex
+      ---
+      duration_ms: 1.613846
+      type: 'test'
+      ...
+    # Subtest: identification without a location compares against the catalogue only
+    ok 18 - identification without a location compares against the catalogue only
+      ---
+      duration_ms: 8.183728
+      type: 'test'
+      ...
+    # Subtest: a map pin makes eBird records near it the prior
+    ok 19 - a map pin makes eBird records near it the prior
+      ---
+      duration_ms: 6.339631
+      type: 'test'
+      ...
+    # Subtest: the AI decision is saved with the uploaded photo
+    ok 20 - the AI decision is saved with the uploaded photo
+      ---
+      duration_ms: 20.757251
+      type: 'test'
+      ...
+    # Subtest: a species can be added by its eBird code
+    ok 21 - a species can be added by its eBird code
+      ---
+      duration_ms: 4.213099
+      type: 'test'
+      ...
+    # Subtest: in season: reported now, usually around this month, and nearby species not in the catalogue
+    ok 22 - in season: reported now, usually around this month, and nearby species not in the catalogue
+      ---
+      duration_ms: 7.636468
+      type: 'test'
+      ...
+    # Subtest: species insights: seasonality, time of day, habitat, recent reports
+    ok 23 - species insights: seasonality, time of day, habitat, recent reports
+      ---
+      duration_ms: 4.966658
+      type: 'test'
+      ...
+    # Subtest: sounds for a species use the catalogue area
+    ok 24 - sounds for a species use the catalogue area
+      ---
+      duration_ms: 4.114748
+      type: 'test'
+      ...
+    # Subtest: deleting a sighting removes its photos
+    ok 25 - deleting a sighting removes its photos
+      ---
+      duration_ms: 4.398589
+      type: 'test'
+      ...
+    # Subtest: ownership transfer and catalogue deletion
+    ok 26 - ownership transfer and catalogue deletion
+      ---
+      duration_ms: 9.14309
+      type: 'test'
+      ...
+    1..26
+ok 3 - dex, sightings and photos
+  ---
+  duration_ms: 349.635594
+  type: 'suite'
+  ...
+# area: 24 hotspots found, 20 used, 268 codes, district CA-AB-SI (Calgary, Alberta, Canada)
+# top hotspots: Glenbow Ranch Provincial Park (214); Big Hill Springs Provincial Park (210); Cochrane Lake (210); Cochrane--Cochrane Ranche (173); Horse Creek Road Marshes (170)
+# taxonomy: 264 full species, first Snow Goose, last Lazuli Bunting
+# Subtest: species around Cochrane, Alberta from nearby hotspots
+ok 4 - species around Cochrane, Alberta from nearby hotspots
+  ---
+  duration_ms: 1947.400707
+  type: 'test'
+  ...
+# region CA-AB (Alberta, Canada): 510 codes
+# Subtest: species for a whole region
+ok 5 - species for a whole region
+  ---
+  duration_ms: 159.628523
+  type: 'test'
+  ...
+# taxon: {"id":12727,"wikipediaUrl":"http://en.wikipedia.org/wiki/American_robin"}
+# months: 3 2 42 228 129 70 34 27 34 37 2 5
+# hours (sample 200): 0 0 0 0 0 2 2 8 21 9 20 12 13 15 12 19 15 13 13 10 7 7 2 0
+# Subtest: iNaturalist: seasonality and time of day for American Robin near Cochrane
+ok 6 - iNaturalist: seasonality and time of day for American Robin near Cochrane
+  ---
+  duration_ms: 2131.952019
+  type: 'test'
+  ...
+# May species: 160; top: Red-winged Blackbird (201), Mallard (150), Swainson's Hawk (132), Mountain Bluebird (119), American Robin (111)
+# Subtest: iNaturalist: species usually photographed near Cochrane in May
+ok 7 - iNaturalist: species usually photographed near Cochrane in May
+  ---
+  duration_ms: 1119.925379
+  type: 'test'
+  ...
+# habitat [Distribution and habitat]: The breeding habitat is woodland and more open farmland and urban areas. It becomes less common as a breeder in the southernmost part of the Deep South of the United States and there prefers large shade trees on lawns. Its winter habitat is similar but includes more open areas. The species is a known reservoir (carrier) for West Nile virus spread by Culex mosquitoes.
+# Subtest: Wikipedia: habitat text for a species
+ok 8 - Wikipedia: habitat text for a species
+  ---
+  duration_ms: 695.878966
+  type: 'test'
+  ...
+# sounds: 8; first: https://static.inaturalist.org/sounds/1416553.m4a?1745804436 CC0 at Foothills County, AB, CA; credit no rights reserved
+# Subtest: iNaturalist: openly licensed recordings of a species
+ok 9 - iNaturalist: openly licensed recordings of a species
+  ---
+  duration_ms: 963.83843
+  type: 'test'
+  ...
+# photos: 4; first: iNaturalist CC BY-NC https://inaturalist-open-data.s3.amazonaws.com/photos/111805682/large.jpg
+# credit: (c) Johnal Palahniuk, some rights reserved (CC BY-NC), uploaded by Johnal Palahniuk; links: {"inaturalist":"https://www.inaturalist.org/taxa/143853","wikipedia":"https://en.wikipedia.org/wiki/Pica hudsonia"}
+# Subtest: reference photos for a real species
+ok 10 - reference photos for a real species
+  ---
+  duration_ms: 563.632071
+  type: 'test'
+  ...
+# Subtest: slugify
+ok 11 - slugify
+  ---
+  duration_ms: 0.850443
+  type: 'test'
+  ...
+# Subtest: passwords round-trip and reject the wrong one
+ok 12 - passwords round-trip and reject the wrong one
+  ---
+  duration_ms: 139.48201
+  type: 'test'
+  ...
+# Subtest: EXIF dates honour the offset when present
+ok 13 - EXIF dates honour the offset when present
+  ---
+  duration_ms: 0.729193
+  type: 'test'
+  ...
+# Subtest: access matrix
+ok 14 - access matrix
+  ---
+  duration_ms: 0.671046
+  type: 'test'
+  ...
+# Subtest: http identifier normalises different response shapes
+ok 15 - http identifier normalises different response shapes
+  ---
+  duration_ms: 11.420836
+  type: 'test'
+  ...
+# Subtest: eBird client retries after being rate-limited
+ok 16 - eBird client retries after being rate-limited
+  ---
+  duration_ms: 1001.133487
+  type: 'test'
+  ...
+# Subtest: bioclip identifier sends candidates and defaults to the bundled container
+ok 17 - bioclip identifier sends candidates and defaults to the bundled container
+  ---
+  duration_ms: 0.5654
+  type: 'test'
+  ...
+# Subtest: reference photos come from iNaturalist, openly licensed only, with credit
+ok 18 - reference photos come from iNaturalist, openly licensed only, with credit
+  ---
+  duration_ms: 1.425316
+  type: 'test'
+  ...
+# Subtest: distanceKm
+ok 19 - distanceKm
+  ---
+  duration_ms: 0.302208
+  type: 'test'
+  ...
+# Subtest: Wikipedia habitat text is cleaned and trimmed to whole sentences
+ok 20 - Wikipedia habitat text is cleaned and trimmed to whole sentences
+  ---
+  duration_ms: 1.284497
+  type: 'test'
+  ...
+# Subtest: iNaturalist monthly species folds subspecies into species
+ok 21 - iNaturalist monthly species folds subspecies into species
+  ---
+  duration_ms: 0.92944
+  type: 'test'
+  ...
+# Subtest: habitat text prefers sentences about the kind of place
+ok 22 - habitat text prefers sentences about the kind of place
+  ---
+  duration_ms: 0.43742
+  type: 'test'
+  ...
+# Subtest: XMP-style dates are understood, with their own offset
+ok 23 - XMP-style dates are understood, with their own offset
+  ---
+  duration_ms: 0.094149
+  type: 'test'
+  ...
+# Subtest: sound licences and kinds
+ok 24 - sound licences and kinds
+  ---
+  duration_ms: 0.558739
+  type: 'test'
+  ...
+# Subtest: xeno-canto results come first and alternate songs and calls
+ok 25 - xeno-canto results come first and alternate songs and calls
+  ---
+  duration_ms: 5.291366
+  type: 'test'
+  ...
+1..25
+# tests 58
+# suites 3
+# pass 58
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 9998.098954
