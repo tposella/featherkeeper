@@ -51,7 +51,7 @@ jobs:
 
       - name: Make test photos with camera metadata
         run: |
-          sudo apt-get install -y -qq libimage-exiftool-perl imagemagick >/dev/null
+          sudo apt-get update -qq >/dev/null && sudo apt-get install -y -qq libimage-exiftool-perl imagemagick >/dev/null
           mkdir -p "$REPORT/fixtures"
           cd "$REPORT/fixtures"
           # A DSLR-style JPEG: date with time zone, GPS, camera and lens.
