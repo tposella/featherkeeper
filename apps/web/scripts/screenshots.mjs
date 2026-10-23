@@ -61,6 +61,21 @@ for (const scheme of ['light', 'dark']) {
       }
     }
     if (scheme === 'light') {
+      // A species with several photos: the album, and choosing a thumbnail.
+      await page.goto(new URL('#/c/bow-valley/species/21', base).href);
+      await page.waitForTimeout(1800);
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-species-album.png`, fullPage: true });
+      await page.getByRole('button', { name: 'Change thumbnail' }).first().click();
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-thumbnail-picker.png` });
+      await page.locator('.grid .tile').last().click();
+      await page.waitForTimeout(800);
+      const badge = await page.locator('.album-tile .badge').count();
+      const thumbIndex = await page.locator('.album-tile').evaluateAll((tiles) => tiles.findIndex((t) => t.querySelector('.badge')));
+      console.log(`THUMBNAIL picker closed=${!(await page.locator('.grid .tile').count())} badges=${badge} badgeOnTile=${thumbIndex}`);
+      await page.goto(new URL('#/c/bow-valley', base).href);
+      await page.waitForTimeout(700);
+
       // AI suggestions for an unidentified photo, then accepting the top match.
       await page.goto(new URL('#/c/bow-valley/log', base).href);
       const png = Buffer.from(

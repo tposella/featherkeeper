@@ -31,7 +31,8 @@ export const DEX_SQL = `
          coalesce(st.sighting_count, 0)::int AS sighting_count,
          coalesce(st.photo_count, 0)::int AS photo_count,
          st.first_observed, st.last_observed,
-         coalesce(cs.cover_photo_id, st.latest_photo_id) AS cover_photo_id
+         coalesce(cs.cover_photo_id, st.latest_photo_id) AS cover_photo_id,
+         cs.cover_photo_id AS chosen_cover_id
     FROM catalogue_species cs
     JOIN species sp ON sp.id = cs.species_id
     LEFT JOIN LATERAL (
@@ -59,6 +60,9 @@ export function dexEntry(r) {
     // "photographed" is the pokedex "caught" state; "logged" means seen but no photo yet.
     status: r.photo_count > 0 ? 'photographed' : r.sighting_count > 0 ? 'logged' : 'missing',
     coverUrl: r.cover_photo_id ? `/api/photos/${r.cover_photo_id}/thumb` : null,
+    // The photo shown for this species, and whether someone picked it (otherwise it's the newest).
+    coverPhotoId: r.cover_photo_id ?? null,
+    coverChosen: r.chosen_cover_id !== null && r.chosen_cover_id !== undefined,
   };
 }
 

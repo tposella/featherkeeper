@@ -280,6 +280,33 @@ describe('dex, sightings and photos', () => {
     assert.equal(res.body.sightings[0].photos[0].urls.original, null);
   });
 
+  test('the thumbnail is the newest photo until one is chosen, and can be reset', async () => {
+    const second = await editor.upload(`/api/sightings/${sightingId}/photos`, await makeJpeg(500, 500));
+    assert.equal(second.status, 201);
+    const url = `/api/catalogues/cochrane-backyard/species/${robinId}`;
+    let entry = (await anon.get(url)).body.entry;
+    assert.equal(entry.coverChosen, false);
+    assert.equal(entry.coverPhotoId, second.body.photo.id, 'newest photo by default');
+
+    assert.equal((await anon.patch(url, { coverPhotoId: photoId })).status, 401);
+    const set = await editor.patch(url, { coverPhotoId: photoId });
+    assert.equal(set.status, 200);
+    assert.equal(set.body.entry.coverPhotoId, photoId);
+    assert.equal(set.body.entry.coverChosen, true);
+    entry = (await anon.get('/api/catalogues/cochrane-backyard/species')).body.species.find((s) => s.id === robinId);
+    assert.equal(entry.coverUrl, `/api/photos/${photoId}/thumb`, 'the dex shows the chosen photo');
+
+    const reset = await editor.patch(url, { coverPhotoId: null });
+    assert.equal(reset.body.entry.coverChosen, false);
+    assert.equal(reset.body.entry.coverPhotoId, second.body.photo.id);
+
+    await editor.patch(url, { coverPhotoId: second.body.photo.id });
+    assert.equal((await editor.delete(`/api/photos/${second.body.photo.id}`)).status, 200);
+    entry = (await anon.get(url)).body.entry;
+    assert.equal(entry.coverChosen, false, 'deleting the chosen photo falls back to the newest');
+    assert.equal(entry.coverPhotoId, photoId);
+  });
+
   test('a species with sightings cannot be removed from the dex', async () => {
     const res = await editor.delete(`/api/catalogues/cochrane-backyard/species/${robinId}`);
     assert.equal(res.status, 409);

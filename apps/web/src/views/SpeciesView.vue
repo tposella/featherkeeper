@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { api } from '../api.js';
 import { useCatalogue } from '../catalogue-context.js';
 import SpeciesInsights from '../components/SpeciesInsights.vue';
+import ThumbnailPicker from '../components/ThumbnailPicker.vue';
 import { formatDate, plateNumber } from '../format.js';
 
 const props = defineProps({ speciesId: { type: Number, required: true } });
@@ -20,12 +21,25 @@ const uploadingFor = ref(null);
 
 const canEdit = computed(() => catalogue.value.access.canEdit);
 const plate = computed(() => species.value.findIndex((s) => s.id === props.speciesId) + 1);
-const allPhotos = computed(() => sightings.value.flatMap((s) => s.photos));
-const cover = computed(() => {
-  const url = entry.value?.coverUrl;
-  if (!url) return null;
-  return allPhotos.value.find((p) => p.urls.thumb === url) ?? null;
+// The album: every photo of this species across all sightings, newest first.
+const allPhotos = computed(() => {
+  const when = (p) => Date.parse(p.takenAt ?? p.createdAt) || 0;
+  return sightings.value
+    .flatMap((s) => s.photos.map((p) => ({ ...p, place: s.locationName || '' })))
+    .sort((a, b) => when(b) - when(a));
 });
+const cover = computed(() => allPhotos.value.find((p) => p.id === entry.value?.coverPhotoId) ?? null);
+const picking = ref(false);
+const savingCover = ref(false);
+const showAllAlbum = ref(false);
+const ALBUM_PREVIEW = 12;
+const albumShown = computed(() => (showAllAlbum.value ? allPhotos.value : allPhotos.value.slice(0, ALBUM_PREVIEW)));
+const lightboxIndex = computed(() => allPhotos.value.findIndex((p) => p.id === lightbox.value?.id));
+function step(d) {
+  const n = allPhotos.value.length;
+  if (n < 2 || lightboxIndex.value < 0) return;
+  lightbox.value = allPhotos.value[(lightboxIndex.value + d + n) % n];
+}
 
 async function load() {
   try {
@@ -52,7 +66,10 @@ watch(lightbox, async (open, wasOpen) => {
   }
 });
 function onKey(e) {
-  if (e.key === 'Escape' && lightbox.value) lightbox.value = null;
+  if (!lightbox.value) return;
+  if (e.key === 'Escape') lightbox.value = null;
+  if (e.key === 'ArrowRight') step(1);
+  if (e.key === 'ArrowLeft') step(-1);
 }
 onMounted(() => window.addEventListener('keydown', onKey));
 onUnmounted(() => window.removeEventListener('keydown', onKey));
@@ -71,12 +88,18 @@ async function saveNotes() {
   }
 }
 
-async function setCover(photo) {
+/** Pick the photo that represents this species; null goes back to "newest photo". */
+async function setCover(photoId) {
+  savingCover.value = true;
   try {
-    await api.patch(`/catalogues/${catalogue.value.slug}/species/${props.speciesId}`, { coverPhotoId: photo.id });
-    await refreshAll();
+    const res = await api.patch(`/catalogues/${catalogue.value.slug}/species/${props.speciesId}`, { coverPhotoId: photoId });
+    entry.value = { ...entry.value, ...res.entry };
+    picking.value = false;
+    await Promise.all([reloadDex(), reload()]);
   } catch (err) {
     error.value = err.message;
+  } finally {
+    savingCover.value = false;
   }
 }
 
@@ -154,8 +177,14 @@ function exifLine(p) {
     <template v-if="entry">
       <section class="hero">
         <div class="hero-photo" :class="entry.status">
-          <img v-if="entry.coverUrl" :src="cover ? cover.urls.display : entry.coverUrl" alt="" />
+          <button v-if="cover" type="button" class="hero-open" :aria-label="`Open the thumbnail photo of ${entry.commonName}`" @click="lightbox = cover">
+            <img :src="cover.urls.display" alt="" />
+          </button>
+          <img v-else-if="entry.coverUrl" :src="entry.coverUrl" alt="" />
           <span v-else class="soft">{{ entry.status === 'logged' ? 'Seen, not yet photographed' : 'Not yet photographed' }}</span>
+          <button v-if="canEdit && allPhotos.length > 1" type="button" class="change-thumb" @click="picking = true">
+            Change thumbnail
+          </button>
         </div>
         <div class="hero-text">
           <p class="no">{{ plate > 0 ? plateNumber(plate) : '' }}</p>
@@ -221,6 +250,29 @@ function exifLine(p) {
         </template>
       </section>
 
+      <section v-if="allPhotos.length" class="album">
+        <div class="album-head">
+          <h3>Album <span class="n">{{ allPhotos.length }} photo{{ allPhotos.length === 1 ? '' : 's' }}</span></h3>
+          <button v-if="canEdit && allPhotos.length > 1" class="btn" type="button" @click="picking = true">
+            Change thumbnail
+          </button>
+        </div>
+        <ul class="album-grid">
+          <li v-for="p in albumShown" :key="p.id">
+            <button type="button" class="album-tile" @click="lightbox = p">
+              <img :src="p.urls.thumb" :alt="`${entry.commonName}, ${formatDate(p.takenAt || p.createdAt)}`" loading="lazy" />
+              <span v-if="p.id === entry.coverPhotoId" class="badge small">Thumbnail</span>
+              <span class="cap small">
+                {{ formatDate(p.takenAt || p.createdAt) }}<template v-if="p.place"> · {{ p.place }}</template>
+              </span>
+            </button>
+          </li>
+        </ul>
+        <button v-if="!showAllAlbum && allPhotos.length > ALBUM_PREVIEW" class="btn quiet" type="button" @click="showAllAlbum = true">
+          Show all {{ allPhotos.length }} photos
+        </button>
+      </section>
+
       <section>
         <h3>Sightings</h3>
         <p v-if="!sightings.length" class="empty">No sightings logged for this species yet.</p>
@@ -266,9 +318,14 @@ function exifLine(p) {
 
     <div v-if="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Photo" @click.self="lightbox = null">
       <figure>
-        <img :src="lightbox.urls.display" :alt="entry?.commonName" />
+        <div class="stage">
+          <button v-if="allPhotos.length > 1" class="nav prev" type="button" aria-label="Previous photo" @click="step(-1)">&lsaquo;</button>
+          <img :src="lightbox.urls.display" :alt="entry?.commonName" />
+          <button v-if="allPhotos.length > 1" class="nav next" type="button" aria-label="Next photo" @click="step(1)">&rsaquo;</button>
+        </div>
         <figcaption>
           <span>
+            <span v-if="allPhotos.length > 1 && lightboxIndex >= 0" class="count">{{ lightboxIndex + 1 }} of {{ allPhotos.length }}</span>
             {{ lightbox.takenAt ? formatDate(lightbox.takenAt, true) : '' }}
             <span class="soft">{{ exifLine(lightbox) }}</span>
           </span>
@@ -276,13 +333,27 @@ function exifLine(p) {
             <a v-if="lightbox.urls.original" :href="lightbox.urls.original" target="_blank" rel="noopener" class="btn quiet">
               Original
             </a>
-            <button v-if="canEdit" class="btn quiet" type="button" @click="setCover(lightbox)">Use as cover</button>
+            <span v-if="lightbox.id === entry?.coverPhotoId" class="is-thumb">Thumbnail</span>
+            <button v-else-if="canEdit" class="btn quiet" type="button" :disabled="savingCover" @click="setCover(lightbox.id)">
+              Use as thumbnail
+            </button>
             <button v-if="canEdit" class="btn quiet danger-text" type="button" @click="deletePhoto(lightbox)">Delete</button>
             <button ref="closeBtn" class="btn" type="button" @click="lightbox = null">Close</button>
           </span>
         </figcaption>
       </figure>
     </div>
+
+    <ThumbnailPicker
+      v-if="picking && entry"
+      :photos="allPhotos"
+      :current-id="entry.coverPhotoId"
+      :chosen="entry.coverChosen"
+      :common-name="entry.commonName"
+      :saving="savingCover"
+      @choose="setCover"
+      @close="picking = false"
+    />
   </div>
 </template>
 
@@ -300,6 +371,137 @@ function exifLine(p) {
   display: grid;
   place-items: center;
   background: var(--paper-raised);
+}
+.hero-photo {
+  position: relative;
+}
+.hero-open {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+.change-thumb {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  font: inherit;
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: #fff;
+  background: rgb(20 28 24 / 0.72);
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.change-thumb:hover {
+  background: rgb(20 28 24 / 0.88);
+}
+.album {
+  margin-bottom: 36px;
+}
+.album-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.album-head .n {
+  font-weight: 400;
+  color: var(--ink-soft);
+  font-size: var(--step-0);
+  margin-left: 6px;
+}
+.album-grid {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+.album-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--paper-raised);
+  cursor: zoom-in;
+  font: inherit;
+  text-align: left;
+}
+.album-tile img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+}
+.album-tile .cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16px 8px 6px;
+  color: #fff;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.6));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.album-tile .badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: var(--jay);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+.album-tile:focus-visible,
+.album-tile:hover {
+  outline: 2px solid var(--jay);
+  outline-offset: 2px;
+}
+.stage {
+  position: relative;
+}
+.nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  background: rgb(0 0 0 / 0.45);
+  color: #fff;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.nav.prev {
+  left: 8px;
+}
+.nav.next {
+  right: 8px;
+}
+.count {
+  font-weight: 700;
+  margin-right: 8px;
+}
+.is-thumb {
+  font-weight: 700;
+  color: #8cc0dc;
+  padding: 0 8px;
 }
 .hero-photo img {
   width: 100%;

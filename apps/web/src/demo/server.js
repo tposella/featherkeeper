@@ -207,7 +207,8 @@ function dexEntry(c, speciesId) {
   const ps = photos.filter((p) => ss.some((s) => s.id === p.sightingId));
   const dates = ss.map((s) => s.observedAt).filter(Boolean).sort();
   const latest = [...ps].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-  const cover = ps.find((p) => p.id === entry.coverPhotoId) ?? latest;
+  const chosen = ps.find((p) => p.id === entry.coverPhotoId) ?? null;
+  const cover = chosen ?? latest;
   return {
     id: sp.id,
     ebirdCode: sp.ebird_code,
@@ -225,6 +226,8 @@ function dexEntry(c, speciesId) {
     lastObserved: dates.at(-1) ?? null,
     status: ps.length ? 'photographed' : ss.length ? 'logged' : 'missing',
     coverUrl: cover ? photoUrls(cover, c).thumb : null,
+    coverPhotoId: cover?.id ?? null,
+    coverChosen: Boolean(chosen),
   };
 }
 
