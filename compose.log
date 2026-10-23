@@ -1,0 +1,25 @@
+ Container featherkeeper-db-1  Starting
+ Container featherkeeper-identifier-1  Starting
+ Container featherkeeper-identifier-1  Started
+ Container featherkeeper-db-1  Started
+ Container featherkeeper-db-1  Waiting
+ Container featherkeeper-db-1  Healthy
+ Container featherkeeper-api-1  Starting
+ Container featherkeeper-api-1  Started
+ Container featherkeeper-api-1  Waiting
+ Container featherkeeper-api-1  Healthy
+ Container featherkeeper-web-1  Starting
+ Container featherkeeper-web-1  Started
+ Container featherkeeper-identifier-1  Waiting
+ Container featherkeeper-db-1  Waiting
+ Container featherkeeper-api-1  Waiting
+ Container featherkeeper-web-1  Waiting
+ Container featherkeeper-api-1  Healthy
+ Container featherkeeper-db-1  Healthy
+ Container featherkeeper-identifier-1  Healthy
+ Container featherkeeper-web-1  Healthy
+stack ready after 88 s
+{'status': 'ok', 'model': 'hf-hub:imageomics/bioclip-2', 'cachedPrompts': 0, 'loadSeconds': 15.2}
+featherkeeper-identifier 1.19GB
+featherkeeper-web 48.9MB
+featherkeeper-api 274MB

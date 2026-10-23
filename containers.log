@@ -1,0 +1,333 @@
+db-1          | The files belonging to this database system will be owned by user "postgres".
+db-1          | This user must also own the server process.
+db-1          | 
+db-1          | The database cluster will be initialized with locale "en_US.utf8".
+db-1          | The default database encoding has accordingly been set to "UTF8".
+db-1          | The default text search configuration will be set to "english".
+db-1          | 
+db-1          | Data page checksums are disabled.
+db-1          | 
+db-1          | fixing permissions on existing directory /var/lib/postgresql/data ... ok
+db-1          | creating subdirectories ... ok
+db-1          | selecting dynamic shared memory implementation ... posix
+db-1          | selecting default max_connections ... 100
+db-1          | selecting default shared_buffers ... 128MB
+db-1          | selecting default time zone ... UTC
+db-1          | creating configuration files ... ok
+db-1          | running bootstrap script ... ok
+db-1          | sh: locale: not found
+db-1          | 2026-10-23 20:26:27.007 UTC [35] WARNING:  no usable system locales were found
+db-1          | performing post-bootstrap initialization ... ok
+db-1          | syncing data to disk ... ok
+db-1          | 
+db-1          | 
+db-1          | Success. You can now start the database server using:
+db-1          | 
+api-1         | [featherkeeper] Applying migration 001_init.sql
+api-1         | [featherkeeper] Applying migration 002_catalogue_area.sql
+api-1         | [featherkeeper] Applying migration 003_photo_replace.sql
+api-1         | {"level":30,"time":1792787192677,"pid":1,"hostname":"44c0b12bf8dd","msg":"Server listening at http://127.0.0.1:3000"}
+api-1         | {"level":30,"time":1792787192677,"pid":1,"hostname":"44c0b12bf8dd","msg":"Server listening at http://172.18.0.4:3000"}
+api-1         | {"level":30,"time":1792787197355,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1","req":{"method":"GET","url":"/api/health","host":"127.0.0.1:3000","remoteAddress":"127.0.0.1","remotePort":51630},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787197358,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1","res":{"statusCode":200},"responseTime":3.1325669999996535,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787227428,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-2","req":{"method":"GET","url":"/api/health","host":"127.0.0.1:3000","remoteAddress":"127.0.0.1","remotePort":45696},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787227435,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-2","res":{"statusCode":200},"responseTime":6.747436999998172,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787230776,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-3","req":{"method":"POST","url":"/api/auth/register","host":"localhost","remoteAddress":"172.18.0.1","remotePort":51572},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787230833,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-3","res":{"statusCode":201},"responseTime":56.515384000005724,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787230834,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-4","req":{"method":"POST","url":"/api/catalogues","host":"localhost","remoteAddress":"172.18.0.1","remotePort":51574},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787230846,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-4","res":{"statusCode":201},"responseTime":11.56769599999825,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787230847,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-5","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/import/ebird","host":"localhost","remoteAddress":"172.18.0.1","remotePort":51576},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787232135,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-5","res":{"statusCode":200},"responseTime":1287.2157309999966,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787232136,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-6","req":{"method":"POST","url":"/api/catalogues","host":"localhost","remoteAddress":"172.18.0.1","remotePort":51590},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787232140,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-6","res":{"statusCode":201},"responseTime":3.2715419999949518,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787232141,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-7","req":{"method":"POST","url":"/api/catalogues/eval-alberta/import/ebird","host":"localhost","remoteAddress":"172.18.0.1","remotePort":51596},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787233854,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-7","res":{"statusCode":200},"responseTime":1713.4939400000003,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787234109,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-8","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":51608},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787254139,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-8","res":{"statusCode":200},"responseTime":20030.015389,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787254141,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-9","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":37106},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787257530,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-a","req":{"method":"GET","url":"/api/health","host":"127.0.0.1:3000","remoteAddress":"127.0.0.1","remotePort":38004},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787257534,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-a","res":{"statusCode":200},"responseTime":4.275172999994538,"msg":"request completed"}
+db-1          |     pg_ctl -D /var/lib/postgresql/data -l logfile start
+db-1          | 
+api-1         | {"level":30,"time":1792787266614,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-9","res":{"statusCode":200},"responseTime":12473.632658999995,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787266808,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-b","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":44648},"msg":"incoming request"}
+identifier-1  | INFO:     Started server process [1]
+identifier-1  | INFO:     Waiting for application startup.
+identifier-1  | INFO:     Application startup complete.
+identifier-1  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+identifier-1  | Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+identifier-1  | WARNING:huggingface_hub.utils._http:Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+identifier-1  | INFO:     127.0.0.1:40790 - "GET /health HTTP/1.1" 200 OK
+identifier-1  | INFO:     127.0.0.1:40798 - "GET /health HTTP/1.1" 200 OK
+identifier-1  | INFO:     127.0.0.1:58426 - "GET /health HTTP/1.1" 200 OK
+identifier-1  | [identifier] hf-hub:imageomics/bioclip-2 ready in 15.2 s, 0 cached prompts
+identifier-1  | INFO:     127.0.0.1:58436 - "GET /health HTTP/1.1" 200 OK
+identifier-1  | INFO:     127.0.0.1:46180 - "GET /health HTTP/1.1" 200 OK
+identifier-1  | INFO:     127.0.0.1:51842 - "GET /health HTTP/1.1" 200 OK
+identifier-1  | /app/app.py:169: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+identifier-1  | Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+identifier-1  |   scale = float(state["model"].logit_scale.exp())
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     127.0.0.1:60908 - "GET /health HTTP/1.1" 200 OK
+db-1          | initdb: warning: enabling "trust" authentication for local connections
+db-1          | initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     127.0.0.1:54166 - "GET /health HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+api-1         | {"level":30,"time":1792787268417,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-b","res":{"statusCode":200},"responseTime":1608.7280450000108,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787268418,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-c","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":44654},"msg":"incoming request"}
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+web-1         | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1         | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+api-1         | {"level":30,"time":1792787270022,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-c","res":{"statusCode":200},"responseTime":1603.8457569999882,"msg":"request completed"}
+web-1         | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+api-1         | {"level":30,"time":1792787270236,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-d","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":44670},"msg":"incoming request"}
+web-1         | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1         | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+db-1          | waiting for server to start....2026-10-23 20:26:27.622 UTC [41] LOG:  starting PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+web-1         | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+db-1          | 2026-10-23 20:26:27.623 UTC [41] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+api-1         | {"level":30,"time":1792787271844,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-d","res":{"statusCode":200},"responseTime":1607.9644459999981,"msg":"request completed"}
+db-1          | 2026-10-23 20:26:27.625 UTC [44] LOG:  database system was shut down at 2026-10-23 20:26:27 UTC
+api-1         | {"level":30,"time":1792787271846,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-e","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":53564},"msg":"incoming request"}
+web-1         | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     127.0.0.1:40306 - "GET /health HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+identifier-1  | INFO:     172.18.0.4:51676 - "POST /identify HTTP/1.1" 200 OK
+db-1          | 2026-10-23 20:26:27.629 UTC [41] LOG:  database system is ready to accept connections
+db-1          |  done
+db-1          | server started
+db-1          | CREATE DATABASE
+db-1          | 
+db-1          | 
+db-1          | /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+db-1          | 
+db-1          | waiting for server to shut down...2026-10-23 20:26:27.767 UTC [41] LOG:  received fast shutdown request
+db-1          | .2026-10-23 20:26:27.767 UTC [41] LOG:  aborting any active transactions
+db-1          | 2026-10-23 20:26:27.770 UTC [41] LOG:  background worker "logical replication launcher" (PID 47) exited with exit code 1
+db-1          | 2026-10-23 20:26:27.771 UTC [42] LOG:  shutting down
+db-1          | 2026-10-23 20:26:27.771 UTC [42] LOG:  checkpoint starting: shutdown immediate
+web-1         | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1         | /docker-entrypoint.sh: Configuration complete; ready for start up
+db-1          | 2026-10-23 20:26:27.846 UTC [42] LOG:  checkpoint complete: wrote 926 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.062 s, sync=0.012 s, total=0.076 s; sync files=301, longest=0.011 s, average=0.001 s; distance=4283 kB, estimate=4283 kB; lsn=0/1925D68, redo lsn=0/1925D68
+web-1         | 2026/10/23 20:26:39 [notice] 1#1: using the "epoll" event method
+db-1          | 2026-10-23 20:26:27.853 UTC [41] LOG:  database system is shut down
+web-1         | 2026/10/23 20:26:39 [notice] 1#1: nginx/1.27.5
+web-1         | 2026/10/23 20:26:39 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+web-1         | 2026/10/23 20:26:39 [notice] 1#1: OS: Linux 6.17.0-1022-azure
+web-1         | 2026/10/23 20:26:39 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 65536:65536
+web-1         | 2026/10/23 20:26:39 [notice] 1#1: start worker processes
+web-1         | 2026/10/23 20:26:39 [notice] 1#1: start worker process 29
+web-1         | 2026/10/23 20:26:39 [notice] 1#1: start worker process 30
+web-1         | 2026/10/23 20:26:39 [notice] 1#1: start worker process 31
+web-1         | 2026/10/23 20:26:39 [notice] 1#1: start worker process 32
+web-1         | 127.0.0.1 - - [23/Oct/2026:20:27:10 +0000] "GET / HTTP/1.1" 200 516 "-" "Wget" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:10 +0000] "POST /api/auth/register HTTP/1.1" 201 84 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:10 +0000] "POST /api/catalogues HTTP/1.1" 201 431 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:12 +0000] "POST /api/catalogues/eval-near-cochrane/import/ebird HTTP/1.1" 200 494 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:12 +0000] "POST /api/catalogues HTTP/1.1" 201 419 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:13 +0000] "POST /api/catalogues/eval-alberta/import/ebird HTTP/1.1" 200 123 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:34 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1848 "-" "Python-urllib/3.12" "-"
+web-1         | 127.0.0.1 - - [23/Oct/2026:20:27:40 +0000] "GET / HTTP/1.1" 200 516 "-" "Wget" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:46 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1779 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:48 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1841 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:50 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1772 "-" "Python-urllib/3.12" "-"
+api-1         | {"level":30,"time":1792787273461,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-e","res":{"statusCode":200},"responseTime":1615.0490699999937,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787273776,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-f","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":53576},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787275382,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-f","res":{"statusCode":200},"responseTime":1606.4534450000065,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787275384,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-g","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":53582},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787277016,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-g","res":{"statusCode":200},"responseTime":1632.1327739999979,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787277181,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-h","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":53598},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787278865,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-h","res":{"statusCode":200},"responseTime":1684.1675770000002,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787278866,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-i","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":53612},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787280479,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-i","res":{"statusCode":200},"responseTime":1612.882884000006,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787280669,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-j","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":53614},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787282288,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-j","res":{"statusCode":200},"responseTime":1618.363881000012,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787282289,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-k","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":41428},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787283942,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-k","res":{"statusCode":200},"responseTime":1652.6559239999915,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787284123,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-l","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":41436},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787285722,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-l","res":{"statusCode":200},"responseTime":1598.4489370000083,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787285723,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-m","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":41438},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787287338,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-m","res":{"statusCode":200},"responseTime":1614.1407099999924,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787287606,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-n","req":{"method":"GET","url":"/api/health","host":"127.0.0.1:3000","remoteAddress":"127.0.0.1","remotePort":51490},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787287607,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-n","res":{"statusCode":200},"responseTime":0.7591430000029504,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787287776,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-o","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":41446},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787289490,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-o","res":{"statusCode":200},"responseTime":1714.13429300001,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787289493,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-p","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":41452},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787291139,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-p","res":{"statusCode":200},"responseTime":1646.305726999999,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787291299,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-q","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":39384},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787292964,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-q","res":{"statusCode":200},"responseTime":1664.8724150000053,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787292965,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-r","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":39400},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787294559,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-r","res":{"statusCode":200},"responseTime":1594.566346000007,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787294721,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-s","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":39416},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787296334,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-s","res":{"statusCode":200},"responseTime":1613.4792330000055,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787296336,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-t","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":39420},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787297960,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-t","res":{"statusCode":200},"responseTime":1624.5414959999907,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787298139,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-u","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":39430},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787299757,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-u","res":{"statusCode":200},"responseTime":1617.915485000005,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787299759,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-v","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":39434},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787301387,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-v","res":{"statusCode":200},"responseTime":1628.2074910000083,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787301572,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-w","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":55290},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787303170,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-w","res":{"statusCode":200},"responseTime":1598.772370000006,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787303172,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-x","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":55306},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787304804,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-x","res":{"statusCode":200},"responseTime":1632.3557560000045,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787305012,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-y","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":55322},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787306627,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-y","res":{"statusCode":200},"responseTime":1614.5996210000012,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787306628,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-z","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":55334},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787308270,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-z","res":{"statusCode":200},"responseTime":1641.292981000006,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787308498,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-10","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":55348},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787310148,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-10","res":{"statusCode":200},"responseTime":1650.5858529999969,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787310150,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-11","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":55350},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787311755,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-11","res":{"statusCode":200},"responseTime":1605.0481230000005,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787311943,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-12","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":57442},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787313592,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-12","res":{"statusCode":200},"responseTime":1648.7799950000044,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787313593,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-13","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":57458},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787315206,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-13","res":{"statusCode":200},"responseTime":1612.4262549999985,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787315386,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-14","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":57472},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787317000,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-14","res":{"statusCode":200},"responseTime":1613.76698700001,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787317001,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-15","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":57476},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787317709,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-16","req":{"method":"GET","url":"/api/health","host":"127.0.0.1:3000","remoteAddress":"127.0.0.1","remotePort":56142},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787317710,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-16","res":{"statusCode":200},"responseTime":1.0788190000021132,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787318605,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-15","res":{"statusCode":200},"responseTime":1603.4553589999996,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787318797,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-17","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":57488},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787320381,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-17","res":{"statusCode":200},"responseTime":1583.623145000005,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787320382,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-18","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":57492},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787321969,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-18","res":{"statusCode":200},"responseTime":1586.947204000011,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787322162,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-19","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":49396},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787323749,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-19","res":{"statusCode":200},"responseTime":1586.3479549999902,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787323750,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1a","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":49398},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787325338,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1a","res":{"statusCode":200},"responseTime":1587.7920409999788,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787325525,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1b","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":49410},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787327204,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1b","res":{"statusCode":200},"responseTime":1679.7405940000026,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787327206,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1c","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":49414},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787328859,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1c","res":{"statusCode":200},"responseTime":1652.9618989999872,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787329059,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1d","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":49416},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787330700,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1d","res":{"statusCode":200},"responseTime":1640.3863419999834,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787330701,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1e","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":37884},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787332342,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1e","res":{"statusCode":200},"responseTime":1641.005640999996,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787332536,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1f","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":37894},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787334170,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1f","res":{"statusCode":200},"responseTime":1633.9507120000198,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787334172,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1g","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":37896},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787335798,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1g","res":{"statusCode":200},"responseTime":1626.0556940000097,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787335965,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1h","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":37912},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787337577,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1h","res":{"statusCode":200},"responseTime":1611.1716210000159,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787337578,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1i","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":37924},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787339221,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1i","res":{"statusCode":200},"responseTime":1643.1528450000042,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787339398,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1j","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":37934},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787341055,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1j","res":{"statusCode":200},"responseTime":1656.7740400000184,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787341057,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1k","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":51612},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787342705,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1k","res":{"statusCode":200},"responseTime":1647.9760859999806,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787342901,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1l","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":51628},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787344536,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1l","res":{"statusCode":200},"responseTime":1634.7515640000056,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787344538,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1m","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":51638},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787346217,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1m","res":{"statusCode":200},"responseTime":1679.4019890000054,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787346557,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1n","req":{"method":"POST","url":"/api/catalogues/eval-near-cochrane/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":51640},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787347814,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1o","req":{"method":"GET","url":"/api/health","host":"127.0.0.1:3000","remoteAddress":"127.0.0.1","remotePort":50512},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787347816,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1o","res":{"statusCode":200},"responseTime":1.3684019999927841,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787348272,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1n","res":{"statusCode":200},"responseTime":1714.1234469999908,"msg":"request completed"}
+api-1         | {"level":30,"time":1792787348273,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1p","req":{"method":"POST","url":"/api/catalogues/eval-alberta/identify","host":"localhost","remoteAddress":"172.18.0.1","remotePort":51646},"msg":"incoming request"}
+api-1         | {"level":30,"time":1792787350002,"pid":1,"hostname":"44c0b12bf8dd","reqId":"req-1p","res":{"statusCode":200},"responseTime":1728.5219540000253,"msg":"request completed"}
+db-1          |  done
+db-1          | server stopped
+db-1          | 
+db-1          | PostgreSQL init process complete; ready for start up.
+db-1          | 
+db-1          | 2026-10-23 20:26:27.883 UTC [1] LOG:  starting PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+db-1          | 2026-10-23 20:26:27.883 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+db-1          | 2026-10-23 20:26:27.883 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+db-1          | 2026-10-23 20:26:27.884 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+db-1          | 2026-10-23 20:26:27.886 UTC [57] LOG:  database system was shut down at 2026-10-23 20:26:27 UTC
+db-1          | 2026-10-23 20:26:27.889 UTC [1] LOG:  database system is ready to accept connections
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:51 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1914 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:53 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1830 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:55 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1913 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:57 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1833 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:27:58 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1838 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:00 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1754 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:02 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1818 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:03 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1741 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:05 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1822 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:07 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1731 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:09 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1894 "-" "Python-urllib/3.12" "-"
+web-1         | 127.0.0.1 - - [23/Oct/2026:20:28:10 +0000] "GET / HTTP/1.1" 200 516 "-" "Wget" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:11 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1843 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:12 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1819 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:14 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1738 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:16 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1857 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:17 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1767 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:19 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1815 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:21 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1766 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:23 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1864 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:24 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1816 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:26 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1896 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:28 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1828 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:30 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1939 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:31 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1865 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:33 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1850 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:35 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1809 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:37 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1864 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:38 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1788 "-" "Python-urllib/3.12" "-"
+web-1         | 127.0.0.1 - - [23/Oct/2026:20:28:40 +0000] "GET / HTTP/1.1" 200 516 "-" "Wget" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:40 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1890 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:41 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1817 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:43 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1915 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:45 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1828 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:47 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1858 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:48 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1800 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:50 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1828 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:52 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1739 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:54 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1879 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:55 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1800 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:57 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1891 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:28:59 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1802 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:29:01 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1858 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:29:02 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1778 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:29:04 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1861 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:29:06 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1770 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:29:08 +0000] "POST /api/catalogues/eval-near-cochrane/identify HTTP/1.1" 200 1873 "-" "Python-urllib/3.12" "-"
+web-1         | 172.18.0.1 - - [23/Oct/2026:20:29:10 +0000] "POST /api/catalogues/eval-alberta/identify HTTP/1.1" 200 1797 "-" "Python-urllib/3.12" "-"
+web-1         | 127.0.0.1 - - [23/Oct/2026:20:29:10 +0000] "GET / HTTP/1.1" 200 516 "-" "Wget" "-"
