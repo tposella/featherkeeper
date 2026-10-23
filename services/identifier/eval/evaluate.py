@@ -21,7 +21,7 @@ import uuid
 
 BASE = sys.argv[1].rstrip("/")
 REPORT = sys.argv[2] if len(sys.argv) > 2 else None
-UA = "FeatherkeeperEval/0.1 (https://github.com/tposella/featherkeeper)"
+UA = "FeatherkeeperEval/0.1 (https://github.com/Tyler-Posella/featherkeeper)"
 COCHRANE = (51.19, -114.47)
 
 # (Wikipedia article, expected eBird common name). Includes look-alike pairs on purpose.

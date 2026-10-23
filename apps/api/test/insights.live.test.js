@@ -5,7 +5,7 @@ import { createInaturalistClient } from '../src/integrations/inat.js';
 import { createWikipediaClient } from '../src/integrations/wikipedia.js';
 
 const skip = process.env.CI ? false : 'only runs in CI (set CI=1 to run)';
-const opts = { enabled: true, userAgent: 'Featherkeeper-CI (+https://github.com/tposella/featherkeeper)' };
+const opts = { enabled: true, userAgent: 'Featherkeeper-CI (+https://github.com/Tyler-Posella/featherkeeper)' };
 const cochrane = { latitude: 51.19, longitude: -114.47, radiusKm: 25 };
 
 test('iNaturalist: seasonality and time of day for American Robin near Cochrane', { skip, timeout: 90000 }, async () => {
