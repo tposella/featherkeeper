@@ -1,0 +1,9 @@
+run: 39912064680
+total 40
+-rw-r--r-- 1 runner runner 34020 Oct 23 06:34 LICENSE
+-rw-r--r-- 1 runner runner    17 Oct 23 06:34 report.txt
+GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3, 19 November 2007
+
+235 LICENSE
+d8a6cc31abc16b6748c7a21f21611f5a1ec33f67d22ca23d7da1c19b95496bee  LICENSE
