@@ -47,7 +47,7 @@ export default async function ebirdRoutes(app, { db, ebird, geocoder }) {
         places: [
           ...hotspots.map((h) => ({
             name: h.name,
-            label: `eBird hotspot, ${h.speciesAllTime} species, ${h.distanceKm.toFixed(0)} km away`,
+            label: `${h.speciesAllTime} species recorded, ${h.distanceKm.toFixed(0)} km away`,
             latitude: h.latitude,
             longitude: h.longitude,
             source: 'hotspot',

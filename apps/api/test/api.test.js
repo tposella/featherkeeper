@@ -201,7 +201,7 @@ describe('dex, sightings and photos', () => {
     assert.equal(res.status, 200, JSON.stringify(res.body));
     assert.equal(res.body.places[0].name, 'Glenbow Ranch Provincial Park');
     assert.equal(res.body.places[0].source, 'hotspot');
-    assert.match(res.body.places[0].label, /214 species/);
+    assert.match(res.body.places[0].label, /214 species recorded/);
     assert.equal(res.body.places[1].source, 'map');
     assert.deepEqual(fakeGeocoder.lastNear, { latitude: 51.19, longitude: -114.47 }, 'biased to the catalogue area');
     const plain = await owner.get('/api/places?q=Cochrane');

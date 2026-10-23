@@ -427,7 +427,7 @@ const routes = [
     const hotspots = query.get('catalogue')
       ? PLACES.filter((p) => words.every((w) => p.name.toLowerCase().includes(w))).map((p, i) => ({
           name: p.name,
-          label: `eBird hotspot, ${190 - i * 23} species, ${(8 + i * 11) % 60} km away`,
+          label: `${190 - i * 23} species recorded, ${(8 + i * 11) % 60} km away`,
           latitude: p.lat,
           longitude: p.lng,
           source: 'hotspot',
