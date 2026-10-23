@@ -299,7 +299,7 @@ describe('dex, sightings and photos', () => {
     assert.equal(robin.status, 'photographed');
     assert.equal(robin.coverUrl, `/api/photos/${photoId}/thumb`);
     const cat = await anon.get('/api/catalogues/cochrane-backyard');
-    assert.deepEqual(cat.body.catalogue.stats, { species: 3, logged: 1, photographed: 1, photos: 1, toReplace: 0 });
+    assert.deepEqual(cat.body.catalogue.stats, { species: 3, photographed: 1, photos: 1, toReplace: 0 });
   });
 
   test('non-images and oversized files are rejected', async () => {

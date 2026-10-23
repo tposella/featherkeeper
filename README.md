@@ -42,8 +42,8 @@ Bird photographers tend to keep their "life list" in a spreadsheet, a notes app,
 Featherkeeper turns that into something more fun and more useful:
 
 - **A dex to fill.** Start with every species recorded near your town and watch the grid fill in as you
-  photograph them. Gaps are obvious: dashed empty frames for birds you haven't found, gold frames for
-  birds you've seen but not yet photographed.
+  photograph them. Birds you haven't photographed yet show as greyed-out example photos (or empty
+  frames, if you prefer), and your own photos fill them in full colour.
 - **Help finding the next one.** See what's around this month, when in the year and what time of day
   each bird is usually photographed nearby, its habitat, and where it was reported in the last 30 days.
 - **Your photos, organised.** Every photo is filed under its species with its date, place and camera
@@ -75,7 +75,7 @@ Featherkeeper turns that into something more fun and more useful:
   tab. Your server fetches the example photos in the background as soon as species are added, and at
   startup for any still missing. It stores them in the database as small WebP files with the
   photographer's credit and serves them from there.
-- Filter by **Photographed / Seen, no photo / Not yet**, search by name or number, and filter by family.
+- Filter by **Photographed / Not yet**, search by name or number, and filter by family.
 - **Families** view: progress per bird family (ducks, owls, woodpeckers...) with mini plates for every
   species, sortable by "most left to photograph" or "closest to complete".
 - **In season** view: birds reported nearby in the last 30 days and birds usually photographed there in
@@ -104,7 +104,11 @@ Featherkeeper turns that into something more fun and more useful:
   taken. You **accept** or **reject** them; your decision is saved with the photo.
 
 **Maps and history**
-- Map of all sightings (blue for photographed, gold for seen only), and a recent-sightings feed.
+- Map of all sightings, and a recent-sightings feed.
+
+**Look and feel**
+- Light and dark mode. Follows your system setting by default, with a toggle in the header that your
+  browser remembers.
 
 **Running it**
 - One `docker compose up` on any Linux host. Works behind nginx, Caddy, Traefik or a Cloudflare Tunnel.

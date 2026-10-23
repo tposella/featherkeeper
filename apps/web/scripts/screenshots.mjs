@@ -147,7 +147,7 @@ for (const scheme of ['light', 'dark']) {
       // Greyed examples are the default dex view; empty slots are one click away and remembered.
       await page.goto(new URL('#/c/bow-valley', base).href);
       await page.waitForTimeout(1200);
-      const byDefault = await page.getByRole('radio', { name: 'Greyed examples' }).getAttribute('aria-checked');
+      const byDefault = await page.getByRole('switch', { name: 'Greyed examples' }).getAttribute('aria-checked');
       const greyed = await page.locator('.plate .example-img').count();
       const ownPhotos = await page.locator('.plate.photographed .frame img:not(.example-img)').count();
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-dex-examples.png`, fullPage: true });
@@ -160,19 +160,38 @@ for (const scheme of ['light', 'dark']) {
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-families-examples.png`, fullPage: true });
       await page.goto(new URL('#/c/bow-valley', base).href);
       await page.waitForTimeout(900);
-      await page.getByRole('radio', { name: 'Empty slots' }).click();
+      await page.getByRole('switch', { name: 'Greyed examples' }).click();
       await page.waitForTimeout(500);
       const slotsShown = await page.locator('.plate .example-img').count();
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-dex-slots.png`, fullPage: true });
       await page.goto(new URL('#/c/bow-valley/families', base).href);
       await page.goto(new URL('#/c/bow-valley', base).href);
       await page.waitForTimeout(900);
-      const remembered = await page.getByRole('radio', { name: 'Empty slots' }).getAttribute('aria-checked');
-      await page.getByRole('radio', { name: 'Greyed examples' }).click();
+      const remembered = (await page.getByRole('switch', { name: 'Greyed examples' }).getAttribute('aria-checked')) === 'false';
+      await page.getByRole('switch', { name: 'Greyed examples' }).click();
       await page.waitForTimeout(500);
       console.log(
         `EXAMPLES byDefault=${byDefault} greyed=${greyed} ownPhotos=${ownPhotos} heroNote=${heroNote} ` +
           `slotsShown=${slotsShown} slotsRemembered=${remembered} afterSwitchBack=${await page.locator('.plate .example-img').count()}`,
+      );
+
+      // Light/dark toggle: starts from the system setting, flips, survives a reload, and flips back.
+      const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+      const themeSwitch = page.getByRole('switch', { name: 'Dark mode' });
+      const startDark = await themeSwitch.getAttribute('aria-checked');
+      const startBg = await bg();
+      await themeSwitch.click();
+      await page.waitForTimeout(200);
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-theme-toggled.png` });
+      await page.reload();
+      await page.waitForTimeout(1200);
+      const afterReload = await page.getByRole('switch', { name: 'Dark mode' }).getAttribute('aria-checked');
+      const toggledBg = await bg();
+      await page.getByRole('switch', { name: 'Dark mode' }).click();
+      await page.waitForTimeout(200);
+      console.log(
+        `THEME system=${scheme} startDark=${startDark} afterReload=${afterReload} bgChanged=${startBg !== toggledBg} ` +
+          `backToSystem=${(await bg()) === startBg} stored=${await page.evaluate(() => localStorage.getItem('featherkeeper:theme'))}`,
       );
 
       // AI suggestions for an unidentified photo, then accepting the top match.

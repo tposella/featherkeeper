@@ -2,6 +2,7 @@
 import { defineAsyncComponent, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { session, signOut } from './session.js';
+import { theme, toggleTheme } from './theme.js';
 
 const router = useRouter();
 const DEMO = import.meta.env.VITE_DEMO === 'true';
@@ -27,6 +28,25 @@ async function onSignOut() {
       <span>Featherkeeper</span>
     </RouterLink>
     <nav class="topnav" aria-label="Account">
+      <button
+        type="button"
+        class="theme-toggle"
+        role="switch"
+        :aria-checked="theme === 'dark'"
+        :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+        @click="toggleTheme"
+      >
+        <span class="visually-hidden">Dark mode</span>
+        <svg v-if="theme === 'dark'" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z" fill="currentColor" />
+        </svg>
+        <svg v-else viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2" fill="currentColor" />
+          <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />
+          </g>
+        </svg>
+      </button>
       <template v-if="session.user">
         <RouterLink to="/account" class="who">{{ session.user.displayName }}</RouterLink>
         <button class="btn quiet" type="button" @click="onSignOut">Sign out</button>
@@ -111,6 +131,26 @@ main:focus {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+  color: var(--ink);
+  cursor: pointer;
+  flex: none;
+}
+.theme-toggle:hover {
+  border-color: var(--jay);
+  color: var(--jay);
+}
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 .who {
   color: var(--ink);

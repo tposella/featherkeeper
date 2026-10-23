@@ -69,8 +69,8 @@ onMounted(async () => {
   height: 64px;
   border-radius: var(--radius);
   overflow: hidden;
-  background: var(--goldfinch-wash);
-  border: 1.5px dashed var(--goldfinch);
+  background: transparent;
+  border: 1.5px dashed var(--rule);
 }
 .pic:has(img) {
   border: 0;

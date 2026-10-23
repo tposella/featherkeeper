@@ -243,7 +243,7 @@ function exifLine(p) {
           <template v-else-if="dexStyle === 'examples' && entry.example">
             <img :src="entry.example.url" class="example-img" :alt="`Example photo of a ${entry.commonName}`" />
             <p class="example-note small">
-              <strong>{{ entry.status === 'logged' ? 'Seen, not yet photographed.' : 'Not yet photographed.' }}</strong>
+              <strong>Not yet photographed.</strong>
               Example photo:
               <a v-if="entry.example.page" :href="entry.example.page" target="_blank" rel="noopener">{{
                 entry.example.credit || entry.example.source
@@ -254,7 +254,7 @@ function exifLine(p) {
               >
             </p>
           </template>
-          <span v-else class="soft">{{ entry.status === 'logged' ? 'Seen, not yet photographed' : 'Not yet photographed' }}</span>
+          <span v-else class="soft">Not yet photographed</span>
           <button v-if="canEdit && allPhotos.length > 1" type="button" class="change-thumb" @click="picking = true">
             Change thumbnail
           </button>
@@ -662,10 +662,6 @@ function exifLine(p) {
 .hero-photo.missing {
   border: 1.5px dashed var(--rule);
   background: transparent;
-}
-.hero-photo.logged {
-  border: 1.5px dashed var(--goldfinch);
-  background: var(--goldfinch-wash);
 }
 .no {
   font-family: var(--font-display);

@@ -27,8 +27,7 @@ const families = computed(() => {
   });
   return [...groups.values()].map((f) => {
     const photographed = f.species.filter((s) => s.status === 'photographed').length;
-    const logged = f.species.filter((s) => s.status !== 'missing').length;
-    return { ...f, total: f.species.length, photographed, logged, missing: f.species.length - logged };
+    return { ...f, total: f.species.length, photographed, missing: f.species.length - photographed };
   });
 });
 
@@ -56,12 +55,6 @@ const sortOptions = [
   { value: 'name', label: 'A to Z' },
 ];
 
-function summary(f) {
-  const seenOnly = f.logged - f.photographed;
-  let text = `${f.photographed} of ${f.total} photographed`;
-  if (seenOnly) text += `, ${seenOnly} more seen`;
-  return text;
-}
 </script>
 
 <template>
@@ -102,9 +95,9 @@ function summary(f) {
             <span v-if="f.photographed === f.total" class="complete">Complete</span>
           </header>
 
-          <ProgressBar :photographed="f.photographed" :logged="f.logged" :total="f.total" />
+          <ProgressBar :photographed="f.photographed" :total="f.total" />
           <p class="count small">
-            {{ summary(f) }}<template v-if="f.missing">, {{ f.missing }} still to find</template>.
+            {{ f.photographed }} of {{ f.total }} photographed<template v-if="f.missing">, {{ f.missing }} still to find</template>.
           </p>
 
           <ol class="mini">
@@ -112,7 +105,7 @@ function summary(f) {
               <RouterLink
                 :to="{ name: 'species', params: { slug: catalogue.slug, speciesId: s.id } }"
                 :class="['mini-plate', s.status]"
-                :title="`${s.commonName}: ${s.status === 'photographed' ? 'photographed' : s.status === 'logged' ? 'seen, no photo yet' : 'not yet seen'}`"
+                :title="`${s.commonName}: ${s.status === 'photographed' ? 'photographed' : 'not yet photographed'}`"
               >
                 <img v-if="s.coverUrl" :src="s.coverUrl" alt="" loading="lazy" />
                 <img v-else-if="dexStyle === 'examples' && s.example" :src="s.example.url" class="example-img" alt="" loading="lazy" />
@@ -130,7 +123,7 @@ function summary(f) {
                   {{ s.commonName }}
                 </RouterLink>
                 <span class="soft small">
-                  {{ s.status === 'photographed' ? 'Photographed' : s.status === 'logged' ? 'Seen, no photo' : 'Not yet' }}
+                  {{ s.status === 'photographed' ? 'Photographed' : 'Not yet' }}
                 </span>
               </li>
             </ul>
@@ -230,13 +223,9 @@ header p {
   object-fit: cover;
   display: block;
 }
-/* Same language as the dex: dashed empty frame, gold when seen but not photographed. */
+/* Same language as the dex: a dashed frame until it's photographed. */
 .mini-plate.missing {
   border: 1.5px dashed var(--rule);
-}
-.mini-plate.logged {
-  border: 1.5px dashed var(--goldfinch);
-  background: var(--goldfinch-wash);
 }
 .mini-plate:hover,
 .mini-plate:focus-visible {
@@ -273,10 +262,6 @@ header p {
 }
 .dot.photographed {
   background: var(--jay);
-  border: 0;
-}
-.dot.logged {
-  background: var(--goldfinch);
   border: 0;
 }
 .open {

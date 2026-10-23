@@ -60,8 +60,8 @@ export function dexEntry(r) {
     photoCount: r.photo_count,
     firstObserved: out.iso(r.first_observed),
     lastObserved: out.iso(r.last_observed),
-    // "photographed" is the pokedex "caught" state; "logged" means seen but no photo yet.
-    status: r.photo_count > 0 ? 'photographed' : r.sighting_count > 0 ? 'logged' : 'missing',
+    // A species is in the dex ("photographed") once you have a photo of it; otherwise it's still missing.
+    status: r.photo_count > 0 ? 'photographed' : 'missing',
     coverUrl: r.cover_photo_id ? `/api/photos/${r.cover_photo_id}/thumb` : null,
     // The photo shown for this species, and whether someone picked it (otherwise it's the newest).
     coverPhotoId: r.cover_photo_id ?? null,

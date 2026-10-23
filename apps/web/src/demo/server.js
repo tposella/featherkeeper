@@ -236,7 +236,7 @@ function dexEntry(c, speciesId) {
     photoCount: ps.length,
     firstObserved: dates[0] ?? null,
     lastObserved: dates.at(-1) ?? null,
-    status: ps.length ? 'photographed' : ss.length ? 'logged' : 'missing',
+    status: ps.length ? 'photographed' : 'missing',
     coverUrl: cover ? photoUrls(cover, c).thumb : null,
     coverPhotoId: cover?.id ?? null,
     coverChosen: Boolean(chosen),
@@ -277,7 +277,6 @@ function serializeCatalogue(c) {
     ownerName: Object.values(USERS).find((u) => u.id === owner.userId).displayName,
     stats: {
       species: dex.length,
-      logged: dex.filter((d) => d.sightingCount > 0).length,
       photographed: dex.filter((d) => d.photoCount > 0).length,
       photos: ps.length,
       toReplace: ps.filter((p) => p.replace).length,

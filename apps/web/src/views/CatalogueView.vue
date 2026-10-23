@@ -114,7 +114,6 @@ provide(CATALOGUE_KEY, { catalogue, species, reload, reloadDex, dexStyle, setDex
           <p class="soft small">species photographed</p>
           <ProgressBar
             :photographed="catalogue.stats.photographed"
-            :logged="catalogue.stats.logged"
             :total="catalogue.stats.species"
           />
           <RouterLink

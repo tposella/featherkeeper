@@ -6,6 +6,13 @@
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Featherkeeper</title>
+    <script>
+      // Apply a saved light/dark choice before the page paints (see src/theme.js).
+      try {
+        var t = localStorage.getItem('featherkeeper:theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="app"></div>

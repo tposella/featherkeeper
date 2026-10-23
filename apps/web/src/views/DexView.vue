@@ -34,7 +34,7 @@ const counts = computed(() => {
   const pool = family.value
     ? species.value.filter((s) => (s.familyCommon || s.familyScientific) === family.value)
     : species.value;
-  const c = { all: pool.length, photographed: 0, logged: 0, missing: 0 };
+  const c = { all: pool.length, photographed: 0, missing: 0 };
   for (const s of pool) c[s.status] += 1;
   return c;
 });
@@ -56,7 +56,6 @@ const filtered = computed(() => {
 const filters = [
   { value: 'all', label: 'All' },
   { value: 'photographed', label: 'Photographed' },
-  { value: 'logged', label: 'Seen, no photo' },
   { value: 'missing', label: 'Not yet' },
 ];
 </script>
@@ -100,28 +99,17 @@ const filters = [
             <option v-for="f in families" :key="f.name" :value="f.name">{{ f.name }}</option>
           </select>
         </label>
-        <div class="seg view" role="radiogroup" aria-label="Species not yet photographed show as">
-          <button
-            type="button"
-            role="radio"
-            :aria-checked="!examples"
-            :class="['seg-btn', { on: !examples }]"
-            title="Species you haven't photographed show as an empty slot"
-            @click="setDexStyle('slots')"
-          >
-            Empty slots
-          </button>
-          <button
-            type="button"
-            role="radio"
-            :aria-checked="examples"
-            :class="['seg-btn', { on: examples }]"
-            title="Species you haven't photographed show a greyed-out example photo"
-            @click="setDexStyle('examples')"
-          >
-            Greyed examples
-          </button>
-        </div>
+        <button
+          type="button"
+          role="switch"
+          class="switch view"
+          :aria-checked="examples"
+          title="Show a greyed-out example photo for species you haven't photographed, or leave an empty slot"
+          @click="setDexStyle(examples ? 'slots' : 'examples')"
+        >
+          <span class="track" aria-hidden="true"><span class="knob"></span></span>
+          <span class="switch-label">Greyed examples</span>
+        </button>
       </div>
 
       <p v-if="examples && examplesPending" class="soft small fetching" role="status">
@@ -146,7 +134,7 @@ const filters = [
                 :title="`Example photo: ${s.example.credit}`"
                 loading="lazy"
               />
-              <span v-else class="placeholder">{{ s.status === 'logged' ? 'Seen, not yet photographed' : 'Not yet photographed' }}</span>
+              <span v-else class="placeholder">Not yet photographed</span>
             </div>
             <div class="label">
               <span class="no">{{ plateNumber(s.plate) }}</span>
@@ -156,7 +144,6 @@ const filters = [
                 {{ s.familyCommon || s.familyScientific }}
               </span>
             </div>
-            <span v-if="s.status === 'logged'" class="flag small">Seen</span>
           </RouterLink>
         </li>
       </ol>
@@ -207,6 +194,55 @@ const filters = [
 .view {
   margin-left: auto;
 }
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: inherit;
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  padding: 6px 2px;
+  cursor: pointer;
+}
+.track {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--rule);
+  transition: background 0.15s;
+  flex: none;
+}
+.knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  transition: transform 0.15s;
+}
+.switch[aria-checked='true'] .track {
+  background: var(--jay);
+}
+.switch[aria-checked='true'] .knob {
+  transform: translateX(18px);
+}
+.switch:focus-visible .track {
+  outline: 2px solid var(--jay);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .knob {
+    transition: none;
+  }
+}
 .fetching {
   margin: -8px 0 14px;
 }
@@ -242,14 +278,10 @@ const filters = [
   object-fit: cover;
   display: block;
 }
-/* Gaps in the dex read at a glance: an empty dashed frame, gold when seen but not yet photographed. */
+/* Gaps in the dex read at a glance: an empty dashed frame until it's photographed. */
 .plate.missing .frame {
   border: 1.5px dashed var(--rule);
   background: transparent;
-}
-.plate.logged .frame {
-  border: 1.5px dashed var(--goldfinch);
-  background: var(--goldfinch-wash);
 }
 /* With an example photo, the frame is solid so the picture reads as a dex entry still to fill. */
 .plate.has-example .frame {
@@ -297,16 +329,6 @@ const filters = [
 }
 .plate.missing .name {
   color: var(--ink-soft);
-}
-.flag {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  background: var(--goldfinch);
-  color: #1e2a23;
-  font-weight: 700;
-  padding: 1px 8px;
-  border-radius: 999px;
 }
 @media (max-width: 480px) {
   .plates {

@@ -18,7 +18,6 @@ const slugParam = { type: 'object', required: ['slug'], properties: { slug: { ty
 // Per-catalogue counts used on cards and headers.
 const STATS_SQL = `
   (SELECT count(*) FROM catalogue_species cs WHERE cs.catalogue_id = c.id)::int AS species_count,
-  (SELECT count(DISTINCT s.species_id) FROM sightings s WHERE s.catalogue_id = c.id)::int AS logged_count,
   (SELECT count(DISTINCT s.species_id) FROM sightings s JOIN photos p ON p.sighting_id = s.id
      WHERE s.catalogue_id = c.id)::int AS photographed_count,
   (SELECT count(*) FROM photos p JOIN sightings s ON s.id = p.sighting_id WHERE s.catalogue_id = c.id)::int AS photo_count,
@@ -37,7 +36,6 @@ function withStats(row, access) {
     ownerName: row.owner_name,
     stats: {
       species: row.species_count,
-      logged: row.logged_count,
       photographed: row.photographed_count,
       photos: row.photo_count,
       toReplace: row.replace_count,

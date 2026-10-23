@@ -29,8 +29,23 @@
   color-scheme: light;
 }
 
+/* Dark mode: follows the system setting unless the header toggle picked one (data-theme on <html>). */
+:root[data-theme='dark'] {
+  --paper: #141b17;
+  --paper-raised: #1b2420;
+  --ink: #e2e8e3;
+  --ink-soft: #9aa79f;
+  --rule: #2f3a34;
+  --jay: #6fa8c6;
+  --jay-wash: #1d3340;
+  --goldfinch: #dcae4c;
+  --goldfinch-wash: #3a3018;
+  --danger: #e07a6c;
+  --focus: #8cc0dc;
+  color-scheme: dark;
+}
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --paper: #141b17;
     --paper-raised: #1b2420;
     --ink: #e2e8e3;
@@ -141,9 +156,12 @@ a {
   border-color: var(--jay);
   color: #fff;
 }
+/* The dark-mode jay blue is light, so primary buttons take dark text. */
+:root[data-theme='dark'] .btn.primary {
+  color: var(--paper);
+}
 @media (prefers-color-scheme: dark) {
-  /* The dark-mode jay blue is light, so primary buttons take dark text. */
-  .btn.primary {
+  :root:not([data-theme='light']) .btn.primary {
     color: var(--paper);
   }
 }
@@ -238,8 +256,12 @@ textarea:focus {
   filter: grayscale(1) contrast(0.9) brightness(1.05);
   opacity: 0.5;
 }
+:root[data-theme='dark'] .example-img {
+  filter: grayscale(1) contrast(0.9) brightness(0.85);
+  opacity: 0.45;
+}
 @media (prefers-color-scheme: dark) {
-  .example-img {
+  :root:not([data-theme='light']) .example-img {
     filter: grayscale(1) contrast(0.9) brightness(0.85);
     opacity: 0.45;
   }

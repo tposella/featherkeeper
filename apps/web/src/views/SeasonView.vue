@@ -116,7 +116,6 @@ async function add(s) {
                   <span v-if="s.usual" class="fact usual">
                     Usually here: {{ s.usual.observations }} photos in recent {{ MONTHS[month - 1] }}s
                   </span>
-                  <span v-if="s.status === 'logged'" class="fact seen">You’ve seen it, no photo yet</span>
                 </span>
               </RouterLink>
             </li>
@@ -246,10 +245,6 @@ details summary h3 {
 .mini.missing {
   border: 1.5px dashed var(--rule);
 }
-.mini.logged {
-  border: 1.5px dashed var(--goldfinch);
-  background: var(--goldfinch-wash);
-}
 .names {
   display: grid;
 }
@@ -266,9 +261,6 @@ details summary h3 {
 .fact.now {
   border-color: var(--jay);
   color: var(--jay);
-}
-.fact.seen {
-  border-color: var(--goldfinch);
 }
 @media (max-width: 640px) {
   .row-link {

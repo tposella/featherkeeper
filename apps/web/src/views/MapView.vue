@@ -37,12 +37,11 @@ onMounted(async () => {
 
   const points = [];
   for (const s of placed.value) {
-    const photographed = s.photoCount > 0;
     const marker = L.circleMarker([s.latitude, s.longitude], {
       radius: 7,
       color: '#1e2a23',
       weight: 1.5,
-      fillColor: photographed ? '#2c6a8a' : '#c4912a',
+      fillColor: '#2c6a8a',
       fillOpacity: 0.9,
     }).addTo(map);
     const img = s.thumbUrl ? `<img src="${escapeHtml(s.thumbUrl)}" alt="" width="120" height="120" style="object-fit:cover;border-radius:4px;display:block;margin-bottom:6px">` : '';
@@ -76,8 +75,6 @@ onUnmounted(() => map?.remove());
     <p v-else-if="hidden" class="notice">The owner of this catalogue keeps sighting locations private.</p>
     <template v-else>
       <p class="soft legend small">
-        <span class="dot photo"></span> Photographed
-        <span class="dot logged"></span> Seen, no photo
         <span class="count">{{ placed.length }} of {{ sightings.length }} sightings have a location.</span>
       </p>
       <div ref="el" class="map" aria-label="Map of sightings"></div>
@@ -97,20 +94,6 @@ onUnmounted(() => map?.remove());
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-}
-.dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1.5px solid var(--ink);
-  display: inline-block;
-}
-.dot.photo {
-  background: #2c6a8a;
-}
-.dot.logged {
-  background: #c4912a;
-  margin-left: 12px;
 }
 .count {
   margin-left: auto;

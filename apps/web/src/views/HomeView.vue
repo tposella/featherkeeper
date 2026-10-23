@@ -53,7 +53,7 @@ onMounted(async () => {
             <p class="meta soft small">
               {{ c.ownerName }}<template v-if="c.regionCode">, {{ c.regionCode }}</template>
             </p>
-            <ProgressBar :photographed="c.stats.photographed" :logged="c.stats.logged" :total="c.stats.species" />
+            <ProgressBar :photographed="c.stats.photographed" :total="c.stats.species" />
             <p class="count small">
               <strong>{{ c.stats.photographed }}</strong> of {{ c.stats.species }} photographed
             </p>
