@@ -54,7 +54,8 @@ async function onSignOut() {
     <p>
       <a href="https://github.com/tposella/featherkeeper" target="_blank" rel="noopener">Featherkeeper</a>
       <template v-if="session.config.version"> {{ session.config.version }}</template> is free software under the
-      AGPL-3.0. Full credits are in its README.
+      AGPL-3.0. See the
+      <a href="https://github.com/tposella/featherkeeper#credits-and-sources" target="_blank" rel="noopener">full credits</a>.
     </p>
   </footer>
 </template>
