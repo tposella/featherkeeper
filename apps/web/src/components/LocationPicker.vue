@@ -52,6 +52,7 @@ const locating = ref(false);
 const geoError = ref('');
 let map;
 let marker;
+let resizeObserver;
 
 const round = (n) => Math.round(n * 1e6) / 1e6;
 
@@ -79,10 +80,14 @@ onMounted(() => {
     longitude.value = round(e.latlng.lng);
   });
   placeMarker(true);
-  // In a dialog the map can mount before its box has its final size.
-  setTimeout(() => map?.invalidateSize(), 60);
+  // In a dialog the map can mount before its box has its final size; re-measure whenever it changes.
+  resizeObserver = new ResizeObserver(() => map?.invalidateSize());
+  resizeObserver.observe(el.value);
 });
-onUnmounted(() => map?.remove());
+onUnmounted(() => {
+  resizeObserver?.disconnect();
+  map?.remove();
+});
 
 watch([latitude, longitude], () => placeMarker(true));
 watch(
