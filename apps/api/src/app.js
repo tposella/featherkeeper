@@ -9,6 +9,7 @@ import { createReferenceClient } from './integrations/reference.js';
 import { createSoundsClient } from './integrations/sounds.js';
 import { createWikipediaClient } from './integrations/wikipedia.js';
 import { createIdentifier } from './integrations/identify.js';
+import { createExamples } from './lib/examples.js';
 import { createStorage } from './lib/storage.js';
 import { authPlugin } from './plugins/auth.js';
 import authRoutes from './routes/auth.js';
@@ -24,7 +25,20 @@ import systemRoutes from './routes/system.js';
  * Build the Fastify app. Dependencies can be passed in (tests swap the eBird
  * client and the identifier for fakes); anything missing is created from config.
  */
-export async function buildApp({ config, db, storage, ebird, geocoder, identifier, reference, inat, wikipedia, sounds, logger }) {
+export async function buildApp({
+  config,
+  db,
+  storage,
+  ebird,
+  geocoder,
+  identifier,
+  reference,
+  inat,
+  wikipedia,
+  sounds,
+  examples,
+  logger,
+}) {
   const deps = {
     config,
     db,
@@ -43,6 +57,10 @@ export async function buildApp({ config, db, storage, ebird, geocoder, identifie
     trustProxy: config.trustProxy,
     bodyLimit: 1024 * 1024,
   });
+
+  // Example photos for the dex's greyed view, fetched in the background and stored in the database.
+  deps.examples =
+    examples ?? createExamples({ db, reference: deps.reference, userAgent: config.reference.userAgent, log: app.log });
 
   await app.register(cookie);
   await app.register(rateLimit, { global: false });

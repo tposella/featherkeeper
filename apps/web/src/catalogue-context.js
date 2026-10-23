@@ -3,7 +3,8 @@ import { inject } from 'vue';
 export const CATALOGUE_KEY = Symbol('catalogue');
 
 /**
- * Inside /c/:slug/* views: { catalogue (ref), species (ref, the dex list), reload(), reloadDex() }.
+ * Inside /c/:slug/* views: { catalogue (ref), species (ref, the dex list), reload(), reloadDex(),
+ * dexStyle (ref: 'slots' | 'examples'), setDexStyle(style), examplesPending (ref: example photos still coming) }.
  * Provided by CatalogueView.
  */
 export function useCatalogue() {

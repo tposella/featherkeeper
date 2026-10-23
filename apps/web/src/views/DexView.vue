@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useCatalogue } from '../catalogue-context.js';
 import { plateNumber } from '../format.js';
 
-const { catalogue, species } = useCatalogue();
+const { catalogue, species, dexStyle, setDexStyle, examplesPending } = useCatalogue();
+const examples = computed(() => dexStyle.value === 'examples');
 
 const query = ref('');
 const status = ref('all');
@@ -99,7 +100,33 @@ const filters = [
             <option v-for="f in families" :key="f.name" :value="f.name">{{ f.name }}</option>
           </select>
         </label>
+        <div class="seg view" role="radiogroup" aria-label="Species not yet photographed show as">
+          <button
+            type="button"
+            role="radio"
+            :aria-checked="!examples"
+            :class="['seg-btn', { on: !examples }]"
+            title="Species you haven't photographed show as an empty slot"
+            @click="setDexStyle('slots')"
+          >
+            Empty slots
+          </button>
+          <button
+            type="button"
+            role="radio"
+            :aria-checked="examples"
+            :class="['seg-btn', { on: examples }]"
+            title="Species you haven't photographed show a greyed-out example photo"
+            @click="setDexStyle('examples')"
+          >
+            Greyed examples
+          </button>
+        </div>
       </div>
+
+      <p v-if="examples && examplesPending" class="soft small fetching" role="status">
+        Fetching example photos: {{ examplesPending }} to go. They’ll appear as they arrive.
+      </p>
 
       <p v-if="!filtered.length" class="empty">No species match these filters.</p>
 
@@ -107,10 +134,18 @@ const filters = [
         <li v-for="s in filtered" :key="s.id">
           <RouterLink
             :to="{ name: 'species', params: { slug: catalogue.slug, speciesId: s.id } }"
-            :class="['plate', s.status]"
+            :class="['plate', s.status, { 'has-example': examples && !s.coverUrl && s.example }]"
           >
             <div class="frame">
               <img v-if="s.coverUrl" :src="s.coverUrl" alt="" loading="lazy" />
+              <img
+                v-else-if="examples && s.example"
+                :src="s.example.url"
+                class="example-img"
+                alt=""
+                :title="`Example photo: ${s.example.credit}`"
+                loading="lazy"
+              />
               <span v-else class="placeholder">{{ s.familyCommon || s.familyScientific || 'Not yet photographed' }}</span>
             </div>
             <div class="label">
@@ -166,6 +201,12 @@ const filters = [
 .search {
   flex: 1 1 200px;
 }
+.view {
+  margin-left: auto;
+}
+.fetching {
+  margin: -8px 0 14px;
+}
 .fam {
   flex: 0 1 240px;
 }
@@ -206,6 +247,11 @@ const filters = [
 .plate.logged .frame {
   border: 1.5px dashed var(--goldfinch);
   background: var(--goldfinch-wash);
+}
+/* With an example photo, the frame is solid so the picture reads as a dex entry still to fill. */
+.plate.has-example .frame {
+  border-style: solid;
+  border-width: 1px;
 }
 .placeholder {
   padding: 12px;

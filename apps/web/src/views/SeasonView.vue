@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { useCatalogue } from '../catalogue-context.js';
 import { MONTHS, timeAgo } from '../format.js';
 
-const { catalogue, reload, reloadDex } = useCatalogue();
+const { catalogue, reload, reloadDex, dexStyle } = useCatalogue();
 
 const currentMonth = new Date().getMonth() + 1;
 const month = ref(currentMonth);
@@ -103,7 +103,7 @@ async function add(s) {
           <ol class="list">
             <li v-for="s in toFind" :key="s.id">
               <RouterLink :to="{ name: 'species', params: { slug: catalogue.slug, speciesId: s.id } }" class="row-link">
-                <span :class="['mini', s.status]"><img v-if="s.coverUrl" :src="s.coverUrl" alt="" /></span>
+                <span :class="['mini', s.status]"><img v-if="s.coverUrl" :src="s.coverUrl" alt="" /><img v-else-if="dexStyle === 'examples' && s.example" :src="s.example.url" class="example-img" alt="" /></span>
                 <span class="names">
                   <strong>{{ s.commonName }}</strong>
                   <span class="sci soft small">{{ s.scientificName }}</span>
@@ -131,7 +131,7 @@ async function add(s) {
             <ol class="list">
               <li v-for="s in done" :key="s.id">
                 <RouterLink :to="{ name: 'species', params: { slug: catalogue.slug, speciesId: s.id } }" class="row-link">
-                  <span :class="['mini', s.status]"><img v-if="s.coverUrl" :src="s.coverUrl" alt="" /></span>
+                  <span :class="['mini', s.status]"><img v-if="s.coverUrl" :src="s.coverUrl" alt="" /><img v-else-if="dexStyle === 'examples' && s.example" :src="s.example.url" class="example-img" alt="" /></span>
                   <span class="names"><strong>{{ s.commonName }}</strong></span>
                   <span class="facts small">
                     <span v-if="s.now" class="fact now">Reported {{ timeAgo(s.now.observedAt) }}</span>

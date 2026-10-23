@@ -233,6 +233,18 @@ textarea:focus {
   color: var(--ink-soft);
 }
 
+/* Example photos of species you haven't photographed yet: greyed out, like an empty dex entry. */
+.example-img {
+  filter: grayscale(1) contrast(0.9) brightness(1.05);
+  opacity: 0.5;
+}
+@media (prefers-color-scheme: dark) {
+  .example-img {
+    filter: grayscale(1) contrast(0.9) brightness(0.85);
+    opacity: 0.45;
+  }
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

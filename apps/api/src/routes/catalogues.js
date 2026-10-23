@@ -11,6 +11,7 @@ const catalogueFields = {
   regionCode: { type: ['string', 'null'], maxLength: 20 },
   visibility,
   hideLocations: { type: 'boolean' },
+  dexStyle: { type: 'string', enum: ['slots', 'examples'] },
 };
 const slugParam = { type: 'object', required: ['slug'], properties: { slug: { type: 'string', maxLength: 64 } } };
 
@@ -155,6 +156,7 @@ export default async function catalogueRoutes(app, { db, storage }) {
              region_code = CASE WHEN $5 THEN $6 ELSE region_code END,
              visibility = coalesce($7, visibility),
              hide_locations = coalesce($8, hide_locations),
+             dex_style = coalesce($9, dex_style),
              updated_at = now()
            WHERE id = $1`,
           [
@@ -166,6 +168,7 @@ export default async function catalogueRoutes(app, { db, storage }) {
             b.regionCode?.trim().toUpperCase() || null,
             b.visibility ?? null,
             b.hideLocations ?? null,
+            b.dexStyle ?? null,
           ],
         );
       } catch (err) {

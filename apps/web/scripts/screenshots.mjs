@@ -144,6 +144,31 @@ for (const scheme of ['light', 'dark']) {
           `tabCount="${tabCount}" afterUnmark=${await page.locator('.list .card').count()}`,
       );
 
+      // The greyed-examples dex view, then back to empty slots for the rest of the run.
+      await page.goto(new URL('#/c/bow-valley', base).href);
+      await page.waitForTimeout(1000);
+      await page.getByRole('radio', { name: 'Greyed examples' }).click();
+      await page.waitForTimeout(1200);
+      const greyed = await page.locator('.plate .example-img').count();
+      const ownPhotos = await page.locator('.plate.photographed .frame img:not(.example-img)').count();
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-dex-examples.png`, fullPage: true });
+      await page.goto(new URL('#/c/bow-valley/species/6', base).href);
+      await page.waitForTimeout(1200);
+      const heroNote = await page.locator('.example-note').count();
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-species-example.png`, fullPage: true });
+      await page.goto(new URL('#/c/bow-valley/families', base).href);
+      await page.waitForTimeout(900);
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-families-examples.png`, fullPage: true });
+      await page.goto(new URL('#/c/bow-valley', base).href);
+      await page.waitForTimeout(900);
+      const remembered = await page.getByRole('radio', { name: 'Greyed examples' }).getAttribute('aria-checked');
+      await page.getByRole('radio', { name: 'Empty slots' }).click();
+      await page.waitForTimeout(500);
+      console.log(
+        `EXAMPLES greyed=${greyed} ownPhotos=${ownPhotos} heroNote=${heroNote} remembered=${remembered} ` +
+          `afterSwitchBack=${await page.locator('.plate .example-img').count()}`,
+      );
+
       // AI suggestions for an unidentified photo, then accepting the top match.
       await page.goto(new URL('#/c/bow-valley/log', base).href);
       const png = Buffer.from(

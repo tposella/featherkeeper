@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
-import { client, fakeGeocoder, fakeIdentifier, fakeSounds, makeJpeg, setup } from './helpers.js';
+import { client, fakeGeocoder, fakeIdentifier, fakeReference, fakeSounds, makeJpeg, setup } from './helpers.js';
 
 let ctx;
 let owner;
@@ -161,6 +161,46 @@ describe('dex, sightings and photos', () => {
     );
     assert.ok(dex.body.species.every((s) => s.status === 'missing'));
     robinId = dex.body.species.find((s) => s.ebirdCode === 'amerob').id;
+  });
+
+  test('greyed-examples view: example photos are fetched in the background and stored', async () => {
+    const url = '/api/catalogues/cochrane-backyard/species';
+    const plain = await anon.get(url);
+    assert.equal(plain.body.examplesPending, 0, 'nothing is fetched unless the examples view asks');
+    assert.ok(plain.body.species.every((s) => s.example === null));
+
+    const asked = await anon.get(`${url}?examples=1`);
+    assert.equal(asked.body.examplesPending, 3);
+    await ctx.examples.idle();
+
+    const done = await anon.get(`${url}?examples=1`);
+    assert.equal(done.body.examplesPending, 0, 'a species with no photo found is not retried straight away');
+    const robin = done.body.species.find((s) => s.ebirdCode === 'amerob');
+    const eagle = done.body.species.find((s) => s.ebirdCode === 'baleag');
+    assert.equal(eagle.example, null);
+    assert.equal(robin.example.licence, 'CC BY-NC', 'the first photo that downloads is used');
+    assert.match(robin.example.credit, /A\. Birder/);
+    const img = await anon.get(robin.example.url);
+    assert.equal(img.status, 200);
+    assert.equal(img.headers['content-type'], 'image/webp');
+    assert.match(img.headers['cache-control'], /immutable/);
+    assert.equal((await anon.get(`/api/species/${eagle.id}/example`)).status, 404);
+
+    const calls = fakeReference.calls;
+    await anon.get(`${url}?examples=1`);
+    await ctx.examples.idle();
+    assert.equal(fakeReference.calls, calls, 'stored examples are not looked up again');
+  });
+
+  test('the default dex view is a catalogue setting for the owner', async () => {
+    const url = '/api/catalogues/cochrane-backyard';
+    assert.equal((await anon.get(url)).body.catalogue.dexStyle, 'slots');
+    assert.equal((await editor.patch(url, { dexStyle: 'examples' })).status, 403);
+    assert.equal((await owner.patch(url, { dexStyle: 'colour' })).status, 400);
+    const res = await owner.patch(url, { dexStyle: 'examples' });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.catalogue.dexStyle, 'examples');
+    await owner.patch(url, { dexStyle: 'slots' });
   });
 
   test('eBird import from a place saves the area on the catalogue', async () => {

@@ -20,6 +20,7 @@ const details = reactive({
   regionCode: catalogue.value.regionCode ?? '',
   visibility: catalogue.value.visibility,
   hideLocations: catalogue.value.hideLocations,
+  dexStyle: catalogue.value.dexStyle ?? 'slots',
 });
 const detailsMsg = ref('');
 const detailsErr = ref('');
@@ -217,6 +218,26 @@ async function deleteCatalogue() {
               </span>
             </span>
           </label>
+          <fieldset class="dex-style">
+            <legend>Dex view</legend>
+            <p class="soft small">
+              How species you haven’t photographed yet look at first. Anyone can switch on the Dex tab, and their
+              browser remembers their choice.
+            </p>
+            <label class="check">
+              <input v-model="details.dexStyle" type="radio" value="slots" name="dex-style" />
+              <span><strong>Empty slots</strong> <span class="soft small">An empty frame until you add a photo.</span></span>
+            </label>
+            <label class="check">
+              <input v-model="details.dexStyle" type="radio" value="examples" name="dex-style" />
+              <span>
+                <strong>Greyed examples</strong>
+                <span class="soft small">
+                  A greyed-out example photo from iNaturalist, replaced by your own photo in full colour once you have one.
+                </span>
+              </span>
+            </label>
+          </fieldset>
           <button class="btn primary" type="submit">Save settings</button>
         </form>
       </section>
@@ -400,5 +421,17 @@ section {
 }
 .danger-zone .row {
   align-items: flex-end;
+}
+.dex-style {
+  border: 0;
+  padding: 0;
+  margin: 16px 0;
+}
+.dex-style legend {
+  font-weight: 700;
+  padding: 0;
+}
+.dex-style p {
+  margin: 2px 0 8px;
 }
 </style>

@@ -32,9 +32,12 @@ export const DEX_SQL = `
          coalesce(st.photo_count, 0)::int AS photo_count,
          st.first_observed, st.last_observed,
          coalesce(cs.cover_photo_id, st.latest_photo_id) AS cover_photo_id,
-         cs.cover_photo_id AS chosen_cover_id
+         cs.cover_photo_id AS chosen_cover_id,
+         ex.image IS NOT NULL AS has_example, ex.checked_at AS example_checked_at, ex.meta AS example_meta,
+         ex.species_id IS NULL OR (ex.image IS NULL AND ex.checked_at < now() - interval '1 day') AS example_needed
     FROM catalogue_species cs
     JOIN species sp ON sp.id = cs.species_id
+    LEFT JOIN species_examples ex ON ex.species_id = sp.id
     LEFT JOIN LATERAL (
       SELECT count(DISTINCT s.id) AS sighting_count,
              count(p.id) AS photo_count,
@@ -63,6 +66,17 @@ export function dexEntry(r) {
     // The photo shown for this species, and whether someone picked it (otherwise it's the newest).
     coverPhotoId: r.cover_photo_id ?? null,
     coverChosen: r.chosen_cover_id !== null && r.chosen_cover_id !== undefined,
+    // An example photo of the species (not yours), for the dex's greyed view. The version in the URL
+    // lets browsers cache it for good.
+    example: r.has_example
+      ? {
+          url: `/api/species/${r.id}/example?v=${Date.parse(r.example_checked_at) || 0}`,
+          credit: r.example_meta?.credit ?? '',
+          licence: r.example_meta?.licence ?? '',
+          source: r.example_meta?.source ?? '',
+          page: r.example_meta?.page ?? null,
+        }
+      : null,
   };
 }
 
@@ -97,21 +111,52 @@ async function upsertTaxon(t, taxon) {
   return row.id;
 }
 
-export default async function dexRoutes(app, { db, ebird }) {
+const examplesQuery = {
+  type: 'object',
+  // examples=1: the viewer is using the greyed-examples view, so look up any missing example photos.
+  properties: { examples: { type: 'integer', enum: [0, 1] } },
+};
+
+export default async function dexRoutes(app, { db, ebird, examples }) {
+  /** Queue example-photo lookups for rows that need one; returns how many are still to come. */
+  function queueExamples(rows) {
+    if (!examples?.enabled) return 0;
+    const needed = rows.filter((r) => r.example_needed).map((r) => r.id);
+    if (needed.length) examples.queue(needed);
+    return rows.filter((r) => r.example_needed || examples.isQueued(r.id)).length;
+  }
+
   // The full checklist for a catalogue, in taxonomic order. The frontend filters and searches it.
-  app.get('/catalogues/:slug/species', { schema: { params: slugParam } }, async (request) => {
+  app.get('/catalogues/:slug/species', { schema: { params: slugParam, querystring: examplesQuery } }, async (request) => {
     const { catalogue } = await loadCatalogue(db, request.params.slug, request.user);
     const rows = await db.many(`${DEX_SQL} ORDER BY sp.taxon_sort NULLS LAST, sp.common_name`, [catalogue.id]);
-    return { species: rows.map(dexEntry) };
+    const examplesPending = request.query.examples === 1 ? queueExamples(rows) : 0;
+    return { species: rows.map(dexEntry), examplesPending };
   });
+
+  // An example photo of a species (a small WebP stored in the database). Public: it only describes the species.
+  app.get(
+    '/species/:id/example',
+    { schema: { params: { type: 'object', required: ['id'], properties: { id: { type: 'integer' } } } } },
+    async (request, reply) => {
+      const row = await db.one('SELECT image FROM species_examples WHERE species_id = $1 AND image IS NOT NULL', [
+        request.params.id,
+      ]);
+      if (!row) throw notFound('No example photo for this species');
+      reply.header('Cache-Control', 'public, max-age=31536000, immutable');
+      reply.header('X-Content-Type-Options', 'nosniff');
+      return reply.type('image/webp').send(row.image);
+    },
+  );
 
   app.get(
     '/catalogues/:slug/species/:speciesId',
-    { schema: { params: entryParams } },
+    { schema: { params: entryParams, querystring: examplesQuery } },
     async (request) => {
       const { catalogue, access } = await loadCatalogue(db, request.params.slug, request.user);
       const entry = await db.one(`${DEX_SQL} AND cs.species_id = $2`, [catalogue.id, request.params.speciesId]);
       if (!entry) throw notFound('That species is not in this catalogue');
+      if (request.query.examples === 1) queueExamples([entry]);
 
       const showLocation = locationsVisible(catalogue, access);
       const sightings = await db.many(

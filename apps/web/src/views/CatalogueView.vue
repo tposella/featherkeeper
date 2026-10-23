@@ -1,5 +1,5 @@
 <script setup>
-import { provide, ref, watch } from 'vue';
+import { onUnmounted, provide, ref, watch } from 'vue';
 import { api } from '../api.js';
 import { CATALOGUE_KEY } from '../catalogue-context.js';
 import ProgressBar from '../components/ProgressBar.vue';
@@ -12,18 +12,59 @@ const species = ref([]);
 const error = ref('');
 const notFound = ref(false);
 
+// How the dex shows species you haven't photographed: 'slots' (empty frames) or 'examples'
+// (a greyed-out example photo). The catalogue sets the default; each viewer can switch, and
+// their choice is remembered in this browser.
+const dexStyle = ref('slots');
+const examplesPending = ref(0);
+const styleKey = () => `featherkeeper:dex-style:${props.slug}`;
+function loadDexStyle() {
+  let saved = null;
+  try {
+    saved = localStorage.getItem(styleKey());
+  } catch {
+    /* storage unavailable */
+  }
+  dexStyle.value = saved === 'slots' || saved === 'examples' ? saved : catalogue.value?.dexStyle ?? 'slots';
+}
+function setDexStyle(style) {
+  dexStyle.value = style;
+  try {
+    localStorage.setItem(styleKey(), style);
+  } catch {
+    /* storage unavailable */
+  }
+  if (style === 'examples') reloadDex();
+}
+
 async function reload() {
   catalogue.value = (await api.get(`/catalogues/${props.slug}`)).catalogue;
 }
+// Example photos are fetched on the server a few per second, so while some are still coming,
+// check back now and then until they've all arrived.
+let pollTimer = null;
+let polls = 0;
 async function reloadDex() {
-  species.value = (await api.get(`/catalogues/${props.slug}/species`)).species;
+  const examples = dexStyle.value === 'examples';
+  const res = await api.get(`/catalogues/${props.slug}/species${examples ? '?examples=1' : ''}`);
+  species.value = res.species;
+  examplesPending.value = examples ? res.examplesPending ?? 0 : 0;
+  clearTimeout(pollTimer);
+  if (examples && res.examplesPending > 0 && polls < 120) {
+    polls += 1;
+    pollTimer = setTimeout(() => reloadDex().catch(() => {}), 5000);
+  } else {
+    polls = 0;
+  }
 }
+onUnmounted(() => clearTimeout(pollTimer));
 
 async function loadAll() {
   error.value = '';
   notFound.value = false;
   catalogue.value = null;
   try {
+    loadDexStyle(); // a saved choice is known before the catalogue loads, so fetch both at once
     await Promise.all([reload(), reloadDex()]);
   } catch (err) {
     if (err.status === 404) notFound.value = true;
@@ -32,8 +73,18 @@ async function loadAll() {
 }
 
 watch(() => props.slug, loadAll, { immediate: true });
+// Follow the catalogue's default (it loads after the first fetch, and the owner can change it),
+// unless this viewer has picked a view themselves.
+watch(
+  () => catalogue.value?.dexStyle,
+  () => {
+    const was = dexStyle.value;
+    loadDexStyle();
+    if (dexStyle.value !== was) reloadDex().catch(() => {});
+  },
+);
 
-provide(CATALOGUE_KEY, { catalogue, species, reload, reloadDex });
+provide(CATALOGUE_KEY, { catalogue, species, reload, reloadDex, dexStyle, setDexStyle, examplesPending });
 </script>
 
 <template>

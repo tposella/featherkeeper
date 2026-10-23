@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useCatalogue } from '../catalogue-context.js';
 import ProgressBar from '../components/ProgressBar.vue';
 
-const { catalogue, species } = useCatalogue();
+const { catalogue, species, dexStyle } = useCatalogue();
 
 const sort = ref('taxonomic');
 const hideComplete = ref(false);
@@ -115,6 +115,7 @@ function summary(f) {
                 :title="`${s.commonName}: ${s.status === 'photographed' ? 'photographed' : s.status === 'logged' ? 'seen, no photo yet' : 'not yet seen'}`"
               >
                 <img v-if="s.coverUrl" :src="s.coverUrl" alt="" loading="lazy" />
+                <img v-else-if="dexStyle === 'examples' && s.example" :src="s.example.url" class="example-img" alt="" loading="lazy" />
                 <span class="visually-hidden">{{ s.commonName }}</span>
               </RouterLink>
             </li>

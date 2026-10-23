@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 import { createDb } from '../src/db/index.js';
+import { createExamples } from '../src/lib/examples.js';
 import { migrate } from '../src/db/migrate.js';
 import { createStorage } from '../src/lib/storage.js';
 
@@ -150,6 +151,36 @@ export const fakeIdentifier = {
 };
 
 /** Fresh schema, fresh photo dir, and a running app for each test file. */
+/** Reference photos: one for every species except the Bald Eagle, so both outcomes are covered. */
+export const fakeReference = {
+  enabled: true,
+  calls: 0,
+  async forSpecies(scientificName) {
+    this.calls += 1;
+    if (scientificName === 'Haliaeetus leucocephalus') return { photos: [], links: {} };
+    return {
+      photos: [
+        { medium: 'https://example.test/broken.jpg', credit: 'nobody', licence: 'CC BY', source: 'iNaturalist', page: null },
+        {
+          medium: 'https://example.test/robin.jpg',
+          credit: '(c) A. Birder, some rights reserved (CC BY-NC)',
+          licence: 'CC BY-NC',
+          source: 'iNaturalist',
+          page: 'https://www.inaturalist.org/photos/1',
+        },
+      ],
+      links: {},
+    };
+  },
+};
+
+/** Stands in for fetch when downloading example photos: the "broken" URL fails, the rest return a JPEG. */
+async function fakeImageFetch(url) {
+  if (url.includes('broken')) return { ok: false, status: 404 };
+  const buf = await makeJpeg(600, 450);
+  return { ok: true, status: 200, arrayBuffer: async () => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length) };
+}
+
 export async function setup() {
   const dataDir = await mkdtemp(path.join(os.tmpdir(), 'fk-test-'));
   const config = {
@@ -165,6 +196,7 @@ export async function setup() {
   await migrate(db, { info() {} });
   const storage = createStorage(dataDir);
   await storage.ensureReady();
+  const examples = createExamples({ db, reference: fakeReference, userAgent: 'test', fetchImpl: fakeImageFetch, pauseMs: 0 });
   const app = await buildApp({
     config,
     db,
@@ -175,6 +207,8 @@ export async function setup() {
     inat: fakeInat,
     wikipedia: fakeWikipedia,
     sounds: fakeSounds,
+    reference: fakeReference,
+    examples,
     logger: false,
   });
   await app.ready();
@@ -182,6 +216,7 @@ export async function setup() {
   return {
     app,
     db,
+    examples,
     async teardown() {
       await app.close();
       await db.close();

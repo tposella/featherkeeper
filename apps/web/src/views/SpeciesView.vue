@@ -11,7 +11,7 @@ import ThumbnailPicker from '../components/ThumbnailPicker.vue';
 import { formatDate, plateNumber } from '../format.js';
 
 const props = defineProps({ speciesId: { type: Number, required: true } });
-const { catalogue, species, reload, reloadDex } = useCatalogue();
+const { catalogue, species, reload, reloadDex, dexStyle } = useCatalogue();
 const router = useRouter();
 const route = useRoute();
 
@@ -59,7 +59,8 @@ function step(d) {
 
 async function load() {
   try {
-    const res = await api.get(`/catalogues/${catalogue.value.slug}/species/${props.speciesId}`);
+    const examples = dexStyle.value === 'examples' ? '?examples=1' : '';
+    const res = await api.get(`/catalogues/${catalogue.value.slug}/species/${props.speciesId}${examples}`);
     entry.value = res.entry;
     sightings.value = res.sightings;
     notes.value = res.entry.notes;
@@ -239,6 +240,20 @@ function exifLine(p) {
             <img :src="cover.urls.display" alt="" />
           </button>
           <img v-else-if="entry.coverUrl" :src="entry.coverUrl" alt="" />
+          <template v-else-if="dexStyle === 'examples' && entry.example">
+            <img :src="entry.example.url" class="example-img" :alt="`Example photo of a ${entry.commonName}`" />
+            <p class="example-note small">
+              <strong>{{ entry.status === 'logged' ? 'Seen, not yet photographed.' : 'Not yet photographed.' }}</strong>
+              Example photo:
+              <a v-if="entry.example.page" :href="entry.example.page" target="_blank" rel="noopener">{{
+                entry.example.credit || entry.example.source
+              }}</a
+              ><template v-else>{{ entry.example.credit || entry.example.source }}</template
+              ><template v-if="entry.example.licence && !entry.example.credit.includes(entry.example.licence)">,
+                {{ entry.example.licence }}</template
+              >
+            </p>
+          </template>
           <span v-else class="soft">{{ entry.status === 'logged' ? 'Seen, not yet photographed' : 'Not yet photographed' }}</span>
           <button v-if="canEdit && allPhotos.length > 1" type="button" class="change-thumb" @click="picking = true">
             Change thumbnail
@@ -628,6 +643,19 @@ function exifLine(p) {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.example-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 8px 12px;
+  background: rgb(20 28 24 / 0.72);
+  color: #e8ece9;
+}
+.example-note a {
+  color: #bcdcee;
 }
 .hero-photo.missing {
   border: 1.5px dashed var(--rule);

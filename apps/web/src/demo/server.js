@@ -240,6 +240,14 @@ function dexEntry(c, speciesId) {
     coverUrl: cover ? photoUrls(cover, c).thumb : null,
     coverPhotoId: cover?.id ?? null,
     coverChosen: Boolean(chosen),
+    // In a real install this is an openly licensed photo from iNaturalist, stored on the server.
+    example: {
+      url: placeholderPhoto(species.indexOf(sp) * 3 + 1, 480, 480),
+      credit: 'Sample example photo (in a real install: the photographer’s name, from iNaturalist)',
+      licence: 'CC BY-NC',
+      source: 'iNaturalist',
+      page: 'https://www.inaturalist.org',
+    },
   };
 }
 
@@ -262,6 +270,7 @@ function serializeCatalogue(c) {
     regionCode: c.regionCode,
     visibility: c.visibility,
     hideLocations: c.hideLocations,
+    dexStyle: c.dexStyle ?? 'slots',
     area: c.area ? (showLocations(c) ? c.area : { ...c.area, latitude: null, longitude: null }) : null,
     createdAt: c.createdAt,
     updatedAt: c.createdAt,
@@ -338,7 +347,7 @@ const routes = [
   ['PATCH', /^\/catalogues\/([\w-]+)$/, ([slug], body) => {
     const c = getCatalogue(slug);
     requireManage(c);
-    for (const k of ['name', 'slug', 'description', 'regionCode', 'visibility', 'hideLocations']) {
+    for (const k of ['name', 'slug', 'description', 'regionCode', 'visibility', 'hideLocations', 'dexStyle']) {
       if (k in body) c[k] = body[k];
     }
     return { catalogue: serializeCatalogue(c) };
@@ -350,7 +359,7 @@ const routes = [
     return { ok: true };
   }],
 
-  ['GET', /^\/catalogues\/([\w-]+)\/species$/, ([slug]) => ({ species: dexList(getCatalogue(slug)) })],
+  ['GET', /^\/catalogues\/([\w-]+)\/species$/, ([slug]) => ({ species: dexList(getCatalogue(slug)), examplesPending: 0 })],
   ['GET', /^\/catalogues\/([\w-]+)\/species\/(\d+)$/, ([slug, id]) => {
     const c = getCatalogue(slug);
     const speciesId = Number(id);

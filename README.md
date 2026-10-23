@@ -69,6 +69,11 @@ Featherkeeper turns that into something more fun and more useful:
 
 **The dex**
 - A grid in field-guide (taxonomic) order with plate numbers (#001, #002...).
+- Two ways to show species you haven't photographed: **empty slots**, or **greyed examples**, like a
+  pokédex. With greyed examples, each one shows an openly licensed example photo in grey, and your own
+  photo replaces it in full colour once you add one. Owners set the default in Settings, and anyone can
+  switch on the Dex tab. Example photos are fetched once by your server, stored in the database as small
+  WebP files with the photographer's credit, and served from there.
 - Filter by **Photographed / Seen, no photo / Not yet**, search by name or number, and filter by family.
 - **Families** view: progress per bird family (ducks, owls, woodpeckers...) with mini plates for every
   species, sortable by "most left to photograph" or "closest to complete".
@@ -294,7 +299,7 @@ All settings live in `.env` (see [`.env.example`](.env.example)). Changing one t
 | **Place search** | | |
 | `GEOCODER_URL` | OpenStreetMap Nominatim | Your own Nominatim server, or empty to switch place search off |
 | **Species information** | | |
-| `REFERENCE_PHOTOS` | `true` | Example photos next to AI suggestions |
+| `REFERENCE_PHOTOS` | `true` | Example photos next to AI suggestions and in the greyed-examples dex view |
 | `SPECIES_INSIGHTS` | `true` | "In season" and "When and where to find it" |
 | `SPECIES_SOUNDS` | `true` | "Calls and songs" |
 | `XENO_CANTO_API_KEY` | empty | Adds xeno-canto recordings (labelled song or call) |
@@ -359,9 +364,10 @@ ever sees a shrunk copy with all metadata removed. Outbound requests are lookups
 | xeno-canto | Scientific names, country, your API key | Empty `XENO_CANTO_API_KEY` |
 | OpenStreetMap Nominatim | Place searches, and coordinates to name a place | Empty `GEOCODER_URL` |
 
-Visitors' browsers also load map tiles from OpenStreetMap, and example photos and recordings straight
-from iNaturalist, Wikimedia and xeno-canto, so those sites see the visitor's IP address, as with any
-embedded image.
+Visitors' browsers also load map tiles from OpenStreetMap, and the example photos next to AI suggestions
+and recordings straight from iNaturalist, Wikimedia and xeno-canto, so those sites see the visitor's IP
+address, as with any embedded image. The dex's greyed example photos are the exception: your server
+downloads them once and serves them itself.
 
 ## Development
 
