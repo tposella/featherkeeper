@@ -1,0 +1,24 @@
+# One-off: fetch the official AGPL-3.0 text from gnu.org onto the license-text branch.
+# Removed again once LICENSE is in the repo.
+name: Fetch licence text
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fetch-license.yml']
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          mkdir out && cd out
+          curl -fsSL https://www.gnu.org/licenses/agpl-3.0.txt -o LICENSE
+          head -3 LICENSE
+          wc -l LICENSE
+          sha256sum LICENSE | tee LICENSE.sha256
+          git init -q -b license-text
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -q -m "AGPL-3.0 text from gnu.org"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" license-text
