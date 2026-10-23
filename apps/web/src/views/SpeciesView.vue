@@ -646,6 +646,8 @@ function exifLine(p) {
 }
 .example-note {
   position: absolute;
+  justify-self: stretch; /* the frame is a centring grid */
+  align-self: end;
   left: 0;
   right: 0;
   bottom: 0;
