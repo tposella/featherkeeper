@@ -230,26 +230,6 @@ function exifLine(p) {
         </div>
       </section>
 
-      <SpeciesInsights :catalogue="catalogue.slug" :species-id="entry.id" :common-name="entry.commonName" />
-
-      <section class="notes">
-        <h3>Notes</h3>
-        <template v-if="editingNotes">
-          <textarea v-model="notes" maxlength="10000" aria-label="Notes"></textarea>
-          <div class="row">
-            <button class="btn primary" type="button" @click="saveNotes">Save notes</button>
-            <button class="btn quiet" type="button" @click="(editingNotes = false), (notes = entry.notes)">Cancel</button>
-          </div>
-        </template>
-        <template v-else>
-          <p v-if="entry.notes" class="pre">{{ entry.notes }}</p>
-          <p v-else class="soft">No notes yet.</p>
-          <button v-if="canEdit" class="btn" type="button" @click="editingNotes = true">
-            {{ entry.notes ? 'Edit notes' : 'Add notes' }}
-          </button>
-        </template>
-      </section>
-
       <section v-if="allPhotos.length" class="album">
         <div class="album-head">
           <h3>Album <span class="n">{{ allPhotos.length }} photo{{ allPhotos.length === 1 ? '' : 's' }}</span></h3>
@@ -271,6 +251,26 @@ function exifLine(p) {
         <button v-if="!showAllAlbum && allPhotos.length > ALBUM_PREVIEW" class="btn quiet" type="button" @click="showAllAlbum = true">
           Show all {{ allPhotos.length }} photos
         </button>
+      </section>
+
+      <SpeciesInsights :catalogue="catalogue.slug" :species-id="entry.id" :common-name="entry.commonName" />
+
+      <section class="notes">
+        <h3>Notes</h3>
+        <template v-if="editingNotes">
+          <textarea v-model="notes" maxlength="10000" aria-label="Notes"></textarea>
+          <div class="row">
+            <button class="btn primary" type="button" @click="saveNotes">Save notes</button>
+            <button class="btn quiet" type="button" @click="(editingNotes = false), (notes = entry.notes)">Cancel</button>
+          </div>
+        </template>
+        <template v-else>
+          <p v-if="entry.notes" class="pre">{{ entry.notes }}</p>
+          <p v-else class="soft">No notes yet.</p>
+          <button v-if="canEdit" class="btn" type="button" @click="editingNotes = true">
+            {{ entry.notes ? 'Edit notes' : 'Add notes' }}
+          </button>
+        </template>
       </section>
 
       <section>
