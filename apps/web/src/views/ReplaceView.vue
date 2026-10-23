@@ -149,6 +149,7 @@ async function remove(p) {
   margin: 0;
 }
 .sort {
+  white-space: nowrap;
   display: flex;
   gap: 8px;
   align-items: center;
