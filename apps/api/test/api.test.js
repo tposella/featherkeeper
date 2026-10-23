@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
-import { client, fakeGeocoder, fakeIdentifier, makeJpeg, setup } from './helpers.js';
+import { client, fakeGeocoder, fakeIdentifier, fakeSounds, makeJpeg, setup } from './helpers.js';
 
 let ctx;
 let owner;
@@ -451,6 +451,17 @@ describe('dex, sightings and photos', () => {
     assert.equal(ok.body.reports[0].where, 'Glenbow Ranch PP');
     assert.equal(ok.body.links.ebird, 'https://ebird.org/species/amerob');
     assert.ok(Array.isArray(ok.body.yours));
+  });
+
+  test('sounds for a species use the catalogue area', async () => {
+    const dex = await owner.get('/api/catalogues/cochrane-backyard-2/species');
+    const robin = dex.body.species.find((s) => s.ebirdCode === 'amerob');
+    assert.equal((await stranger.get(`/api/catalogues/cochrane-backyard-2/species/${robin.id}/sounds`)).status, 404);
+    const res = await owner.get(`/api/catalogues/cochrane-backyard-2/species/${robin.id}/sounds`);
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.sounds[0].licence, 'CC BY-NC');
+    assert.equal(fakeSounds.lastNear.latitude, 51.19);
+    assert.equal(fakeSounds.lastNear.country, 'Canada');
   });
 
   test('deleting a sighting removes its photos', async () => {

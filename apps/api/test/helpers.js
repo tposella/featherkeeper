@@ -115,6 +115,18 @@ export const fakeWikipedia = {
   },
 };
 
+export const fakeSounds = {
+  enabled: true,
+  provider: 'inaturalist',
+  lastNear: undefined,
+  async forSpecies(name, near) {
+    fakeSounds.lastNear = near;
+    return [
+      { url: 'https://static.example/sounds/1.mp3', kind: null, type: null, where: 'Cochrane, AB', credit: '(c) Ann', licence: 'CC BY-NC', source: 'iNaturalist', page: 'https://www.inaturalist.org/observations/1' },
+    ];
+  },
+};
+
 export const fakeIdentifier = {
   enabled: true,
   provider: 'fake',
@@ -162,6 +174,7 @@ export async function setup() {
     identifier: fakeIdentifier,
     inat: fakeInat,
     wikipedia: fakeWikipedia,
+    sounds: fakeSounds,
     logger: false,
   });
   await app.ready();

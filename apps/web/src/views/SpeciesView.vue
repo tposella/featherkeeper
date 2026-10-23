@@ -2,8 +2,10 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api.js';
+import { session } from '../session.js';
 import { useCatalogue } from '../catalogue-context.js';
 import SpeciesInsights from '../components/SpeciesInsights.vue';
+import SpeciesSounds from '../components/SpeciesSounds.vue';
 import EditSighting from '../components/EditSighting.vue';
 import ThumbnailPicker from '../components/ThumbnailPicker.vue';
 import { formatDate, plateNumber } from '../format.js';
@@ -272,6 +274,13 @@ function exifLine(p) {
           Show all {{ allPhotos.length }} photos
         </button>
       </section>
+
+      <SpeciesSounds
+        v-if="session.config.soundsEnabled !== false"
+        :catalogue="catalogue.slug"
+        :species-id="entry.id"
+        :common-name="entry.commonName"
+      />
 
       <SpeciesInsights :catalogue="catalogue.slug" :species-id="entry.id" :common-name="entry.commonName" />
 

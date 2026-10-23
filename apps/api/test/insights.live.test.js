@@ -39,3 +39,12 @@ test('Wikipedia: habitat text for a species', { skip, timeout: 60000 }, async ()
   assert.ok(habitat && habitat.text.length > 40);
   assert.match(habitat.url, /^https:\/\/en\.wikipedia\.org\/wiki\//);
 });
+
+test('iNaturalist: openly licensed recordings of a species', { skip, timeout: 60000 }, async () => {
+  const { createSoundsClient } = await import('../src/integrations/sounds.js');
+  const sounds = createSoundsClient({ enabled: true, userAgent: opts.userAgent });
+  const list = await sounds.forSpecies('Turdus migratorius', { latitude: 51.19, longitude: -114.47, country: 'Canada' });
+  console.log(`sounds: ${list.length}; first: ${list[0]?.url} ${list[0]?.licence} at ${list[0]?.where}; credit ${list[0]?.credit}`);
+  assert.ok(list.length >= 3);
+  assert.ok(list.every((s) => s.url.startsWith('https://') && s.licence && s.credit));
+});

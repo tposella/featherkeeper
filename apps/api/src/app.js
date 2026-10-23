@@ -6,6 +6,7 @@ import { createEbirdClient } from './integrations/ebird.js';
 import { createGeocoder } from './integrations/geocode.js';
 import { createInaturalistClient } from './integrations/inat.js';
 import { createReferenceClient } from './integrations/reference.js';
+import { createSoundsClient } from './integrations/sounds.js';
 import { createWikipediaClient } from './integrations/wikipedia.js';
 import { createIdentifier } from './integrations/identify.js';
 import { createStorage } from './lib/storage.js';
@@ -23,7 +24,7 @@ import systemRoutes from './routes/system.js';
  * Build the Fastify app. Dependencies can be passed in (tests swap the eBird
  * client and the identifier for fakes); anything missing is created from config.
  */
-export async function buildApp({ config, db, storage, ebird, geocoder, identifier, reference, inat, wikipedia, logger }) {
+export async function buildApp({ config, db, storage, ebird, geocoder, identifier, reference, inat, wikipedia, sounds, logger }) {
   const deps = {
     config,
     db,
@@ -33,6 +34,7 @@ export async function buildApp({ config, db, storage, ebird, geocoder, identifie
     reference: reference ?? createReferenceClient(config.reference),
     inat: inat ?? createInaturalistClient(config.insights),
     wikipedia: wikipedia ?? createWikipediaClient(config.insights),
+    sounds: sounds ?? createSoundsClient(config.sounds),
     identifier: identifier ?? createIdentifier(config.identify),
   };
 

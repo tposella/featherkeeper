@@ -62,6 +62,12 @@ export function loadConfig(env = process.env) {
       enabled: bool(env.SPECIES_INSIGHTS, true),
       userAgent: `Featherkeeper/0.1 (+${publicUrl})`,
     },
+    // "Calls and songs": iNaturalist by default; xeno-canto too when a key is set.
+    sounds: {
+      enabled: bool(env.SPECIES_SOUNDS, true),
+      userAgent: `Featherkeeper/0.1 (+${publicUrl})`,
+      xenoCantoKey: env.XENO_CANTO_API_KEY ?? '',
+    },
     identify: {
       provider: identifyProvider,
       url: env.IDENTIFY_URL ?? '',

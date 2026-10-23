@@ -278,6 +278,7 @@ const routes = [
     ebirdEnabled: true,
     placeSearchEnabled: true,
     referencePhotosEnabled: true,
+    soundsEnabled: true,
     identifyEnabled: true,
   })],
   ['GET', /^\/auth\/me$/, () => ({ user: me() })],
@@ -704,6 +705,25 @@ const routes = [
           : [],
     };
   }],
+  ['GET', /^\/catalogues\/([\w-]+)\/species\/(\d+)\/sounds$/, async () => {
+    await wait(300);
+    // A short synthesized chirp so the players work in the demo; real installs play real recordings.
+    const chirp = demoChirp();
+    const one = (kind, type, where, i) => ({
+      url: chirp, kind, type, quality: kind ? 'A' : null, length: '0:02', where,
+      credit: `Sample recording ${i} (in a real install: the recordist's name)`, licence: 'CC BY-NC-SA 4.0',
+      source: kind ? 'xeno-canto' : 'iNaturalist', page: 'https://xeno-canto.org',
+    });
+    return {
+      provider: 'xeno-canto',
+      sounds: [
+        one('song', 'song', 'Glenbow Ranch, Alberta, Canada', 1),
+        one('call', 'alarm call', 'Fish Creek, Alberta, Canada', 2),
+        one('song', 'dawn song', 'Banff, Alberta, Canada', 3),
+        one(null, null, 'Cochrane, AB', 4),
+      ],
+    };
+  }],
   ['GET', /^\/catalogues\/([\w-]+)\/species\/(\d+)\/insights$/, async ([slug, id]) => {
     const c = getCatalogue(slug);
     await wait(500);
@@ -775,4 +795,31 @@ export async function demoRequest(method, url, body) {
     if (match) return handler(match.slice(1), body ?? {}, query);
   }
   throw new DemoError(404, `The demo doesn't implement ${method} ${path}`);
+}
+
+let chirpUrl = null;
+/** A two-second WAV of three falling chirps, generated once. */
+function demoChirp() {
+  if (chirpUrl) return chirpUrl;
+  const rate = 22050;
+  const n = rate * 2;
+  const buf = new ArrayBuffer(44 + n * 2);
+  const v = new DataView(buf);
+  const str = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
+  let phase = 0;
+  for (let i = 0; i < n; i += 1) {
+    const t = i / rate;
+    const k = Math.floor(t / 0.45);
+    const local = t - k * 0.45;
+    const on = k < 3 && local < 0.22;
+    const f = 4200 - local * 9000;
+    phase += (2 * Math.PI * f) / rate;
+    const env = on ? Math.sin((Math.PI * local) / 0.22) : 0;
+    v.setInt16(44 + i * 2, Math.round(env * 0.35 * 32767 * Math.sin(phase)), true);
+  }
+  chirpUrl = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  return chirpUrl;
 }

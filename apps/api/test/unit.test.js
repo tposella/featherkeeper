@@ -182,3 +182,32 @@ test('XMP-style dates are understood, with their own offset', () => {
   assert.equal(exifDateToIso('2023-06-11T05:58:00-06:00'), '2023-06-11T11:58:00.000Z');
   assert.equal(exifDateToIso('2023-06-11T05:58'), '2023-06-11T05:58:00.000Z');
 });
+
+test('sound licences and kinds', async () => {
+  const { licenceFromUrl, soundKind } = await import('../src/integrations/sounds.js');
+  assert.equal(licenceFromUrl('//creativecommons.org/licenses/by-nc-sa/4.0/'), 'CC BY-NC-SA 4.0');
+  assert.equal(licenceFromUrl('https://creativecommons.org/publicdomain/zero/1.0/'), 'CC0');
+  assert.equal(soundKind('song'), 'song');
+  assert.equal(soundKind('call, flight call'), 'call');
+  assert.equal(soundKind('alarm call'), 'call');
+  assert.equal(soundKind('drumming'), 'drumming');
+  assert.equal(soundKind(''), null);
+});
+
+test('xeno-canto results come first and alternate songs and calls', async () => {
+  const { createSoundsClient } = await import('../src/integrations/sounds.js');
+  const json = (b) => new Response(JSON.stringify(b), { headers: { 'content-type': 'application/json' } });
+  const rec = (id, type, q) => ({ id, type, q, rec: 'Rec', cnt: 'Canada', loc: 'Alberta', lat: '51', lon: '-114', file: `//xeno-canto.org/${id}/download`, lic: '//creativecommons.org/licenses/by-nc-sa/4.0/', url: `//xeno-canto.org/${id}` });
+  const fakeFetch = async (url) => {
+    if (url.includes('xeno-canto.org/api/3')) {
+      assert.match(url, /key=k123/);
+      return json({ recordings: [rec(1, 'song', 'B'), rec(2, 'song', 'A'), rec(3, 'call', 'A'), rec(4, 'song', 'C')] });
+    }
+    throw new Error('iNaturalist should not be needed');
+  };
+  const sounds = createSoundsClient({ enabled: true, userAgent: 't', xenoCantoKey: 'k123' }, fakeFetch);
+  const list = await sounds.forSpecies('Turdus migratorius', { latitude: 51, longitude: -114, country: 'Canada' });
+  assert.deepEqual(list.map((r) => r.kind), ['song', 'call', 'song', 'song']);
+  assert.equal(list[0].url, 'https://xeno-canto.org/2/download', 'best quality song first');
+  assert.equal(list[0].licence, 'CC BY-NC-SA 4.0');
+});

@@ -13,7 +13,7 @@ function publicArea(area) {
 const ebirdSource = (area) =>
   area.kind === 'region' ? { regionCode: area.regionCode } : { latitude: area.latitude, longitude: area.longitude, radiusKm: area.radiusKm };
 
-export default async function seasonRoutes(app, { db, ebird, inat, wikipedia }) {
+export default async function seasonRoutes(app, { db, ebird, inat, wikipedia, sounds }) {
   /**
    * What's around: species reported in the last 30 days (eBird, current month only) and species
    * usually photographed in the chosen month over the last five years (iNaturalist).
@@ -78,6 +78,38 @@ export default async function seasonRoutes(app, { db, ebird, inat, wikipedia }) 
         .filter((o) => !dexCodes.has(o.ebirdCode))
         .map((o) => ({ ebirdCode: o.ebirdCode, commonName: o.commonName, scientificName: o.scientificName, observedAt: o.observedAt, where: o.where }));
       return result;
+    },
+  );
+
+  /** Recordings of the species' song and calls, nearest to the catalogue's area first. */
+  app.get(
+    '/catalogues/:slug/species/:speciesId/sounds',
+    {
+      config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+      schema: {
+        params: {
+          type: 'object',
+          required: ['slug', 'speciesId'],
+          properties: { slug: { type: 'string', maxLength: 64 }, speciesId: { type: 'integer' } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { catalogue } = await loadCatalogue(db, request.params.slug, request.user);
+      const sp = await db.one(
+        `SELECT sp.scientific_name FROM catalogue_species cs JOIN species sp ON sp.id = cs.species_id
+          WHERE cs.catalogue_id = $1 AND cs.species_id = $2`,
+        [catalogue.id, request.params.speciesId],
+      );
+      if (!sp) throw notFound('That species is not in this catalogue');
+      const area = await catalogueArea(db, catalogue.id);
+      const country = (catalogue.region_code ?? '').slice(0, 2);
+      const COUNTRY = { CA: 'Canada', US: 'United States', MX: 'Mexico', GB: 'United Kingdom', AU: 'Australia', NZ: 'New Zealand' };
+      const near =
+        area && area.kind !== 'region' ? { latitude: area.latitude, longitude: area.longitude, country: COUNTRY[country] ?? null } : null;
+      const list = await sounds.forSpecies(sp.scientific_name, near).catch(() => []);
+      reply.header('Cache-Control', 'private, max-age=3600');
+      return { provider: sounds.provider, sounds: list };
     },
   );
 
