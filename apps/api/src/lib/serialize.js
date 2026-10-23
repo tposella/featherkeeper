@@ -39,7 +39,7 @@ export function species(s) {
   };
 }
 
-export function photo(p, { showLocation, canDownloadOriginal }) {
+export function photo(p, { showLocation, canDownloadOriginal, showReplace = true }) {
   return {
     id: p.id,
     sightingId: p.sighting_id,
@@ -54,6 +54,8 @@ export function photo(p, { showLocation, canDownloadOriginal }) {
     originalName: p.original_name,
     sizeBytes: Number(p.size_bytes),
     createdAt: iso(p.created_at),
+    // Marked as "want to replace" with a better shot.
+    replace: showReplace && p.replace_wanted ? { note: p.replace_note ?? '', markedAt: iso(p.replace_marked_at) } : null,
     urls: {
       thumb: `/api/photos/${p.id}/thumb`,
       display: `/api/photos/${p.id}/display`,

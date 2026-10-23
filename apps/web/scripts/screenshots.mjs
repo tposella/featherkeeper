@@ -18,6 +18,7 @@ const pages = [
   ['dex-one-family', '#/c/bow-valley?family=Woodpeckers'],
   ['map', '#/c/bow-valley/map'],
   ['recent', '#/c/bow-valley/recent'],
+  ['to-replace', '#/c/bow-valley/to-replace'],
   ['log-sighting', '#/c/bow-valley/log'],
   ['settings', '#/c/bow-valley/settings'],
   ['new-catalogue', '#/new'],
@@ -113,6 +114,35 @@ for (const scheme of ['light', 'dark']) {
       console.log(`THUMBNAIL picker closed=${!(await page.locator('.grid .tile').count())} badges=${badge} badgeOnTile=${thumbIndex}`);
       await page.goto(new URL('#/c/bow-valley', base).href);
       await page.waitForTimeout(700);
+
+      // Marking a photo "want to replace", then finding it on the To replace tab.
+      await page.goto(new URL('#/c/bow-valley/to-replace', base).href);
+      await page.waitForTimeout(900);
+      const before = await page.locator('.list .card').count();
+      await page.goto(new URL('#/c/bow-valley/species/2', base).href);
+      await page.waitForTimeout(1500);
+      await page.locator('.album-tile').first().click();
+      await page.getByRole('button', { name: 'Want to replace' }).click();
+      await page.getByLabel(/better shot/).fill('Too far away, screenshot test');
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-replace-mark.png` });
+      await page.getByRole('button', { name: 'Mark to replace' }).click();
+      await page.waitForTimeout(600);
+      const markedText = await page.getByText('Marked to replace').count();
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-replace-marked.png` });
+      await page.keyboard.press('Escape');
+      const flags = await page.locator('.album-tile .flag').count();
+      await page.getByRole('link', { name: /^To replace/ }).click();
+      await page.waitForTimeout(900);
+      const after = await page.locator('.list .card').count();
+      const noteShown = await page.getByText('Too far away, screenshot test').count();
+      const tabCount = (await page.locator('.tab-count').textContent())?.trim();
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-replace-tab.png`, fullPage: true });
+      await page.locator('.list .card').filter({ hasText: 'Too far away' }).getByRole('button', { name: 'Unmark' }).click();
+      await page.waitForTimeout(600);
+      console.log(
+        `REPLACE before=${before} after=${after} markedText=${markedText} flags=${flags} noteShown=${noteShown} ` +
+          `tabCount="${tabCount}" afterUnmark=${await page.locator('.list .card').count()}`,
+      );
 
       // AI suggestions for an unidentified photo, then accepting the top match.
       await page.goto(new URL('#/c/bow-valley/log', base).href);

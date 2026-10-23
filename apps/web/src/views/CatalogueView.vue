@@ -88,6 +88,11 @@ provide(CATALOGUE_KEY, { catalogue, species, reload, reloadDex });
         <RouterLink :to="{ name: 'season', params: { slug } }" active-class="on">In season</RouterLink>
         <RouterLink :to="{ name: 'map', params: { slug } }" active-class="on">Map</RouterLink>
         <RouterLink :to="{ name: 'recent', params: { slug } }" active-class="on">Recent sightings</RouterLink>
+        <RouterLink v-if="catalogue.access.canEdit" :to="{ name: 'to-replace', params: { slug } }" active-class="on">
+          To replace<span v-if="catalogue.stats.toReplace" class="tab-count"
+            >{{ catalogue.stats.toReplace }}<span class="visually-hidden"> photos</span></span
+          >
+        </RouterLink>
         <RouterLink
           v-if="catalogue.access.canEdit"
           :to="{ name: 'settings', params: { slug } }"
@@ -163,5 +168,16 @@ provide(CATALOGUE_KEY, { catalogue, species, reload, reloadDex });
   .cat-head {
     grid-template-columns: 1fr;
   }
+}
+.tab-count {
+  display: inline-block;
+  margin-left: 6px;
+  min-width: 1.5em;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--goldfinch-wash);
+  color: var(--ink);
+  font-size: var(--step--1);
+  text-align: center;
 }
 </style>

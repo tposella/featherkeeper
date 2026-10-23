@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api.js';
 import { session } from '../session.js';
 import { useCatalogue } from '../catalogue-context.js';
@@ -13,6 +13,7 @@ import { formatDate, plateNumber } from '../format.js';
 const props = defineProps({ speciesId: { type: Number, required: true } });
 const { catalogue, species, reload, reloadDex } = useCatalogue();
 const router = useRouter();
+const route = useRoute();
 
 const entry = ref(null);
 const sightings = ref([]);
@@ -62,6 +63,9 @@ async function load() {
     entry.value = res.entry;
     sightings.value = res.sightings;
     notes.value = res.entry.notes;
+    // Links from the "To replace" tab open the photo straight away.
+    const wanted = Number(route.query.photo);
+    if (wanted && !lightbox.value) lightbox.value = allPhotos.value.find((p) => p.id === wanted) ?? null;
   } catch (err) {
     error.value = err.status === 404 ? 'That species is not in this catalogue.' : err.message;
   }
@@ -72,6 +76,7 @@ onMounted(load);
 const closeBtn = ref(null);
 let lastFocus = null;
 watch(lightbox, async (open, wasOpen) => {
+  if (open?.id !== wasOpen?.id) replaceForm.value = null;
   if (open && !wasOpen) {
     lastFocus = document.activeElement;
     await nextTick();
@@ -82,6 +87,8 @@ watch(lightbox, async (open, wasOpen) => {
 });
 function onKey(e) {
   if (!lightbox.value) return;
+  if (e.target.closest?.('input, textarea')) return; // typing a note
+
   if (e.key === 'Escape') lightbox.value = null;
   if (e.key === 'ArrowRight') step(1);
   if (e.key === 'ArrowLeft') step(-1);
@@ -115,6 +122,35 @@ async function setCover(photoId) {
     error.value = err.message;
   } finally {
     savingCover.value = false;
+  }
+}
+
+// "Want to replace": a subpar photo kept until a better one comes along.
+const replaceForm = ref(null); // { note } while marking or editing the note
+const savingReplace = ref(false);
+const replaceInput = ref(null);
+async function startReplace(p) {
+  replaceForm.value = { note: p.replace?.note ?? '' };
+  await nextTick();
+  replaceInput.value?.focus();
+}
+async function saveReplace(p, replace) {
+  savingReplace.value = true;
+  error.value = '';
+  try {
+    const body = replace ? { replace: true, replaceNote: replaceForm.value?.note?.trim() ?? p.replace?.note ?? '' } : { replace: false };
+    const res = await api.patch(`/photos/${p.id}`, body);
+    for (const s of sightings.value) {
+      const hit = s.photos.find((x) => x.id === p.id);
+      if (hit) hit.replace = res.photo.replace;
+    }
+    if (lightbox.value?.id === p.id) lightbox.value = { ...lightbox.value, replace: res.photo.replace };
+    replaceForm.value = null;
+    await reload(); // the tab's count
+  } catch (err) {
+    error.value = err.message;
+  } finally {
+    savingReplace.value = false;
   }
 }
 
@@ -264,6 +300,7 @@ function exifLine(p) {
             <button type="button" class="album-tile" @click="lightbox = p">
               <img :src="p.urls.thumb" :alt="`${entry.commonName}, ${formatDate(p.takenAt || p.createdAt)}`" loading="lazy" />
               <span v-if="p.id === entry.coverPhotoId" class="badge small">Thumbnail</span>
+              <span v-if="p.replace" class="flag small" :title="p.replace.note || 'Marked to replace'">To replace</span>
               <span class="cap small">
                 {{ formatDate(p.takenAt || p.createdAt) }}<template v-if="p.place"> · {{ p.place }}</template>
               </span>
@@ -333,7 +370,8 @@ function exifLine(p) {
             <ul v-if="s.photos.length" class="strip">
               <li v-for="p in s.photos" :key="p.id">
                 <button type="button" class="thumb" @click="lightbox = p">
-                  <img :src="p.urls.thumb" alt="Open photo" loading="lazy" />
+                  <img :src="p.urls.thumb" :alt="p.replace ? 'Open photo (marked to replace)' : 'Open photo'" loading="lazy" />
+                  <span v-if="p.replace" class="mini-flag" aria-hidden="true">To replace</span>
                 </button>
               </li>
             </ul>
@@ -371,6 +409,40 @@ function exifLine(p) {
             <button ref="closeBtn" class="btn" type="button" @click="lightbox = null">Close</button>
           </span>
         </figcaption>
+        <div v-if="canEdit" class="replace-bar" :class="{ marked: lightbox.replace }">
+          <form v-if="replaceForm" class="replace-form" @submit.prevent="saveReplace(lightbox, true)">
+            <label for="replace-note">What would make a better shot? <span class="soft">(optional)</span></label>
+            <div class="row">
+              <input
+                id="replace-note"
+                v-model="replaceForm.note"
+                type="text"
+                maxlength="1000"
+                placeholder="e.g. soft focus, backlit, only the tail"
+                ref="replaceInput"
+                @keydown.esc.stop.prevent="replaceForm = null"
+              />
+              <button class="btn primary" type="submit" :disabled="savingReplace">
+                {{ lightbox.replace ? 'Save note' : 'Mark to replace' }}
+              </button>
+              <button class="btn quiet" type="button" @click="replaceForm = null">Cancel</button>
+            </div>
+          </form>
+          <template v-else-if="lightbox.replace">
+            <span class="replace-text">
+              <strong>Marked to replace</strong><template v-if="lightbox.replace.note">: {{ lightbox.replace.note }}</template>
+              <span v-if="lightbox.replace.markedAt" class="soft small"> · since {{ formatDate(lightbox.replace.markedAt) }}</span>
+            </span>
+            <span class="row">
+              <button class="btn quiet" type="button" @click="startReplace(lightbox)">Edit note</button>
+              <button class="btn quiet" type="button" :disabled="savingReplace" @click="saveReplace(lightbox, false)">Unmark</button>
+            </span>
+          </template>
+          <template v-else>
+            <span class="soft small">Not happy with this one? Mark it and it’ll show on the To replace tab.</span>
+            <button class="btn quiet" type="button" @click="startReplace(lightbox)">Want to replace</button>
+          </template>
+        </div>
       </figure>
     </div>
 
@@ -505,6 +577,16 @@ function exifLine(p) {
   border-radius: 999px;
   padding: 1px 9px;
 }
+.album-tile .flag {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--goldfinch);
+  color: #1d1a0f;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 9px;
+}
 .album-tile:focus-visible,
 .album-tile:hover {
   outline: 2px solid var(--jay);
@@ -632,6 +714,20 @@ function exifLine(p) {
   overflow: hidden;
   display: block;
 }
+.thumb {
+  position: relative;
+}
+.mini-flag {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  background: var(--goldfinch);
+  color: #1d1a0f;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0 7px;
+}
 .thumb img {
   width: 120px;
   height: 120px;
@@ -658,7 +754,7 @@ function exifLine(p) {
 }
 .lightbox img {
   max-width: 100%;
-  max-height: calc(100vh - 120px);
+  max-height: calc(100vh - 180px);
   object-fit: contain;
   margin: 0 auto;
   display: block;
@@ -677,6 +773,34 @@ function exifLine(p) {
 }
 .lightbox .btn.quiet {
   color: #8cc0dc;
+}
+.replace-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  color: #e2e8e3;
+  border-top: 1px solid rgb(255 255 255 / 0.15);
+  padding-top: 8px;
+}
+.replace-bar .soft {
+  margin-left: 0;
+}
+.replace-bar.marked .replace-text strong {
+  color: #f0c64a;
+}
+.replace-form {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+.replace-form .row {
+  flex-wrap: wrap;
+}
+.replace-form input {
+  flex: 1 1 260px;
+  min-width: 0;
 }
 .lightbox .danger-text {
   color: #e07a6c;

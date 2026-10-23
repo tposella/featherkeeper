@@ -126,7 +126,8 @@ export default async function dexRoutes(app, { db, ebird }) {
             sightings.map((s) => s.id),
           ])
         : [];
-      const photoOpts = { showLocation, canDownloadOriginal: showLocation };
+      // Replace marks are the editors' to-do list, so only they see them.
+      const photoOpts = { showLocation, canDownloadOriginal: showLocation, showReplace: access.canEdit };
       return {
         entry: dexEntry(entry),
         sightings: sightings.map((s) => ({

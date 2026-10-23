@@ -259,7 +259,7 @@ describe('dex, sightings and photos', () => {
     assert.equal(robin.status, 'photographed');
     assert.equal(robin.coverUrl, `/api/photos/${photoId}/thumb`);
     const cat = await anon.get('/api/catalogues/cochrane-backyard');
-    assert.deepEqual(cat.body.catalogue.stats, { species: 3, logged: 1, photographed: 1, photos: 1 });
+    assert.deepEqual(cat.body.catalogue.stats, { species: 3, logged: 1, photographed: 1, photos: 1, toReplace: 0 });
   });
 
   test('non-images and oversized files are rejected', async () => {
@@ -291,6 +291,53 @@ describe('dex, sightings and photos', () => {
     assert.equal(res.body.sightings.length, 1);
     assert.equal(res.body.sightings[0].photos.length, 1);
     assert.equal(res.body.sightings[0].photos[0].urls.original, null);
+  });
+
+  test('a photo can be marked to replace, listed, and unmarked', async () => {
+    const url = `/api/photos/${photoId}`;
+    assert.equal((await anon.patch(url, { replace: true })).status, 401);
+    assert.equal((await stranger.patch(url, { replace: true })).status, 403);
+    assert.equal((await editor.patch(url, { colour: 'red' })).status, 400);
+
+    const marked = await editor.patch(url, { replace: true, replaceNote: 'Soft focus, try again in spring' });
+    assert.equal(marked.status, 200, JSON.stringify(marked.body));
+    assert.equal(marked.body.photo.replace.note, 'Soft focus, try again in spring');
+    const markedAt = marked.body.photo.replace.markedAt;
+    assert.ok(markedAt);
+
+    // Editing the note keeps the original date.
+    const noted = await editor.patch(url, { replaceNote: 'Soft focus' });
+    assert.equal(noted.body.photo.replace.note, 'Soft focus');
+    assert.equal(noted.body.photo.replace.markedAt, markedAt);
+
+    const list = await editor.get('/api/catalogues/cochrane-backyard/to-replace');
+    assert.equal(list.status, 200);
+    assert.equal(list.body.photos.length, 1);
+    const item = list.body.photos[0];
+    assert.equal(item.id, photoId);
+    assert.equal(item.species.id, robinId);
+    assert.equal(item.sighting.locationName, 'Bow River pathway');
+    assert.equal(item.newerPhotos, 0);
+    assert.equal((await anon.get('/api/catalogues/cochrane-backyard/to-replace')).status, 401);
+
+    const cat = await editor.get('/api/catalogues/cochrane-backyard');
+    assert.equal(cat.body.catalogue.stats.toReplace, 1);
+    // Only editors see the mark on the species page.
+    const seen = (r) => r.body.sightings[0].photos[0].replace;
+    assert.ok(seen(await editor.get(`/api/catalogues/cochrane-backyard/species/${robinId}`)));
+    assert.equal(seen(await anon.get(`/api/catalogues/cochrane-backyard/species/${robinId}`)), null);
+
+    // A newer photo of the same species shows up as a possible replacement.
+    const newer = await editor.upload(`/api/sightings/${sightingId}/photos`, await makeJpeg(320, 240));
+    assert.equal((await editor.get('/api/catalogues/cochrane-backyard/to-replace')).body.photos[0].newerPhotos, 1);
+    await editor.delete(`/api/photos/${newer.body.photo.id}`);
+
+    const cleared = await editor.patch(url, { replace: false });
+    assert.equal(cleared.body.photo.replace, null);
+    assert.equal((await editor.get('/api/catalogues/cochrane-backyard/to-replace')).body.photos.length, 0);
+    const again = await editor.patch(url, { replace: true });
+    assert.equal(again.body.photo.replace.note, '', 'unmarking clears the old note');
+    await editor.patch(url, { replace: false });
   });
 
   test('the thumbnail is the newest photo until one is chosen, and can be reset', async () => {

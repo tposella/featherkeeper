@@ -341,6 +341,84 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
     return { ok: true };
   });
 
+  /** Mark a photo as one to replace with a better shot (with an optional note), or clear the mark. */
+  app.patch(
+    '/photos/:id',
+    {
+      schema: {
+        params: idParam,
+        body: {
+          type: 'object',
+          minProperties: 1,
+          additionalProperties: false,
+          properties: {
+            replace: { type: 'boolean' },
+            replaceNote: { type: 'string', maxLength: 1000 },
+          },
+        },
+      },
+    },
+    async (request) => {
+      const row = await db.one(
+        `SELECT p.id, s.catalogue_id FROM photos p JOIN sightings s ON s.id = p.sighting_id WHERE p.id = $1`,
+        [request.params.id],
+      );
+      if (!row) throw notFound('Photo not found');
+      const { catalogue, access } = await loadCatalogue(db, row.catalogue_id, request.user);
+      requireEdit(access, request.user);
+      const b = request.body;
+      const updated = await db.one(
+        `UPDATE photos SET
+           replace_wanted = coalesce($2::boolean, replace_wanted),
+           -- Keep the date it was first marked; clearing the mark clears the date and note.
+           replace_marked_at = CASE
+             WHEN $2::boolean IS TRUE THEN coalesce(replace_marked_at, now())
+             WHEN $2::boolean IS FALSE THEN NULL
+             ELSE replace_marked_at END,
+           replace_note = CASE WHEN $2::boolean IS FALSE THEN '' ELSE coalesce($3::text, replace_note) END
+         WHERE id = $1 RETURNING *`,
+        [row.id, b.replace ?? null, b.replaceNote ?? null],
+      );
+      const showLocation = locationsVisible(catalogue, access);
+      return { photo: out.photo(updated, { showLocation, canDownloadOriginal: showLocation }) };
+    },
+  );
+
+  /** Every photo in the catalogue marked as one to replace, newest mark first. Editors only. */
+  app.get('/catalogues/:slug/to-replace', { schema: { params: slugParam } }, async (request) => {
+    const { catalogue, access } = await loadCatalogue(db, request.params.slug, request.user);
+    requireEdit(access, request.user);
+    const rows = await db.many(
+      `SELECT p.*, s.observed_at AS sighting_observed_at, s.location_name AS sighting_location,
+              sp.id AS species_id, sp.common_name, sp.scientific_name, sp.taxon_sort,
+              cs.cover_photo_id = p.id AS is_cover,
+              -- Photos of the same species added since this one was marked: maybe the replacement.
+              (SELECT count(*) FROM photos p2 JOIN sightings s2 ON s2.id = p2.sighting_id
+                WHERE s2.catalogue_id = s.catalogue_id AND s2.species_id = s.species_id
+                  AND p2.id <> p.id AND p2.created_at > p.replace_marked_at)::int AS newer_count,
+              (SELECT count(*) FROM photos p3 JOIN sightings s3 ON s3.id = p3.sighting_id
+                WHERE s3.catalogue_id = s.catalogue_id AND s3.species_id = s.species_id)::int AS species_photo_count
+         FROM photos p
+         JOIN sightings s ON s.id = p.sighting_id
+         JOIN species sp ON sp.id = s.species_id
+         LEFT JOIN catalogue_species cs ON cs.catalogue_id = s.catalogue_id AND cs.species_id = s.species_id
+        WHERE s.catalogue_id = $1 AND p.replace_wanted
+        ORDER BY p.replace_marked_at DESC NULLS LAST, p.id DESC`,
+      [catalogue.id],
+    );
+    const showLocation = locationsVisible(catalogue, access);
+    return {
+      photos: rows.map((r) => ({
+        ...out.photo(r, { showLocation, canDownloadOriginal: showLocation }),
+        species: { id: r.species_id, commonName: r.common_name, scientificName: r.scientific_name, taxonSort: r.taxon_sort },
+        sighting: { id: r.sighting_id, observedAt: out.iso(r.sighting_observed_at), locationName: r.sighting_location || '' },
+        isCover: Boolean(r.is_cover),
+        newerPhotos: r.newer_count,
+        speciesPhotoCount: r.species_photo_count,
+      })),
+    };
+  });
+
   // ---- AI identification ------------------------------------------------------
 
   /**

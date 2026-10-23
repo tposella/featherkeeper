@@ -78,6 +78,9 @@ Featherkeeper turns that into something more fun and more useful:
 
 **Species pages**
 - Your **album** of every photo of that bird, with a chosen **thumbnail** (or "always use my newest").
+- Mark a subpar photo as **want to replace**, with an optional note ("backlit", "only the tail"). The
+  **To replace** tab (editors only) lists those photos. It shows when you've added a newer photo of the
+  same species since, and lets you unmark the old photo, delete it, or log a new sighting.
 - **When and where to find it:** month-of-year and time-of-day charts from nearby observations, habitat
   from Wikipedia, recent eBird reports with places, and a summary of your own sightings.
 - **Calls and songs:** openly licensed recordings with players, labelled song or call where known,
@@ -408,7 +411,7 @@ Viewing follows each catalogue's visibility; changes need the owner or an editor
 | eBird import | `POST /ebird/preview`, `POST /catalogues/:slug/import/ebird` |
 | Places | `GET /places?q=&catalogue=`, `GET /places/reverse?latitude=&longitude=` |
 | Sightings | `GET`/`POST /catalogues/:slug/sightings`, `PATCH`/`DELETE /sightings/:id` |
-| Photos | `POST /sightings/:id/photos`, `GET /photos/:id/thumb\|display\|original`, `DELETE /photos/:id` |
+| Photos | `POST /sightings/:id/photos`, `GET /photos/:id/thumb\|display\|original`, `PATCH`/`DELETE /photos/:id`, `GET /catalogues/:slug/to-replace` |
 | AI | `POST /catalogues/:slug/identify` |
 
 ---

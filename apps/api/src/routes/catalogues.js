@@ -21,6 +21,8 @@ const STATS_SQL = `
   (SELECT count(DISTINCT s.species_id) FROM sightings s JOIN photos p ON p.sighting_id = s.id
      WHERE s.catalogue_id = c.id)::int AS photographed_count,
   (SELECT count(*) FROM photos p JOIN sightings s ON s.id = p.sighting_id WHERE s.catalogue_id = c.id)::int AS photo_count,
+  (SELECT count(*) FROM photos p JOIN sightings s ON s.id = p.sighting_id
+     WHERE s.catalogue_id = c.id AND p.replace_wanted)::int AS replace_count,
   (SELECT p.id FROM photos p JOIN sightings s ON s.id = p.sighting_id
      WHERE s.catalogue_id = c.id ORDER BY p.created_at DESC LIMIT 1) AS latest_photo_id,
   (SELECT u.display_name FROM catalogue_members m JOIN users u ON u.id = m.user_id
@@ -37,6 +39,7 @@ function withStats(row, access) {
       logged: row.logged_count,
       photographed: row.photographed_count,
       photos: row.photo_count,
+      toReplace: row.replace_count,
     },
     coverUrl: row.latest_photo_id ? `/api/photos/${row.latest_photo_id}/thumb` : null,
     access,

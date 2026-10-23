@@ -112,6 +112,17 @@ function seed() {
 }
 seed();
 
+// A few sample photos marked "want to replace".
+[
+  [3, 'Soft focus, and the head is turned away', '2026-08-14T18:20:00Z'],
+  [20, 'Backlit. Try the morning side of the pond', '2026-09-02T15:05:00Z'],
+  [36, '', '2026-10-01T21:40:00Z'],
+].forEach(([idx, note, markedAt]) => {
+  const s = sightings.find((x) => x.catalogueId === 1 && x.speciesId === species[idx].id);
+  const p = s && photos.find((x) => x.sightingId === s.id);
+  if (p) p.replace = { note, markedAt };
+});
+
 // ---- helpers -------------------------------------------------------------------
 
 class DemoError extends Error {
@@ -179,6 +190,7 @@ function serializePhoto(p, c) {
     originalName: p.originalName,
     sizeBytes: 8_400_000,
     createdAt: p.createdAt,
+    replace: accessFor(c).canEdit ? p.replace ?? null : null,
     urls: photoUrls(p, c),
   };
 }
@@ -259,6 +271,7 @@ function serializeCatalogue(c) {
       logged: dex.filter((d) => d.sightingCount > 0).length,
       photographed: dex.filter((d) => d.photoCount > 0).length,
       photos: ps.length,
+      toReplace: ps.filter((p) => p.replace).length,
     },
     coverUrl: latest ? photoUrls(latest, c).thumb : null,
     access: accessFor(c),
@@ -603,6 +616,45 @@ const routes = [
     };
     photos.push(p);
     return { photo: serializePhoto(p, c) };
+  }],
+  ['PATCH', /^\/photos\/(\d+)$/, ([id], body) => {
+    const p = photos.find((x) => x.id === Number(id));
+    if (!p) throw new DemoError(404, 'Photo not found');
+    const c = getCatalogue(sightings.find((x) => x.id === p.sightingId).catalogueId);
+    requireEdit(c);
+    if (body.replace === false) p.replace = null;
+    else if (body.replace === true || p.replace) {
+      p.replace = {
+        note: body.replaceNote ?? p.replace?.note ?? '',
+        markedAt: p.replace?.markedAt ?? new Date().toISOString(),
+      };
+    }
+    return { photo: serializePhoto(p, c) };
+  }],
+  ['GET', /^\/catalogues\/([\w-]+)\/to-replace$/, ([slug]) => {
+    const c = getCatalogue(slug);
+    requireEdit(c);
+    const ofSpecies = (speciesId) =>
+      photos.filter((p) => sightings.some((s) => s.id === p.sightingId && s.catalogueId === c.id && s.speciesId === speciesId));
+    const list = photos
+      .filter((p) => p.replace)
+      .map((p) => ({ p, s: sightings.find((x) => x.id === p.sightingId) }))
+      .filter(({ s }) => s.catalogueId === c.id)
+      .sort((a, b) => b.p.replace.markedAt.localeCompare(a.p.replace.markedAt));
+    return {
+      photos: list.map(({ p, s }) => {
+        const sp = species.find((x) => x.id === s.speciesId);
+        const same = ofSpecies(s.speciesId);
+        return {
+          ...serializePhoto(p, c),
+          species: { id: sp.id, commonName: sp.common_name, scientificName: sp.scientific_name, taxonSort: sp.taxon_sort },
+          sighting: { id: s.id, observedAt: s.observedAt, locationName: s.locationName || '' },
+          isCover: c.dex.get(s.speciesId)?.coverPhotoId === p.id,
+          newerPhotos: same.filter((x) => x.id !== p.id && x.createdAt > p.replace.markedAt).length,
+          speciesPhotoCount: same.length,
+        };
+      }),
+    };
   }],
   ['DELETE', /^\/photos\/(\d+)$/, ([id]) => {
     const p = photos.find((x) => x.id === Number(id));

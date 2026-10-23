@@ -17,6 +17,7 @@ const routes = [
       { path: 'season', name: 'season', component: () => import('./views/SeasonView.vue') },
       { path: 'map', name: 'map', component: () => import('./views/MapView.vue') },
       { path: 'recent', name: 'recent', component: () => import('./views/RecentView.vue') },
+      { path: 'to-replace', name: 'to-replace', component: () => import('./views/ReplaceView.vue'), meta: { auth: true } },
       { path: 'log', name: 'log', component: () => import('./views/LogSightingView.vue'), meta: { auth: true } },
       { path: 'settings', name: 'settings', component: () => import('./views/SettingsView.vue'), meta: { auth: true } },
       {
