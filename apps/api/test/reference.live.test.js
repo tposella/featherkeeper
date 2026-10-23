@@ -6,7 +6,7 @@ import { createReferenceClient } from '../src/integrations/reference.js';
 const skip = process.env.CI ? false : 'only runs in CI (set CI=1 to run)';
 
 test('reference photos for a real species', { skip, timeout: 60000 }, async () => {
-  const ref = createReferenceClient({ enabled: true, userAgent: 'Featherkeeper-CI (+https://github.com/Tyler-Posella/featherkeeper)' });
+  const ref = createReferenceClient({ enabled: true, userAgent: 'Featherkeeper-CI (+https://github.com/tposella/featherkeeper)' });
   const info = await ref.forSpecies('Pica hudsonia', 'Black-billed Magpie');
   console.log(`photos: ${info.photos.length}; first: ${info.photos[0]?.source} ${info.photos[0]?.licence} ${info.photos[0]?.url}`);
   console.log(`credit: ${info.photos[0]?.credit}; links: ${JSON.stringify(info.links)}`);

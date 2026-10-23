@@ -52,10 +52,10 @@ async function onSignOut() {
       <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>.
     </p>
     <p>
-      <a href="https://github.com/Tyler-Posella/featherkeeper" target="_blank" rel="noopener">Featherkeeper</a>
+      <a href="https://github.com/tposella/featherkeeper" target="_blank" rel="noopener">Featherkeeper</a>
       {{ session.config.version ? ` ${session.config.version}` : '' }} is free software under the
       AGPL-3.0. See the
-      <a href="https://github.com/Tyler-Posella/featherkeeper#credits-and-sources" target="_blank" rel="noopener">full credits</a>.
+      <a href="https://github.com/tposella/featherkeeper#credits-and-sources" target="_blank" rel="noopener">full credits</a>.
     </p>
   </footer>
 </template>

@@ -9,7 +9,7 @@ Your photos and records stay with you. The only outside services it talks to are
 mapping databases, and each of them can be switched off.
 
 > **Status: early development (v0.1).** Usable day to day, but expect changes.
-> Try the demo with sample data: **https://tyler-posella.github.io/featherkeeper/**
+> Try the demo with sample data: **https://tposella.github.io/featherkeeper/**
 
 ---
 
@@ -184,7 +184,7 @@ inside the stack.
 ### Quick start with Docker
 
 ```bash
-git clone https://github.com/Tyler-Posella/featherkeeper.git /opt/featherkeeper
+git clone https://github.com/tposella/featherkeeper.git /opt/featherkeeper
 cd /opt/featherkeeper
 cp .env.example .env
 openssl rand -hex 24          # copy this: it becomes your database password
