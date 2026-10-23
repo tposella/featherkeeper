@@ -40,11 +40,42 @@ async function onSignOut() {
   <main id="main" ref="main" tabindex="-1">
     <RouterView :key="viewKey" />
   </main>
+  <footer class="credits small">
+    <p>
+      Species lists and sightings from <a href="https://ebird.org" target="_blank" rel="noopener">eBird.org</a>
+      (Cornell Lab of Ornithology). Photos, sounds and seasonal counts from
+      <a href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a><template
+        v-if="session.config.soundsEnabled !== false"
+      > and <a href="https://xeno-canto.org" target="_blank" rel="noopener">xeno-canto</a></template>, each credited
+      where shown. Habitat text from <a href="https://en.wikipedia.org" target="_blank" rel="noopener">Wikipedia</a>
+      (CC BY-SA). Maps and place search ©
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>.
+    </p>
+    <p>
+      <a href="https://github.com/tposella/featherkeeper" target="_blank" rel="noopener">Featherkeeper</a>
+      <template v-if="session.config.version"> {{ session.config.version }}</template> is free software under the
+      AGPL-3.0. Full credits are in its README.
+    </p>
+  </footer>
 </template>
 
 <style scoped>
 main:focus {
   outline: none;
+}
+.credits {
+  border-top: 1px solid var(--rule);
+  padding: 16px var(--gutter) 28px;
+  color: var(--ink-soft);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.credits p {
+  margin: 0 0 6px;
+  max-width: 110ch;
+}
+.credits a {
+  color: inherit;
 }
 .skip {
   position: absolute;
