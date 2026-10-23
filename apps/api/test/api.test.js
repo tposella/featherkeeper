@@ -297,7 +297,7 @@ describe('dex, sightings and photos', () => {
     const url = `/api/photos/${photoId}`;
     assert.equal((await anon.patch(url, { replace: true })).status, 401);
     assert.equal((await stranger.patch(url, { replace: true })).status, 403);
-    assert.equal((await editor.patch(url, { colour: 'red' })).status, 400);
+    assert.equal((await editor.patch(url, {})).status, 400);
 
     const marked = await editor.patch(url, { replace: true, replaceNote: 'Soft focus, try again in spring' });
     assert.equal(marked.status, 200, JSON.stringify(marked.body));
