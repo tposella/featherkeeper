@@ -346,7 +346,7 @@ h4 {
   display: grid;
   gap: 1px;
   width: max-content;
-  max-width: 220px;
+  max-width: min(280px, 80vw);
   padding: 6px 10px;
   border-radius: var(--radius);
   background: var(--ink);
