@@ -1,0 +1,12 @@
+Checking http://localhost:8080
+  [32mok[0m   web page loads
+  [32mok[0m   API and database are healthy
+  info config: {"version":"0.1.0","allowRegistration":true,"needsSetup":true,"maxUploadMb":100,"ebirdEnabled":true,"placeSearchEnabled":true,"referencePhotosEnabled":true,"soundsEnabled":true,"identifyEnabled":false}
+  [32mok[0m   account created and signed in (smoke-1792804061@example.com)
+  [32mok[0m   catalogue created (/c/smoke-test)
+  [32mok[0m   eBird import added 258 species around Cochrane
+  [32mok[0m   sighting logged
+  [32mok[0m   photo uploaded and thumbnail served
+  [32mok[0m   large photo uploaded (45 MB)
+  [32mok[0m   private catalogue hidden from visitors
+All checks passed.
