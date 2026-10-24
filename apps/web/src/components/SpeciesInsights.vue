@@ -104,6 +104,51 @@ const hoursShown = computed(() => {
 });
 const maxHour = computed(() => Math.max(1, ...hoursShown.value.map((x) => x.v)));
 
+// ---- Hover (or tap) a bar for its count and share -------------------------------
+// Months are a share of the whole year; hours a share of the whole day (all 24 hours, including the
+// night hours the chart leaves out).
+const tip = ref(null); // { chart: 'month' | 'hour', index }
+function share(v, all) {
+  if (!all || !v) return '0%';
+  const p = (v / all) * 100;
+  return p < 1 ? 'under 1%' : `${Math.round(p)}%`;
+}
+const plural = (n) => `${n.toLocaleString()} observation${n === 1 ? '' : 's'}`;
+function monthTip(i) {
+  const v = data.value.months[i];
+  return { title: MONTHS[i], text: `${plural(v)}, ${share(v, total(data.value.months))} of the year` };
+}
+function hourTip(h) {
+  const v = data.value.hours.hours[h];
+  return {
+    title: `${hourLabel(h)} to ${hourLabel((h + 1) % 24)}`,
+    text: `${plural(v)}, ${share(v, total(data.value.hours.hours))} of the day`,
+  };
+}
+const tipContent = computed(() => {
+  if (!tip.value || !data.value) return null;
+  return tip.value.chart === 'month' ? monthTip(tip.value.index) : hourTip(tip.value.index);
+});
+/** Where the tooltip sits over its chart: centred on the bar, kept inside the chart at the edges. */
+function tipStyle(position, count) {
+  const centre = ((position + 0.5) / count) * 100;
+  if (centre < 18) return { left: '0', transform: 'none' };
+  if (centre > 82) return { right: '0', left: 'auto', transform: 'none' };
+  return { left: `${centre}%` };
+}
+function show(chart, index) {
+  tip.value = { chart, index };
+}
+function hide(chart) {
+  if (tip.value?.chart === chart) tip.value = null;
+}
+// With a mouse, hovering shows the numbers (a click keeps them). On a touch screen, tapping a bar
+// shows them and tapping it again hides them.
+function tap(event, chart, index) {
+  const same = tip.value?.chart === chart && tip.value.index === index;
+  tip.value = same && event.pointerType && event.pointerType !== 'mouse' ? null : { chart, index };
+}
+
 const nothing = computed(
   () => data.value && !data.value.months && !data.value.hours && !data.value.habitat && !data.value.reports?.length && !yours.value,
 );
@@ -130,10 +175,25 @@ const where = computed(() => {
       <div v-if="data.months && total(data.months) >= 5" class="block">
         <h4>Time of year</h4>
         <p class="lead">{{ monthSummary }}</p>
-        <div class="bars months" role="img" :aria-label="`Photos per month ${where}: ${data.months.map((v, i) => `${MONTHS[i]} ${v}`).join(', ')}`">
-          <div v-for="(v, i) in data.months" :key="i" class="bar" :class="{ now: i === thisMonth }">
+        <div class="bars months" role="group" :aria-label="`Photos per month ${where}`" @mouseleave="hide('month')">
+          <button
+            v-for="(v, i) in data.months"
+            :key="i"
+            type="button"
+            class="bar"
+            :class="{ now: i === thisMonth, active: tip?.chart === 'month' && tip.index === i }"
+            :aria-label="`${monthTip(i).title}: ${monthTip(i).text}`"
+            @mouseenter="show('month', i)"
+            @focus="show('month', i)"
+            @blur="hide('month')"
+            @click="tap($event, 'month', i)"
+          >
             <span class="fill" :style="{ height: Math.max(2, (v / maxMonth) * 100) + '%' }"></span>
-            <span class="label">{{ SHORT[i][0] }}</span>
+            <span class="label" aria-hidden="true">{{ SHORT[i][0] }}</span>
+          </button>
+          <div v-if="tip?.chart === 'month' && tipContent" class="tip" :style="tipStyle(tip.index, 12)" aria-hidden="true">
+            <strong>{{ tipContent.title }}</strong>
+            <span>{{ tipContent.text }}</span>
           </div>
         </div>
         <p class="soft small">{{ total(data.months) }} photographed observations {{ where }}, all years (iNaturalist). This month is highlighted.</p>
@@ -142,10 +202,30 @@ const where = computed(() => {
       <div v-if="data.hours" class="block">
         <h4>Time of day</h4>
         <p class="lead">{{ hourSummary || 'No clear time of day.' }}</p>
-        <div class="bars hours" role="img" :aria-label="`Photos by hour of day ${where}`">
-          <div v-for="x in hoursShown" :key="x.hour" class="bar">
+        <div class="bars hours" role="group" :aria-label="`Photos by hour of day ${where}`" @mouseleave="hide('hour')">
+          <button
+            v-for="(x, i) in hoursShown"
+            :key="x.hour"
+            type="button"
+            class="bar"
+            :class="{ active: tip?.chart === 'hour' && tip.index === x.hour }"
+            :aria-label="`${hourTip(x.hour).title}: ${hourTip(x.hour).text}`"
+            @mouseenter="show('hour', x.hour)"
+            @focus="show('hour', x.hour)"
+            @blur="hide('hour')"
+            @click="tap($event, 'hour', x.hour)"
+          >
             <span class="fill" :style="{ height: Math.max(2, (x.v / maxHour) * 100) + '%' }"></span>
-            <span class="label">{{ x.hour % 3 === 0 ? hourLabel(x.hour).replace(' ', '') : '' }}</span>
+            <span class="label" aria-hidden="true">{{ x.hour % 3 === 0 ? hourLabel(x.hour).replace(' ', '') : '' }}</span>
+          </button>
+          <div
+            v-if="tip?.chart === 'hour' && tipContent"
+            class="tip"
+            :style="tipStyle(tip.index - 4, hoursShown.length)"
+            aria-hidden="true"
+          >
+            <strong>{{ tipContent.title }}</strong>
+            <span>{{ tipContent.text }}</span>
           </div>
         </div>
         <p class="soft small">From the {{ data.hours.sample }} most recent observations with a time {{ where }}.</p>
@@ -231,11 +311,50 @@ h4 {
   grid-template-columns: repeat(20, 1fr);
   gap: 2px;
 }
+.bars {
+  position: relative;
+}
 .bar {
   position: relative;
   height: 100%;
   display: flex;
   align-items: flex-end;
+  /* A button, but it looks like a plain bar. */
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: default;
+  min-width: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.bar:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.bar.active .fill {
+  opacity: 1;
+  filter: brightness(1.1);
+}
+.tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  z-index: 5;
+  display: grid;
+  gap: 1px;
+  width: max-content;
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--step--1);
+  line-height: 1.35;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+  pointer-events: none;
 }
 .fill {
   display: block;

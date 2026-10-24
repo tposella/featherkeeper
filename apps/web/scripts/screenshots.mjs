@@ -122,6 +122,14 @@ for (const scheme of ['light', 'dark']) {
       await page.goto(new URL('#/c/bow-valley/species/21', base).href);
       await page.waitForTimeout(1800);
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-species-album.png`, fullPage: true });
+      // Hovering a month and an hour in "When and where to find it" shows the count and share.
+      await page.locator('.bars.months .bar').nth(4).hover();
+      const monthTip = (await page.locator('.bars.months .tip').innerText()).replace(/\s+/g, ' ');
+      await page.locator('.bars.months').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-insights-tip.png` });
+      await page.locator('.bars.hours .bar').nth(4).hover();
+      const hourTip = (await page.locator('.bars.hours .tip').innerText()).replace(/\s+/g, ' ');
+      console.log(`TIPS month="${monthTip}" hour="${hourTip}"`);
       await page.getByRole('button', { name: 'Change thumbnail' }).first().click();
       await page.waitForTimeout(400);
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-thumbnail-picker.png` });
