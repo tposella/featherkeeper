@@ -477,6 +477,50 @@ describe('dex, sightings and photos', () => {
     await editor.patch(url, { replace: false });
   });
 
+  test('export: a ZIP with the checklist, sightings, photos and original files', async () => {
+    const url = '/api/catalogues/cochrane-backyard/export.zip';
+    assert.equal((await anon.get(url)).status, 401);
+    assert.equal((await stranger.get(url)).status, 403);
+    const res = await editor.get(url);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers['content-type'], 'application/zip');
+    assert.match(res.headers['content-disposition'], /attachment; filename="featherkeeper-cochrane-backyard-\d{4}-\d{2}-\d{2}\.zip"/);
+
+    // Read it back with Python's zipfile, an independent ZIP reader.
+    const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+    const { execFileSync } = await import('node:child_process');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'fk-export-'));
+    try {
+      const file = path.join(dir, 'export.zip');
+      await writeFile(file, res.raw);
+      const script = `
+import json, sys, zipfile
+z = zipfile.ZipFile(sys.argv[1])
+assert z.testzip() is None
+print(json.dumps({
+  "names": z.namelist(),
+  "species": z.read("species.csv").decode("utf-8-sig").splitlines(),
+  "sightings": z.read("sightings.csv").decode("utf-8-sig").splitlines(),
+  "photos": z.read("photos.csv").decode("utf-8-sig").splitlines(),
+  "sizes": {i.filename: i.file_size for i in z.infolist()},
+}))`;
+      const out = JSON.parse(execFileSync('python3', ['-c', script, file]).toString());
+      assert.deepEqual(out.names.slice(0, 4), ['README.txt', 'species.csv', 'sightings.csv', 'photos.csv']);
+      const photoFile = out.names.find((n) => n.startsWith('photos/'));
+      assert.match(photoFile, /^photos\/\d{3} American Robin\/\d{4}-\d{2}-\d{2} \d+\.jpg$/);
+      assert.equal(out.species[0], 'plate,common_name,scientific_name,family,order,ebird_code,status,photos,sightings,first_seen,last_seen,notes');
+      assert.ok(out.species.some((l) => l.includes('American Robin') && l.includes('photographed')));
+      assert.ok(out.sightings[1].includes('Bow River pathway') && out.sightings[1].includes('51.19'), 'editors get exact locations');
+      assert.ok(out.sightings[1].includes(photoFile));
+      const photo = (await editor.get(`/api/catalogues/cochrane-backyard/species/${robinId}`)).body.sightings[0].photos[0];
+      assert.equal(out.sizes[photoFile], photo.sizeBytes, 'the original file, byte for byte');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   test('the thumbnail is the newest photo until one is chosen, and can be reset', async () => {
     const second = await editor.upload(`/api/sightings/${sightingId}/photos`, await makeJpeg(500, 500));
     assert.equal(second.status, 201);

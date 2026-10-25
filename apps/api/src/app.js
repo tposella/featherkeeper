@@ -17,6 +17,7 @@ import authRoutes from './routes/auth.js';
 import catalogueRoutes from './routes/catalogues.js';
 import dexRoutes from './routes/dex.js';
 import ebirdRoutes from './routes/ebird.js';
+import exportRoutes from './routes/export.js';
 import referenceRoutes from './routes/reference.js';
 import seasonRoutes from './routes/season.js';
 import sightingRoutes from './routes/sightings.js';
@@ -111,6 +112,7 @@ export async function buildApp({
       await api.register(catalogueRoutes, deps);
       await api.register(dexRoutes, deps);
       await api.register(ebirdRoutes, deps);
+      await api.register(exportRoutes, deps);
       await api.register(referenceRoutes, deps);
       await api.register(seasonRoutes, deps);
       await api.register(sightingRoutes, deps);

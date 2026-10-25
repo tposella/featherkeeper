@@ -1,4 +1,5 @@
 <script setup>
+const DEMO = import.meta.env.VITE_DEMO === 'true';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api.js';
@@ -339,6 +340,22 @@ async function deleteCatalogue() {
           </label>
           <button class="btn" type="submit">Add editor</button>
         </form>
+      </section>
+
+      <section id="export">
+        <h2>Export</h2>
+        <p class="soft">
+          Download everything in this catalogue as one ZIP file: spreadsheets (CSV) of the checklist, sightings and photos,
+          plus every original photo file in a folder per species. Keep it as a backup, or take your data elsewhere.
+        </p>
+        <p v-if="DEMO" class="notice small">Exporting isn’t available in the demo.</p>
+        <a v-else class="btn" :href="`/api/catalogues/${catalogue.slug}/export.zip`" download>
+          Download catalogue (ZIP)
+        </a>
+        <p class="soft small">
+          {{ catalogue.stats.photos }} photo{{ catalogue.stats.photos === 1 ? '' : 's' }}. Large catalogues can take a while;
+          the download starts straight away.
+        </p>
       </section>
 
       <section v-if="canManage" class="danger-zone">

@@ -47,6 +47,10 @@ export function createStorage(dataDir) {
         await rename(tmp, path.join(dir, name));
       }
     },
+    /** The path of one of a photo's files (for streaming it into an export). */
+    pathOf(key, name) {
+      return path.join(dirFor(key), name);
+    },
     async open(key, name) {
       const file = path.join(dirFor(key), name);
       const info = await stat(file);
