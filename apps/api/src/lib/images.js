@@ -1,9 +1,13 @@
+import { execFile } from 'node:child_process';
+import { mkdtemp, open, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import exifr from 'exifr';
 import sharp from 'sharp';
 import { HttpError } from './errors.js';
 
-// sharp's prebuilt binaries can't decode HEIC, so iPhone photos need converting to JPEG first.
 const FORMATS = {
+  heic: { ext: 'heic', mime: 'image/heic' },
   jpeg: { ext: 'jpg', mime: 'image/jpeg' },
   png: { ext: 'png', mime: 'image/png' },
   webp: { ext: 'webp', mime: 'image/webp' },
@@ -11,11 +15,101 @@ const FORMATS = {
   avif: { ext: 'avif', mime: 'image/avif' },
 };
 
-export const ACCEPTED_DESCRIPTION = 'JPEG, PNG, WebP, TIFF or AVIF';
+export const ACCEPTED_DESCRIPTION = 'JPEG, HEIC, PNG, WebP, TIFF or AVIF';
 
 function detectFormat(meta) {
-  if (meta.format === 'heif') return meta.compression === 'av1' ? FORMATS.avif : null;
+  if (meta.format === 'heif') return meta.compression === 'av1' ? FORMATS.avif : FORMATS.heic;
   return FORMATS[meta.format] ?? null;
+}
+
+// ---- HEIC (iPhone photos) ------------------------------------------------------
+// sharp's prebuilt binaries can read the HEIF container but not decode HEVC pictures (a patent
+// issue), so HEIC photos are decoded with libheif's command-line tool (the API image installs
+// libheif-examples) into a temporary JPEG. That JPEG is already upright. The original HEIC is kept
+// as the original file, and its EXIF is read directly.
+
+const HEIC_BRANDS = new Set(['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'hevm', 'hevs']);
+
+/** True if the file at `file` is a HEIC (HEVC) image, judged by its "ftyp" box. */
+async function looksLikeHeic(file) {
+  if (typeof file !== 'string') return false;
+  const fh = await open(file, 'r');
+  try {
+    const { buffer } = await fh.read(Buffer.alloc(32), 0, 32, 0);
+    if (buffer.toString('latin1', 4, 8) !== 'ftyp') return false;
+    const brands = [buffer.toString('latin1', 8, 12)];
+    for (let i = 16; i + 4 <= 32; i += 4) brands.push(buffer.toString('latin1', i, i + 4));
+    return brands.some((b) => HEIC_BRANDS.has(b));
+  } finally {
+    await fh.close();
+  }
+}
+
+function run(cmd, args) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { timeout: 120000, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
+      if (err) {
+        err.stderr = stderr;
+        reject(err);
+      } else resolve(stdout);
+    });
+  });
+}
+
+/** Decode a HEIC file to a temporary JPEG. Returns { path, cleanup }. */
+export async function heicToJpeg(file) {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'fk-heic-'));
+  const out = path.join(dir, 'decoded.jpg');
+  const cleanup = () => rm(dir, { recursive: true, force: true });
+  try {
+    // heif-dec is the newer name (libheif 1.17+); heif-convert is the older one.
+    for (const tool of ['heif-dec', 'heif-convert']) {
+      try {
+        await run(tool, ['-q', '92', file, out]);
+        return { path: out, cleanup };
+      } catch (err) {
+        if (err.code !== 'ENOENT') throw new HttpError(415, "That HEIC photo couldn't be decoded. Try exporting it as JPEG.");
+      }
+    }
+    throw new HttpError(415, "This server can't read HEIC photos yet (it needs libheif's heif-dec). Upload a JPEG instead.");
+  } catch (err) {
+    await cleanup();
+    throw err;
+  }
+}
+
+/**
+ * Something sharp can read for a photo: the file itself, or for HEIC a decoded JPEG.
+ * Returns { input, format, meta, upright, cleanup }. `upright` means rotation is already applied.
+ */
+export async function openImage(file) {
+  let meta = null;
+  try {
+    meta = await sharp(file).metadata();
+  } catch {
+    meta = null;
+  }
+  const heic = (meta && meta.format === 'heif' && meta.compression !== 'av1') || (!meta && (await looksLikeHeic(file)));
+  if (heic) {
+    const decoded = await heicToJpeg(file);
+    try {
+      const decodedMeta = await sharp(decoded.path).metadata();
+      return { input: decoded.path, format: FORMATS.heic, meta: decodedMeta, upright: true, cleanup: decoded.cleanup };
+    } catch {
+      await decoded.cleanup();
+      throw new HttpError(415, "That HEIC photo couldn't be decoded. Try exporting it as JPEG.");
+    }
+  }
+  if (!meta) throw new HttpError(415, `That file isn't an image we can read. Upload ${ACCEPTED_DESCRIPTION}.`);
+  const format = detectFormat(meta);
+  if (!format) throw new HttpError(415, `Unsupported image type. Upload ${ACCEPTED_DESCRIPTION}.`);
+  return { input: file, format, meta, upright: false, cleanup: async () => {} };
+}
+
+/** A sharp pipeline for an opened image, turned the right way up. */
+export function uprightPipeline(img) {
+  const s = sharp(img.input, { failOn: 'none' });
+  return img.upright ? s : s.rotate();
 }
 
 /** "2024:05:18 07:42:10" (+ optional "-07:00") -> ISO string, or null. */
@@ -97,19 +191,17 @@ export async function readExif(input) {
  * Both derived images are re-encoded without metadata, so they never carry GPS.
  */
 export async function processImage(input) {
-  let meta;
+  const img = await openImage(input);
   try {
-    meta = await sharp(input).metadata();
-  } catch {
-    throw new HttpError(415, `That file isn't an image we can read. Upload ${ACCEPTED_DESCRIPTION}.`);
+    return await derive(input, img);
+  } finally {
+    await img.cleanup();
   }
-  const format = detectFormat(meta);
-  if (!format) {
-    const hint = meta.format === 'heif' ? ' HEIC photos need converting to JPEG first.' : '';
-    throw new HttpError(415, `Unsupported image type.${hint} Upload ${ACCEPTED_DESCRIPTION}.`);
-  }
+}
 
-  const base = sharp(input, { failOn: 'none' }).rotate();
+async function derive(original, img) {
+  const { meta, format } = img;
+  const base = uprightPipeline(img);
   const [display, thumb, exifData] = await Promise.all([
     base
       .clone()
@@ -121,11 +213,12 @@ export async function processImage(input) {
       .resize({ width: 480, height: 480, fit: 'cover', position: sharp.strategy.attention })
       .webp({ quality: 78 })
       .toBuffer(),
-    readExif(input),
+    // EXIF always comes from the original file (for HEIC, not the decoded copy).
+    readExif(original),
   ]);
 
-  // Orientations 5-8 rotate by 90 degrees, so width and height swap.
-  const swapped = (meta.orientation ?? 1) >= 5;
+  // Orientations 5-8 rotate by 90 degrees, so width and height swap (a decoded HEIC is already upright).
+  const swapped = !img.upright && (meta.orientation ?? 1) >= 5;
   return {
     ext: format.ext,
     mime: format.mime,

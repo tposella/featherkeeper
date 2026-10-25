@@ -5,6 +5,11 @@ ENV NODE_ENV=production \
     PORT=3000 \
     DATA_DIR=/data
 
+# libheif's command-line tools decode iPhone (HEIC) photos, which sharp's prebuilt binaries can't.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libheif-examples \
+ && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force

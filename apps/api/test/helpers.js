@@ -1,4 +1,5 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -267,6 +268,32 @@ export function client(app) {
       });
     },
   };
+}
+
+/**
+ * An iPhone-style HEIC photo with a capture date, made with libheif's heif-enc from a JPEG.
+ * Returns null when heif-enc isn't installed (the test is then skipped).
+ */
+export async function makeHeic() {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'fk-heic-test-'));
+  try {
+    const jpg = path.join(dir, 'in.jpg');
+    const heic = path.join(dir, 'out.heic');
+    await sharp({ create: { width: 640, height: 480, channels: 3, background: { r: 90, g: 120, b: 60 } } })
+      .withExif({ IFD0: { Make: 'Apple', Model: 'iPhone 15' }, IFD2: { DateTimeOriginal: '2024:05:18 07:42:10' } })
+      .jpeg()
+      .toFile(jpg);
+    const installed = await new Promise((resolve, reject) => {
+      execFile('heif-enc', ['-q', '50', '-o', heic, jpg], (err, stdout, stderr) => {
+        if (!err) resolve(true);
+        else if (err.code === 'ENOENT') resolve(false);
+        else reject(new Error(`heif-enc failed: ${stderr || err.message}`));
+      });
+    });
+    return installed ? await readFile(heic) : null;
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 }
 
 export async function makeJpeg(width = 640, height = 480) {

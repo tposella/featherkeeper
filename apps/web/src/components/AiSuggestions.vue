@@ -44,12 +44,12 @@ const yourPhoto = ref('');
 watch(
   () => props.file,
   (file, old) => {
-    if (yourPhoto.value) URL.revokeObjectURL(yourPhoto.value);
+    if (yourPhoto.value.startsWith('blob:')) URL.revokeObjectURL(yourPhoto.value);
     yourPhoto.value = file ? URL.createObjectURL(file) : '';
   },
   { immediate: true },
 );
-onUnmounted(() => yourPhoto.value && URL.revokeObjectURL(yourPhoto.value));
+onUnmounted(() => yourPhoto.value.startsWith('blob:') && URL.revokeObjectURL(yourPhoto.value));
 
 async function loadReference(s) {
   const key = keyOf(s);
@@ -126,6 +126,11 @@ async function run() {
       fields.longitude = String(props.longitude);
     }
     result.value = await api.upload(`/catalogues/${props.catalogue}/identify`, props.file, fields);
+    // HEIC photos come back with a JPEG preview, since most browsers can't show HEIC themselves.
+    if (result.value.preview) {
+      if (yourPhoto.value.startsWith('blob:')) URL.revokeObjectURL(yourPhoto.value);
+      yourPhoto.value = result.value.preview;
+    }
     if (!result.value.suggestions.length) error.value = 'No suggestions for this photo.';
     emitDecision();
   } catch (err) {

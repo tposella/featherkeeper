@@ -5,7 +5,7 @@ import sharp from 'sharp';
 import { loadCatalogue, locationsVisible, requireEdit } from '../lib/access.js';
 import { badRequest, HttpError, notFound } from '../lib/errors.js';
 import { buildCandidates } from '../lib/candidates.js';
-import { processImage, readExif } from '../lib/images.js';
+import { openImage, processImage, readExif, uprightPipeline } from '../lib/images.js';
 import * as out from '../lib/serialize.js';
 
 const slugParam = { type: 'object', required: ['slug'], properties: { slug: { type: 'string', maxLength: 64 } } };
@@ -438,19 +438,28 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
 
       let small;
       let exif;
+      let preview = null;
+      let img = null;
       try {
+        img = await openImage(upload.path);
         // A 1024 px JPEG with no metadata: faster to score, and no GPS leaves your server.
         [small, exif] = await Promise.all([
-          sharp(upload.path, { failOn: 'none' })
-            .rotate()
+          uprightPipeline(img)
             .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
             .jpeg({ quality: 88 })
             .toBuffer(),
           readExif(upload.path),
         ]);
-      } catch {
+        // Most browsers can't show HEIC, so send back a small JPEG for the page to show instead.
+        if (img.format.ext === 'heic') {
+          const jpg = await sharp(small).resize({ width: 640, height: 640, fit: 'inside' }).jpeg({ quality: 78 }).toBuffer();
+          preview = `data:image/jpeg;base64,${jpg.toString('base64')}`;
+        }
+      } catch (err) {
+        if (err instanceof HttpError) throw err;
         throw badRequest("That file isn't an image we can read");
       } finally {
+        await img?.cleanup();
         await upload.cleanup();
       }
 
@@ -518,6 +527,7 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
         model,
         location: location && (pool?.summary.usedLocation ?? false) ? location : location ? { ...location, unused: true } : null,
         pool: pool?.summary ?? null,
+        preview, // a small JPEG for HEIC uploads, which most browsers can't display
         suggestions,
       };
     },
@@ -525,5 +535,5 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
 }
 
 function extFor(mime) {
-  return { 'image/png': 'png', 'image/webp': 'webp', 'image/tiff': 'tif', 'image/avif': 'avif' }[mime] ?? 'jpg';
+  return { 'image/png': 'png', 'image/webp': 'webp', 'image/tiff': 'tif', 'image/avif': 'avif', 'image/heic': 'heic' }[mime] ?? 'jpg';
 }

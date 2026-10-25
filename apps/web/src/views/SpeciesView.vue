@@ -383,7 +383,7 @@ function exifLine(p) {
                   <input
                     class="visually-hidden"
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,image/tiff,image/avif"
+                    accept="image/jpeg,image/heic,image/heif,.heic,.heif,image/png,image/webp,image/tiff,image/avif"
                     multiple
                     :disabled="uploadingFor === s.id"
                     @change="addPhotos(s, $event)"

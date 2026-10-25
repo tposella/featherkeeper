@@ -52,7 +52,7 @@ const matches = computed(() => {
     .slice(0, 8);
 });
 
-const ACCEPT = 'image/jpeg,image/png,image/webp,image/tiff,image/avif';
+const ACCEPT = 'image/jpeg,image/heic,image/heif,.heic,.heif,image/png,image/webp,image/tiff,image/avif';
 
 async function onFiles(event) {
   const picked = [...(event.target.files ?? [])];
@@ -61,9 +61,7 @@ async function onFiles(event) {
   const maxBytes = session.config.maxUploadMb > 0 ? session.config.maxUploadMb * 1024 * 1024 : Infinity;
   const tooBig = picked.filter((f) => f.size > maxBytes);
   if (tooBig.length) error.value = `${tooBig.map((f) => f.name).join(', ')} is larger than ${session.config.maxUploadMb} MB and was skipped.`;
-  const heic = picked.filter((f) => /\.hei[cf]$/i.test(f.name));
-  if (heic.length) error.value = 'HEIC photos need converting to JPEG first (on iPhone: Settings, Camera, Formats, Most Compatible).';
-  const ok = picked.filter((f) => f.size <= maxBytes && !/\.hei[cf]$/i.test(f.name));
+  const ok = picked.filter((f) => f.size <= maxBytes);
   files.value.push(...ok.map((file) => ({ file, url: URL.createObjectURL(file) })));
 
   // Prefill from the photos' metadata without overwriting what the user typed. Date and location
@@ -187,7 +185,12 @@ async function save() {
       <h3>Photos</h3>
       <ul v-if="files.length" class="previews">
         <li v-for="(f, i) in files" :key="f.url">
-          <img :src="f.url" :alt="f.file.name" />
+          <!-- Most browsers can't show HEIC (iPhone) photos; they upload fine, so show a stand-in. -->
+          <img v-if="!f.noPreview" :src="f.url" :alt="f.file.name" @error="f.noPreview = true" />
+          <span v-else class="no-preview small" :title="f.file.name">
+            <strong>{{ /\.hei[cf]$/i.test(f.file.name) ? 'HEIC photo' : 'Photo' }}</strong>
+            {{ f.file.name }}
+          </span>
           <button class="btn quiet small" type="button" @click="removeFile(i)">Remove</button>
         </li>
       </ul>
@@ -196,7 +199,7 @@ async function save() {
         <input class="visually-hidden" type="file" :accept="ACCEPT" multiple @change="onFiles" />
       </label>
       <p class="soft small hint">
-        Optional. JPEG, PNG, WebP, TIFF or AVIF<template v-if="session.config.maxUploadMb > 0">, up to
+        Optional. JPEG, HEIC (iPhone), PNG, WebP, TIFF or AVIF<template v-if="session.config.maxUploadMb > 0">, up to
         {{ session.config.maxUploadMb }} MB each</template>. Date and GPS are read from the photo.
       </p>
       <div v-if="fromPhoto" class="from-photo small" role="status">
@@ -342,6 +345,23 @@ label.btn {
   height: 132px;
   object-fit: cover;
   border-radius: var(--radius);
+}
+.no-preview {
+  width: 132px;
+  height: 132px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.no-preview strong {
+  color: var(--ink);
 }
 .matches {
   list-style: none;

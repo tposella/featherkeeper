@@ -48,6 +48,17 @@ jobs:
           set -o pipefail
           bash deploy/smoke-test.sh http://localhost:8080 2>&1 | tee "$REPORT/smoke.log"
 
+      - name: HEIC (iPhone) photos decode inside the API image
+        run: |
+          set -o pipefail
+          sudo apt-get update -q && sudo apt-get install -y -q libheif-examples libheif-plugin-x265 > /dev/null
+          # A JPEG with a capture date, made by sharp in the container, turned into HEIC here.
+          docker compose exec -T api node -e "require('sharp')({create:{width:640,height:480,channels:3,background:'#5a783c'}}).withExif({IFD0:{Make:'Apple',Model:'iPhone 15'},IFD2:{DateTimeOriginal:'2024:05:18 07:42:10'}}).jpeg().toFile('/tmp/in.jpg').then(()=>console.log('jpeg ok'))"
+          docker compose cp api:/tmp/in.jpg /tmp/in.jpg
+          heif-enc -q 50 -o /tmp/test.heic /tmp/in.jpg
+          docker compose cp /tmp/test.heic api:/tmp/test.heic
+          docker compose exec -T api node --input-type=module -e "import { processImage } from '/app/src/lib/images.js'; const r = await processImage('/tmp/test.heic'); console.log(JSON.stringify({ ext: r.ext, width: r.width, height: r.height, takenAt: r.takenAt, camera: r.camera, thumb: r.thumb.length })); if (r.ext !== 'heic' || r.width !== 640 || !r.takenAt) process.exit(1);" 2>&1 | tee "$REPORT/heic.log"
+
       - name: Collect logs
         if: always()
         run: |

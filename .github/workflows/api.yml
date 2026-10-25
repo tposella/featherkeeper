@@ -50,6 +50,12 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install libheif (HEIC decoding, and heif-enc to make test photos)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libheif-examples libheif-plugin-libde265 libheif-plugin-x265 python3 > /dev/null
+          (heif-dec --version || heif-convert --version || true) 2>&1 | head -2
+
       - name: Install dependencies
         run: |
           mkdir -p "$REPORT"
