@@ -8,7 +8,13 @@ Featherkeeper runs on your own server (a Proxmox LXC, a Raspberry Pi, any Linux 
 Your photos and records stay with you. The only outside services it talks to are public birding and
 mapping databases, and each of them can be switched off.
 
-> **Status: early development (v0.1).** Usable day to day, but expect changes.
+> **Status: public beta (0.1.0-beta).** Featherkeeper is usable day to day, but it's new: expect
+> rough edges and changes between releases, and **keep backups** (see
+> [Updating, backups and restoring](#updating-backups-and-restoring); you can also download any
+> catalogue as a ZIP from its Settings). Found a bug or have an idea?
+> [Open an issue](https://github.com/tposella/featherkeeper/issues/new/choose). What changed in each
+> release is in the [CHANGELOG](CHANGELOG.md).
+>
 > Try the demo with sample data: **https://tposella.github.io/featherkeeper/**
 
 ---
@@ -27,6 +33,7 @@ mapping databases, and each of them can be switched off.
   - [Turning on AI identification](#turning-on-ai-identification)
 - [Configuration reference](#configuration-reference)
 - [Updating, backups and restoring](#updating-backups-and-restoring)
+- [Accounts and password resets](#accounts-and-password-resets)
 - [Troubleshooting](#troubleshooting)
 - [Privacy: what leaves your server](#privacy-what-leaves-your-server)
 - [Development](#development)
@@ -94,7 +101,7 @@ Featherkeeper turns that into something more fun and more useful:
 - Notes, and every sighting with **edit** and **delete**.
 
 **Logging sightings**
-- Add photos (JPEG, PNG, WebP, TIFF or AVIF, up to 100 MB each by default). **Date, time, GPS and
+- Add photos (JPEG, HEIC from iPhones, PNG, WebP, TIFF or AVIF, up to 100 MB each by default). **Date, time, GPS and
   camera** are read from each photo. The place name is filled in from the nearest eBird hotspot, or from
   OpenStreetMap.
 - **Search for a place** by name (hotspots near your catalogue first), click the map, or use your
@@ -113,7 +120,10 @@ Featherkeeper turns that into something more fun and more useful:
   browser remembers.
 
 **Running it**
-- One `docker compose up` on any Linux host. Works behind nginx, Caddy, Traefik or a Cloudflare Tunnel.
+- Ready-made Docker images for x86-64 and ARM, and one `docker compose up` on any Linux host. Works
+  behind nginx, Caddy, Traefik or a Cloudflare Tunnel.
+- **Export** any catalogue as a ZIP (CSV spreadsheets plus original photos), and admin password resets
+  in the app or from the server console.
 - Automatic database migrations, health checks, a smoke-test script and a backup script.
 
 ## What's in this repository
@@ -124,6 +134,7 @@ featherkeeper/
 │   ├── api/                    Node.js API (Fastify + PostgreSQL)
 │   │   ├── src/
 │   │   │   ├── server.js       Startup: wait for the database, migrate, create the admin, listen
+│   │   │   ├── admin-cli.js    Console commands: list users, reset a password, make an admin
 │   │   │   ├── app.js          Builds the Fastify app and wires the services together
 │   │   │   ├── config.js       Every setting, read from environment variables
 │   │   │   ├── db/             Connection pool, migration runner, SQL migrations
@@ -151,9 +162,14 @@ featherkeeper/
 │   └── nginx.example.conf      Server block for an nginx reverse proxy in front of Featherkeeper
 ├── docs/
 │   └── ai-identification.md    How AI identification works, its accuracy, and its options
-├── .github/workflows/          CI: API tests, Docker stack test, AI accuracy test, demo + screenshots
+├── .github/
+│   ├── workflows/              CI (API tests, Docker stack test, AI accuracy, demo + screenshots)
+│   │                           and the release workflow that publishes images to ghcr.io
+│   └── ISSUE_TEMPLATE/         Bug report and feature idea forms
 ├── docker-compose.yml          The whole stack
 ├── .env.example                Every setting, documented
+├── CHANGELOG.md                What changed in each release
+├── SECURITY.md                 How to report a security problem privately
 └── LICENSE                     GNU Affero General Public License v3.0
 ```
 
@@ -214,12 +230,19 @@ Set at least these in `.env`:
 | `POSTGRES_PASSWORD` | the random string from `openssl` |
 | `EBIRD_API_KEY` | your eBird key |
 
-Then start it:
+Then start it with the ready-made images:
 
 ```bash
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 docker compose ps             # db, api and web should say "healthy" after a minute or two
 ```
+
+The images come from the GitHub Container Registry (`ghcr.io/tposella/featherkeeper-*`), built for
+x86-64 and 64-bit ARM (the AI identifier is x86-64 only). `FEATHERKEEPER_TAG` in `.env` picks the
+release: `beta` (the newest, the default), `latest` (the newest stable one), or an exact version such as
+`0.1.0-beta.1`. To build the images yourself from this folder instead, use
+`docker compose up -d --build`.
 
 Open `http://<server-ip>:8080` and **create your account. The first account becomes the site admin**,
 so do this before anyone else can reach the site. Then choose **New catalogue → Around a town or place**,
@@ -275,7 +298,7 @@ COMPOSE_PROFILES=ai
 IDENTIFY_PROVIDER=bioclip
 ```
 
-Then `docker compose up -d --build` and watch `docker compose logs -f identifier` until it says
+Then `docker compose pull && docker compose up -d` and watch `docker compose logs -f identifier` until it says
 `ready`. The first start downloads the model (a few GB, one time). Details, measured accuracy and
 options are in [docs/ai-identification.md](docs/ai-identification.md).
 
@@ -323,9 +346,16 @@ All settings live in `.env` (see [`.env.example`](.env.example)). Changing one t
 
 **Update:**
 ```bash
-cd /opt/featherkeeper && git pull && docker compose up -d --build
+cd /opt/featherkeeper && git pull && docker compose pull && docker compose up -d
 ```
+`git pull` brings the latest `docker-compose.yml` and scripts; `docker compose pull` fetches the
+images for your `FEATHERKEEPER_TAG`. (If you build your own images, use `git pull && docker compose up -d --build`.)
 Database migrations run automatically on start. Hard-refresh the browser afterwards (Ctrl+Shift+R).
+Read the [CHANGELOG](CHANGELOG.md) before updating to see what's new.
+
+**Export a catalogue:** its **Settings → Export** downloads a ZIP with spreadsheets (CSV) of the
+checklist, sightings and photos, and every original photo file in a folder per species. Owners and
+editors can do this at any time; it doesn't replace server backups, but it's an easy copy to keep.
 
 **Back up** (database dump plus photos into a dated folder; keeps the 14 newest):
 ```bash
@@ -345,6 +375,28 @@ docker compose exec -T api tar -C /data -xf - < "$B/photos.tar"
 docker compose restart api
 ```
 
+## Accounts and password resets
+
+The first account created becomes the **site admin**. There's no email on a Featherkeeper site, so
+forgotten passwords are reset by an admin:
+
+- **In the app:** go to **Account → manage users and reset passwords**. **Reset password** either makes
+  a temporary password (shown once, for you to pass on) or lets you type one. The user is signed out
+  everywhere and can change it under **Account** after signing in. You can also make other people
+  site admins there.
+- **From the server's console** (for when the admin is the one locked out), in the folder with
+  `docker-compose.yml`:
+
+  ```bash
+  docker compose exec api node src/admin-cli.js list-users
+  docker compose exec api node src/admin-cli.js reset-password you@example.com
+  docker compose exec api node src/admin-cli.js reset-password you@example.com --password "a new password"
+  docker compose exec api node src/admin-cli.js make-admin you@example.com
+  ```
+
+  `reset-password` prints a temporary password unless you give one, and signs that account out
+  everywhere.
+
 ## Troubleshooting
 
 | Symptom | Fix |
@@ -354,7 +406,8 @@ docker compose restart api
 | Photo uploads fail with "413" | Raise `client_max_body_size` in your reverse proxy (110m for the default 100 MB limit) |
 | "Cannot reach the identifier container" | Set `COMPOSE_PROFILES=ai` in `.env` (note the `=`), then `docker compose up -d` |
 | "No date or location found" for a photo | The file has no metadata: messaging apps and some exports strip it. Enter the details by hand |
-| HEIC (iPhone) photos are rejected | Export as JPEG, or set iPhone **Settings → Camera → Formats → Most Compatible** |
+| A HEIC (iPhone) photo shows no preview while logging | Normal in most browsers other than Safari: it uploads and displays fine once saved |
+| Locked out of the admin account | `docker compose exec api node src/admin-cli.js reset-password you@example.com` (see [Accounts](#accounts-and-password-resets)) |
 | eBird import says the key was rejected | Check `EBIRD_API_KEY` in `.env`, then `docker compose up -d` |
 | Map or place search is empty | The server or browser can't reach OpenStreetMap; check the network or set `GEOCODER_URL` |
 
@@ -416,7 +469,8 @@ Viewing follows each catalogue's visibility; changes need the owner or an editor
 | --- | --- |
 | System | `GET /health`, `GET /config` |
 | Accounts | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `PATCH /auth/me` |
-| Catalogues | `GET /catalogues`, `POST /catalogues`, `GET`/`PATCH`/`DELETE /catalogues/:slug` |
+| Site admin | `GET /admin/users`, `POST /admin/users/:id/reset-password`, `PATCH /admin/users/:id` |
+| Catalogues | `GET /catalogues`, `POST /catalogues`, `GET`/`PATCH`/`DELETE /catalogues/:slug`, `GET /catalogues/:slug/export.zip` |
 | Members | `GET`/`POST /catalogues/:slug/members`, `PATCH`/`DELETE /catalogues/:slug/members/:userId` |
 | Dex | `GET`/`POST /catalogues/:slug/species`, `GET`/`PATCH`/`DELETE /catalogues/:slug/species/:id`, `GET /species?q=` |
 | Species info | `GET /catalogues/:slug/species/:id/insights`, `GET /catalogues/:slug/species/:id/sounds`, `GET /reference` |
@@ -424,7 +478,7 @@ Viewing follows each catalogue's visibility; changes need the owner or an editor
 | eBird import | `POST /ebird/preview`, `POST /catalogues/:slug/import/ebird` |
 | Places | `GET /places?q=&catalogue=`, `GET /places/reverse?latitude=&longitude=` |
 | Sightings | `GET`/`POST /catalogues/:slug/sightings`, `PATCH`/`DELETE /sightings/:id` |
-| Photos | `POST /sightings/:id/photos`, `GET /photos/:id/thumb\|display\|original`, `PATCH`/`DELETE /photos/:id`, `GET /catalogues/:slug/to-replace` |
+| Photos | `POST /sightings/:id/photos`, `GET /photos/:id/thumb\|display\|original`, `PATCH`/`DELETE /photos/:id`, `GET /catalogues/:slug/to-replace`, `POST /photo-info` |
 | AI | `POST /catalogues/:slug/identify` |
 
 ---
@@ -490,6 +544,7 @@ Recommended citations:
 | [node-postgres (pg)](https://node-postgres.com) | PostgreSQL client | MIT |
 | [sharp](https://sharp.pixelplumbing.com) (with [libvips](https://www.libvips.org), LGPL-3.0) | Thumbnails, display images, image validation | Apache-2.0 |
 | [exifr](https://github.com/MikeKovarik/exifr) | Reading date, GPS and camera from photos | MIT |
+| [libheif](https://github.com/strukturag/libheif) (`heif-dec`, with [libde265](https://github.com/strukturag/libde265)) | Decoding HEIC (iPhone) photos, in the API image | LGPL-3.0 |
 
 ### Libraries: web app (`apps/web`)
 

@@ -1,7 +1,10 @@
 # Featherkeeper API
 FROM node:22-bookworm-slim
 
-ENV NODE_ENV=production \
+# Set by the release workflow; shown in the footer and /api/health.
+ARG VERSION=dev
+ENV FEATHERKEEPER_VERSION=$VERSION \
+    NODE_ENV=production \
     PORT=3000 \
     DATA_DIR=/data
 

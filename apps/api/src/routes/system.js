@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 
-const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+// Release images carry their version (e.g. 0.1.0-beta.1); local builds fall back to package.json.
+const version = process.env.FEATHERKEEPER_VERSION && process.env.FEATHERKEEPER_VERSION !== 'dev' ? process.env.FEATHERKEEPER_VERSION : pkg.version;
 
 export default async function systemRoutes(app, { db, config, ebird, geocoder, identifier, reference, sounds }) {
   // Used by Docker health checks and uptime monitors.

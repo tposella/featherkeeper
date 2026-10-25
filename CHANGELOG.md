@@ -1,0 +1,47 @@
+# Changelog
+
+What changed in each release of Featherkeeper. Versions follow [semantic versioning](https://semver.org);
+`-beta` releases may still change in ways that need a note here before you update.
+
+## [Unreleased]
+
+## [0.1.0-beta.1] - 2026-10-25
+
+The first public beta.
+
+### Catalogues and sharing
+- Several catalogues per site, each with an owner and editors, and visibility set to private,
+  signed-in users or public. Exact locations can be hidden from viewers.
+- Build a catalogue's species list from eBird: around a town or place (5 to 50 km), or a whole region.
+
+### The dex
+- A field-guide-order grid with plate numbers, filters (photographed / not yet), search and family filter.
+- **Greyed examples** (the default): species you haven't photographed show an openly licensed example
+  photo in grey; your own photos fill them in full colour. Switch to empty slots on the Dex tab or in Settings.
+- Families view, and an **In season** view of what's been reported nearby and what's usually around.
+
+### Species pages
+- An album of your photos with a chosen thumbnail, and **To replace** marks (with notes) for photos
+  you'd like to improve, listed on their own tab.
+- When and where to find it: month and time-of-day charts (hover or tap a bar for counts and
+  percentages), habitat, recent eBird reports and your own records.
+- Calls and songs from xeno-canto and iNaturalist.
+
+### Logging
+- Photo uploads up to 100 MB, including **HEIC photos from iPhones**. Date, time, GPS and camera
+  are read from each photo; the place is named from the nearest eBird hotspot or OpenStreetMap.
+- Optional AI identification (BioCLIP 2) with a location-aware top 3, example photos and a compare view.
+- Edit or move sightings to another species.
+
+### Running it
+- **Ready-made Docker images** on the GitHub Container Registry, for x86-64 and ARM
+  (the AI identifier is x86-64 only). `docker compose pull && docker compose up -d`.
+- **Export** any catalogue as a ZIP: CSV spreadsheets of the checklist, sightings and photos, plus
+  every original photo.
+- **Password resets** by the site admin in the app, or from the server console
+  (`docker compose exec api node src/admin-cli.js reset-password <email>`).
+- Light and dark mode, and a phone layout with bottom navigation and swipeable photos.
+- Backup and smoke-test scripts, automatic database migrations.
+
+[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.1.0-beta.1...HEAD
+[0.1.0-beta.1]: https://github.com/tposella/featherkeeper/releases/tag/v0.1.0-beta.1

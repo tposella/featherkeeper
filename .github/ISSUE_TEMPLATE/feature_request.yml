@@ -1,0 +1,21 @@
+name: Feature idea
+description: Suggest something that would make Featherkeeper better.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: The birding or photography problem you're trying to solve, in your own words.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How might it work?
+      description: Optional. A sketch of how you picture it.
+  - type: textarea
+    id: else
+    attributes:
+      label: Anything else?
+      description: Other apps that do this well, screenshots, links.

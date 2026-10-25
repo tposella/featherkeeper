@@ -1,0 +1,51 @@
+name: Bug report
+description: Something doesn't work the way it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing Featherkeeper! For a **security** problem, please don't use this form;
+        see [SECURITY.md](https://github.com/tposella/featherkeeper/blob/main/SECURITY.md) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead. Screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a catalogue's Dex tab
+        2. ...
+  - type: input
+    id: version
+    attributes:
+      label: Featherkeeper version
+      description: Shown in the site's footer, or at `/api/health`.
+      placeholder: 0.1.0-beta.1
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How do you run it?
+      options:
+        - Ready-made images (docker compose pull)
+        - Images built myself (docker compose up --build)
+        - The online demo
+        - Other
+  - type: input
+    id: device
+    attributes:
+      label: Browser and device
+      placeholder: Firefox 131 on Windows, Safari on iPhone 15...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: If it's a server problem, the output of `docker compose logs --tail 100 api` (remove anything private).
+      render: text

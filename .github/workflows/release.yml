@@ -1,0 +1,163 @@
+# Publishes ready-made Docker images to the GitHub Container Registry (ghcr.io) and creates a
+# GitHub release, whenever a version tag is pushed:
+#
+#   git tag -a v0.1.0-beta.1 -m "Featherkeeper 0.1.0-beta.1" && git push origin v0.1.0-beta.1
+#
+# Images: ghcr.io/<owner>/featherkeeper-{api,web,identifier}, tagged with the version (0.1.0-beta.1),
+# "beta" (always the newest release), and "latest" (the newest stable release, i.e. no "-beta").
+# The results are pushed to the ci-report-release branch.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'An existing tag to (re)publish, e.g. v0.1.0-beta.1'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            context: apps/api
+            platforms: linux/amd64,linux/arm64
+            description: Featherkeeper API server
+          - name: web
+            context: apps/web
+            platforms: linux/amd64,linux/arm64
+            description: Featherkeeper web app (nginx)
+          # PyTorch for ARM under emulation takes hours; the AI identifier is published for x86-64 only.
+          - name: identifier
+            context: services/identifier
+            platforms: linux/amd64
+            description: Featherkeeper AI identifier (BioCLIP 2, CPU)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Work out the version and image tags
+        id: v
+        run: |
+          VERSION="${TAG#v}"
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/featherkeeper-${{ matrix.name }}"
+          TAGS="$IMAGE:$VERSION,$IMAGE:beta"
+          [[ "$VERSION" == *-* ]] || TAGS="$TAGS,$IMAGE:latest"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+          echo "Publishing $TAGS"
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          platforms: ${{ matrix.platforms }}
+          push: true
+          tags: ${{ steps.v.outputs.tags }}
+          build-args: VERSION=${{ steps.v.outputs.version }}
+          # The source label links the package to this repository on GitHub.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.v.outputs.version }}
+            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.licenses=AGPL-3.0-only
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  release:
+    needs: images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - name: Create the GitHub release from CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${TAG#v}"
+          # This version's section of the changelog: from its heading to the next one.
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && (/^## \[/ || /^\[.*\]: /) { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Featherkeeper $VERSION" > notes.md
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          cat >> notes.md <<NOTES
+
+          ### Docker images
+          \`\`\`
+          ghcr.io/$OWNER/featherkeeper-api:$VERSION
+          ghcr.io/$OWNER/featherkeeper-web:$VERSION
+          ghcr.io/$OWNER/featherkeeper-identifier:$VERSION
+          \`\`\`
+          To install or update, see the README: \`docker compose pull && docker compose up -d\`.
+          NOTES
+          FLAGS=()
+          [[ "$VERSION" == *-* ]] && FLAGS+=(--prerelease)
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" --title "Featherkeeper $VERSION" --notes-file notes.md "${FLAGS[@]}"
+          else
+            gh release create "$TAG" --verify-tag --title "Featherkeeper $VERSION" --notes-file notes.md "${FLAGS[@]}"
+          fi
+
+  report:
+    needs: [images, release]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check the images can be pulled without signing in
+        id: pull
+        run: |
+          VERSION="${TAG#v}"
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          mkdir -p report
+          for name in api web identifier; do
+            if docker manifest inspect "ghcr.io/$OWNER/featherkeeper-$name:$VERSION" > /dev/null 2>&1; then
+              echo "$name: public" | tee -a report/pull.txt
+            else
+              echo "$name: NOT PUBLIC (set the package to public on GitHub)" | tee -a report/pull.txt
+            fi
+          done
+      - name: Publish report to the ci-report-release branch
+        run: |
+          cd report
+          echo "tag: $TAG" > status.txt
+          echo "images: ${{ needs.images.result }}" >> status.txt
+          echo "release: ${{ needs.release.result }}" >> status.txt
+          git init -q -b ci-report-release
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Release report for $TAG"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-report-release
