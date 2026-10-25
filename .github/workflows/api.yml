@@ -53,7 +53,7 @@ jobs:
       - name: Install libheif (HEIC decoding, and heif-enc to make test photos)
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q libheif-examples libheif-plugin-libde265 libheif-plugin-x265 python3 > /dev/null
+          sudo apt-get install -y -q libheif-examples libheif-plugin-libde265 libheif-plugin-x265 libimage-exiftool-perl python3 > /dev/null
           (heif-dec --version || heif-convert --version || true) 2>&1 | head -2
 
       - name: Install dependencies

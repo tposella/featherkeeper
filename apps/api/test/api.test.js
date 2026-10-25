@@ -311,20 +311,24 @@ describe('dex, sightings and photos', () => {
 
   test('iPhone (HEIC) photos are decoded, keeping their date and the original file', async (t) => {
     const heic = await makeHeic();
-    if (!heic) return t.skip('heif-enc is not installed');
+    if (!heic) return t.skip('heif-enc or exiftool is not installed');
     const up = await editor.upload(`/api/sightings/${sightingId}/photos`, heic, 'IMG_0001.HEIC', 'image/heic');
     assert.equal(up.status, 201, JSON.stringify(up.body));
-    assert.equal(up.body.photo.width, 640);
-    assert.equal(up.body.photo.height, 480);
-    assert.equal(up.body.photo.camera, 'Apple iPhone 15');
-    assert.equal(up.body.photo.takenAt, '2024-05-18T07:42:10.000Z');
-    const thumb = await editor.get(up.body.photo.urls.thumb);
-    assert.equal(thumb.status, 200);
-    assert.equal(thumb.headers['content-type'], 'image/webp');
-    const original = await editor.get(up.body.photo.urls.original);
-    assert.equal(original.headers['content-type'], 'image/heic');
-    assert.equal(original.raw.length, heic.length, 'the original HEIC is kept byte for byte');
-    assert.equal((await editor.delete(`/api/photos/${up.body.photo.id}`)).status, 200);
+    try {
+      const p = up.body.photo;
+      assert.deepEqual(
+        { width: p.width, height: p.height, camera: p.camera, takenAt: p.takenAt, latitude: p.latitude, longitude: p.longitude },
+        { width: 640, height: 480, camera: 'Apple iPhone 15', takenAt: '2024-05-18T07:42:10.000Z', latitude: 51.1652, longitude: -114.3824 },
+      );
+      const thumb = await editor.get(p.urls.thumb);
+      assert.equal(thumb.status, 200);
+      assert.equal(thumb.headers['content-type'], 'image/webp');
+      const original = await editor.get(p.urls.original);
+      assert.equal(original.headers['content-type'], 'image/heic');
+      assert.equal(original.raw.length, heic.length, 'the original HEIC is kept byte for byte');
+    } finally {
+      await editor.delete(`/api/photos/${up.body.photo.id}`);
+    }
 
     // AI identification reads HEIC too, and sends back a JPEG preview the browser can show.
     const id = await editor.upload('/api/catalogues/cochrane-backyard/identify', heic, 'IMG_0001.HEIC', 'image/heic');

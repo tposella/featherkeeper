@@ -271,8 +271,9 @@ export function client(app) {
 }
 
 /**
- * An iPhone-style HEIC photo with a capture date, made with libheif's heif-enc from a JPEG.
- * Returns null when heif-enc isn't installed (the test is then skipped).
+ * An iPhone-style HEIC photo made with libheif's heif-enc, with camera, capture date and GPS
+ * written into its EXIF by exiftool (heif-enc doesn't carry EXIF over from the JPEG).
+ * Returns null when heif-enc or exiftool isn't installed (the test is then skipped).
  */
 export async function makeHeic() {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fk-heic-test-'));
@@ -283,14 +284,28 @@ export async function makeHeic() {
       .withExif({ IFD0: { Make: 'Apple', Model: 'iPhone 15' }, IFD2: { DateTimeOriginal: '2024:05:18 07:42:10' } })
       .jpeg()
       .toFile(jpg);
-    const installed = await new Promise((resolve, reject) => {
-      execFile('heif-enc', ['-q', '50', '-o', heic, jpg], (err, stdout, stderr) => {
-        if (!err) resolve(true);
-        else if (err.code === 'ENOENT') resolve(false);
-        else reject(new Error(`heif-enc failed: ${stderr || err.message}`));
+    const tool = (cmd, args) =>
+      new Promise((resolve, reject) => {
+        execFile(cmd, args, (err, stdout, stderr) => {
+          if (!err) resolve(true);
+          else if (err.code === 'ENOENT') resolve(false);
+          else reject(new Error(`${cmd} failed: ${stderr || err.message}`));
+        });
       });
-    });
-    return installed ? await readFile(heic) : null;
+    if (!(await tool('heif-enc', ['-q', '50', '-o', heic, jpg]))) return null;
+    const tagged = await tool('exiftool', [
+      '-q',
+      '-overwrite_original',
+      '-Make=Apple',
+      '-Model=iPhone 15',
+      '-DateTimeOriginal=2024:05:18 07:42:10',
+      '-GPSLatitude=51.1652',
+      '-GPSLatitudeRef=N',
+      '-GPSLongitude=114.3824',
+      '-GPSLongitudeRef=W',
+      heic,
+    ]);
+    return tagged ? await readFile(heic) : null;
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
