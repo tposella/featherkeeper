@@ -22,6 +22,7 @@ const pages = [
   ['log-sighting', '#/c/bow-valley/log'],
   ['settings', '#/c/bow-valley/settings'],
   ['new-catalogue', '#/new'],
+  ['admin', '#/admin'],
   ['sign-in', '#/login'],
 ];
 

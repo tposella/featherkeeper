@@ -68,7 +68,18 @@ async function onFiles(event) {
   // can come from different photos (e.g. a phone shot with GPS next to a camera shot without).
   const found = { date: null, location: null, camera: '', names: [] };
   for (const file of ok) {
-    const meta = await readPhotoMetadata(file);
+    let meta = await readPhotoMetadata(file);
+    // Browsers can't read HEIC (iPhone) metadata, so the server reads it for those.
+    if (/\.hei[cf]$/i.test(file.name) || /hei[cf]/.test(file.type)) {
+      if (!meta.localDateTime && meta.latitude === null) {
+        try {
+          meta = { ...meta, ...(await api.upload('/photo-info', file)) };
+          meta.camera = meta.camera || '';
+        } catch {
+          /* the server fills in date and place when the photo is saved */
+        }
+      }
+    }
     if (!found.camera && meta.camera) found.camera = meta.camera;
     if (!found.date && meta.localDateTime) {
       found.date = meta.localDateTime;

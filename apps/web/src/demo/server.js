@@ -625,6 +625,34 @@ const routes = [
     photos.push(p);
     return { photo: serializePhoto(p, c) };
   }],
+  // Site admin (the demo's "You" is the site admin).
+  ['GET', /^\/admin\/users$/, () => {
+    if (!me()?.isSiteAdmin) throw new DemoError(me() ? 403 : 401, 'Only the site admin can do that');
+    return {
+      users: Object.values(USERS).map((u) => ({
+        ...u,
+        createdAt: '2026-09-01T17:00:00Z',
+        lastSignIn: '2026-10-20T15:00:00Z',
+        catalogues: catalogues.filter((c) => c.members.some((m) => m.userId === u.id)).length,
+      })),
+    };
+  }],
+  ['POST', /^\/admin\/users\/(\d+)\/reset-password$/, ([id], body) => {
+    if (!me()?.isSiteAdmin) throw new DemoError(403, 'Only the site admin can do that');
+    const u = Object.values(USERS).find((x) => x.id === Number(id));
+    if (!u) throw new DemoError(404, 'No such user');
+    return body?.password ? { email: u.email, password: null, generated: false } : { email: u.email, password: 'kq7m-xr4p-t9ch-w2ne', generated: true };
+  }],
+  ['PATCH', /^\/admin\/users\/(\d+)$/, ([id], body) => {
+    if (!me()?.isSiteAdmin) throw new DemoError(403, 'Only the site admin can do that');
+    const u = Object.values(USERS).find((x) => x.id === Number(id));
+    if (!u) throw new DemoError(404, 'No such user');
+    if (u.isSiteAdmin && !body.isSiteAdmin && Object.values(USERS).filter((x) => x.isSiteAdmin).length <= 1) {
+      throw new DemoError(409, 'The site needs at least one admin');
+    }
+    u.isSiteAdmin = body.isSiteAdmin;
+    return { ok: true };
+  }],
   ['PATCH', /^\/photos\/(\d+)$/, ([id], body) => {
     const p = photos.find((x) => x.id === Number(id));
     if (!p) throw new DemoError(404, 'Photo not found');

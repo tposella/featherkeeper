@@ -218,6 +218,7 @@ export async function setup() {
     app,
     db,
     examples,
+    databaseUrl: TEST_DB,
     async teardown() {
       await app.close();
       await db.close();

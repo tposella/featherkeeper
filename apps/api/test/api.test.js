@@ -68,6 +68,71 @@ describe('accounts', () => {
   });
 });
 
+describe('site admin', () => {
+  test('only the site admin sees the user list', async () => {
+    assert.equal((await anon.get('/api/admin/users')).status, 401);
+    assert.equal((await owner.get('/api/admin/users')).status, 403);
+    const res = await admin.get('/api/admin/users');
+    assert.equal(res.status, 200);
+    assert.deepEqual(
+      res.body.users.map((u) => [u.email, u.isSiteAdmin]),
+      [
+        ['admin@example.com', true],
+        ['owner@example.com', false],
+        ['editor@example.com', false],
+        ['stranger@example.com', false],
+      ],
+    );
+  });
+
+  test('the admin resets a password: generated or typed, and the user is signed out', async () => {
+    const users = (await admin.get('/api/admin/users')).body.users;
+    const strangerId = users.find((u) => u.email === 'stranger@example.com').id;
+    const url = `/api/admin/users/${strangerId}/reset-password`;
+    assert.equal((await owner.post(url, {})).status, 403);
+
+    const res = await admin.post(url, {});
+    assert.equal(res.status, 200);
+    assert.equal(res.body.generated, true);
+    assert.match(res.body.password, /^[a-z2-9]{4}-[a-z2-9]{4}-[a-z2-9]{4}-[a-z2-9]{4}$/);
+    assert.equal((await stranger.get('/api/auth/me')).body.user, null, 'signed out everywhere');
+    assert.equal((await stranger.post('/api/auth/login', { email: 'stranger@example.com', password: 'long enough pw' })).status, 401);
+    assert.equal((await stranger.post('/api/auth/login', { email: 'stranger@example.com', password: res.body.password })).status, 200);
+
+    assert.equal((await admin.post(url, { password: 'short' })).status, 400);
+    const typed = await admin.post(url, { password: 'long enough pw' });
+    assert.equal(typed.body.password, null, 'a typed password is not echoed back');
+    assert.equal((await stranger.post('/api/auth/login', { email: 'stranger@example.com', password: 'long enough pw' })).status, 200);
+  });
+
+  test('the last site admin cannot be demoted', async () => {
+    const users = (await admin.get('/api/admin/users')).body.users;
+    const me = users.find((u) => u.email === 'admin@example.com');
+    assert.equal((await admin.patch(`/api/admin/users/${me.id}`, { isSiteAdmin: false })).status, 409);
+  });
+
+  test('console command: reset-password prints a temporary password that works', async () => {
+    const { execFile } = await import('node:child_process');
+    const run = (args) =>
+      new Promise((resolve) => {
+        execFile(process.execPath, ['src/admin-cli.js', ...args], { env: { ...process.env, DATABASE_URL: ctx.databaseUrl } }, (err, stdout, stderr) =>
+          resolve({ code: err?.code ?? 0, stdout, stderr }),
+        );
+      });
+    const list = await run(['list-users']);
+    assert.match(list.stdout, /admin\s+admin@example\.com/);
+    const missing = await run(['reset-password', 'nobody@example.com']);
+    assert.equal(missing.code, 1);
+
+    const reset = await run(['reset-password', 'stranger@example.com']);
+    assert.equal(reset.code, 0, reset.stderr);
+    const temp = reset.stdout.match(/Temporary password: (\S+)/)?.[1];
+    assert.ok(temp, reset.stdout);
+    assert.equal((await stranger.get('/api/auth/me')).body.user, null);
+    assert.equal((await stranger.post('/api/auth/login', { email: 'stranger@example.com', password: temp })).status, 200);
+  });
+});
+
 describe('catalogue visibility and roles', () => {
   test('owner creates a private catalogue with a generated slug', async () => {
     const res = await owner.post('/api/catalogues', { name: 'Cochrane Backyard', regionCode: 'ca-ab' });
@@ -329,6 +394,11 @@ describe('dex, sightings and photos', () => {
     } finally {
       await editor.delete(`/api/photos/${up.body.photo.id}`);
     }
+
+    // The log form asks the server for a HEIC photo's date and place, since browsers can't read them.
+    const info = await editor.upload('/api/photo-info', heic, 'IMG_0001.HEIC', 'image/heic');
+    assert.deepEqual(info.body, { localDateTime: '2024-05-18T07:42', latitude: 51.1652, longitude: -114.3824, camera: 'Apple iPhone 15' });
+    assert.equal((await anon.upload('/api/photo-info', heic, 'IMG_0001.HEIC', 'image/heic')).status, 401);
 
     // AI identification reads HEIC too, and sends back a JPEG preview the browser can show.
     const id = await editor.upload('/api/catalogues/cochrane-backyard/identify', heic, 'IMG_0001.HEIC', 'image/heic');

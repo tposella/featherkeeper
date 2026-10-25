@@ -12,6 +12,17 @@ const MAXMEM = 64 * 1024 * 1024;
 
 export const MIN_PASSWORD_LENGTH = 10;
 
+/**
+ * A temporary password that's easy to read out or type: four groups of four characters from an
+ * alphabet without look-alikes (no 0/o, 1/l/i), e.g. "kq7m-xr4p-t9ch-w2ne". About 79 bits of entropy.
+ */
+export function temporaryPassword() {
+  const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+  const bytes = randomBytes(16);
+  const chars = [...bytes].map((b) => alphabet[b % alphabet.length]);
+  return [0, 4, 8, 12].map((i) => chars.slice(i, i + 4).join('')).join('-');
+}
+
 /** Returns "scrypt$N$r$p$salt$hash" (base64 parts). */
 export async function hashPassword(password) {
   const salt = randomBytes(16);

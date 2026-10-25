@@ -12,6 +12,7 @@ import { createIdentifier } from './integrations/identify.js';
 import { createExamples } from './lib/examples.js';
 import { createStorage } from './lib/storage.js';
 import { authPlugin } from './plugins/auth.js';
+import adminRoutes from './routes/admin.js';
 import authRoutes from './routes/auth.js';
 import catalogueRoutes from './routes/catalogues.js';
 import dexRoutes from './routes/dex.js';
@@ -106,6 +107,7 @@ export async function buildApp({
       api.setNotFoundHandler((request, reply) => reply.code(404).send({ error: 'not_found', message: 'No such API route' }));
       await api.register(systemRoutes, deps);
       await api.register(authRoutes, deps);
+      await api.register(adminRoutes, deps);
       await api.register(catalogueRoutes, deps);
       await api.register(dexRoutes, deps);
       await api.register(ebirdRoutes, deps);

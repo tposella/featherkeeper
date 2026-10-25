@@ -37,7 +37,9 @@ async function changePassword() {
     <h1>Your account</h1>
     <p class="soft">
       Signed in as {{ session.user?.email }}.
-      <template v-if="session.user?.isSiteAdmin">You are the site admin.</template>
+      <template v-if="session.user?.isSiteAdmin">
+        You are a site admin: <RouterLink :to="{ name: 'admin' }">manage users and reset passwords</RouterLink>.
+      </template>
     </p>
     <div v-if="message" class="notice" role="status">{{ message }}</div>
     <div v-if="error" class="notice error" role="alert">{{ error }}</div>

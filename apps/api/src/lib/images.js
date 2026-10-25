@@ -162,7 +162,7 @@ export async function readExif(input) {
   } catch {
     raw = null;
   }
-  if (!raw) return { takenAt: null, camera: null, lens: null, latitude: null, longitude: null, exif: null };
+  if (!raw) return { takenAt: null, localDateTime: '', camera: null, lens: null, latitude: null, longitude: null, exif: null };
 
   let gps = null;
   try {
@@ -189,8 +189,12 @@ export async function readExif(input) {
     focalLength35mm: typeof raw.FocalLengthIn35mmFormat === 'number' ? raw.FocalLengthIn35mmFormat : null,
   };
 
+  const dateValue = raw.DateTimeOriginal ?? raw.CreateDate ?? raw.DateCreated ?? raw.ModifyDate;
+  const wall = String(dateValue ?? '').match(/^(\d{4})[:-](\d{2})[:-](\d{2})[ T](\d{2}):(\d{2})/);
   return {
-    takenAt: exifDateToIso(raw.DateTimeOriginal ?? raw.CreateDate ?? raw.DateCreated ?? raw.ModifyDate, raw.OffsetTimeOriginal),
+    takenAt: exifDateToIso(dateValue, raw.OffsetTimeOriginal),
+    // The camera's own clock time, "YYYY-MM-DDTHH:mm", for prefilling forms.
+    localDateTime: wall && wall[1] !== '0000' ? `${wall[1]}-${wall[2]}-${wall[3]}T${wall[4]}:${wall[5]}` : '',
     camera: camera || null,
     lens: exif.lens,
     latitude: validGps ? latitude : null,

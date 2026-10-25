@@ -6,6 +6,7 @@ const routes = [
   { path: '/login', name: 'login', component: () => import('./views/AuthView.vue'), props: { mode: 'login' } },
   { path: '/register', name: 'register', component: () => import('./views/AuthView.vue'), props: { mode: 'register' } },
   { path: '/account', name: 'account', component: () => import('./views/AccountView.vue'), meta: { auth: true } },
+  { path: '/admin', name: 'admin', component: () => import('./views/AdminView.vue'), meta: { auth: true } },
   { path: '/new', name: 'new-catalogue', component: () => import('./views/NewCatalogueView.vue'), meta: { auth: true } },
   {
     path: '/c/:slug',

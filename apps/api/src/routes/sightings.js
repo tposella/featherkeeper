@@ -419,6 +419,24 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
     };
   });
 
+  /**
+   * Date, place and camera from a photo, for prefilling the log form. Browsers can read these
+   * themselves for most photos, but not from HEIC (iPhone) files, so the page asks here for those.
+   */
+  app.post('/photo-info', { config: { rateLimit: { max: 120, timeWindow: '10 minutes' } } }, async (request) => {
+    request.requireUser();
+    const upload = await readUpload(request, storage, config.maxUploadMb);
+    let img = null;
+    try {
+      img = await openImage(upload.path);
+      const meta = await readImageExif(upload.path, img);
+      return { localDateTime: meta.localDateTime, latitude: meta.latitude, longitude: meta.longitude, camera: meta.camera ?? '' };
+    } finally {
+      await img?.cleanup();
+      await upload.cleanup();
+    }
+  });
+
   // ---- AI identification ------------------------------------------------------
 
   /**
