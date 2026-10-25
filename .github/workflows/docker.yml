@@ -60,6 +60,8 @@ jobs:
           exiftool -q -overwrite_original -Make=Apple -Model='iPhone 15' -DateTimeOriginal='2024:05:18 07:42:10' \
             -GPSLatitude=51.1652 -GPSLatitudeRef=N -GPSLongitude=114.3824 -GPSLongitudeRef=W /tmp/test.heic
           docker compose cp /tmp/test.heic api:/tmp/test.heic
+          exiftool -a -G1 -s -Make -Model -DateTimeOriginal -GPSLatitude /tmp/test.heic | tee "$REPORT/heic-tags.log"
+          docker compose exec -T api node --input-type=module -e "import exifr from 'exifr'; import { readFile } from 'node:fs/promises'; for (const [k, v] of [['path', '/tmp/test.heic'], ['buffer', await readFile('/tmp/test.heic')]]) { try { const t = await exifr.parse(v, { tiff: true, exif: true, gps: true }); console.log(k, JSON.stringify({ Make: t?.Make, DateTimeOriginal: t?.DateTimeOriginal, lat: t?.latitude })); } catch (e) { console.log(k, 'error', e.message); } }" 2>&1 | tee -a "$REPORT/heic-tags.log" || true
           docker compose exec -T api node --input-type=module -e "import { processImage } from '/app/src/lib/images.js'; const r = await processImage('/tmp/test.heic'); console.log(JSON.stringify({ ext: r.ext, width: r.width, height: r.height, takenAt: r.takenAt, camera: r.camera, latitude: r.latitude, longitude: r.longitude, thumb: r.thumb.length })); if (r.ext !== 'heic' || r.width !== 640 || !r.takenAt || r.latitude !== 51.1652) process.exit(1);" 2>&1 | tee "$REPORT/heic.log"
 
       - name: Collect logs

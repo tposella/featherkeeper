@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, open, rm } from 'node:fs/promises';
+import { mkdtemp, open, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import exifr from 'exifr';
@@ -104,6 +104,19 @@ export async function openImage(file) {
   const format = detectFormat(meta);
   if (!format) throw new HttpError(415, `Unsupported image type. Upload ${ACCEPTED_DESCRIPTION}.`);
   return { input: file, format, meta, upright: false, cleanup: async () => {} };
+}
+
+/**
+ * EXIF for an opened image. HEIC files are read whole (exifr can miss EXIF stored late in the file
+ * when it reads a path in chunks), and if that still finds nothing, the decoded JPEG's copy is used.
+ */
+export async function readImageExif(original, img) {
+  if (img.format.ext !== 'heic') return readExif(original);
+  const fromHeic = await readExif(await readFile(original));
+  const found = (r) => r.takenAt || r.camera || r.latitude !== null;
+  if (found(fromHeic) || img.input === original) return fromHeic;
+  const fromDecoded = await readExif(img.input);
+  return found(fromDecoded) ? fromDecoded : fromHeic;
 }
 
 /** A sharp pipeline for an opened image, turned the right way up. */
@@ -213,8 +226,8 @@ async function derive(original, img) {
       .resize({ width: 480, height: 480, fit: 'cover', position: sharp.strategy.attention })
       .webp({ quality: 78 })
       .toBuffer(),
-    // EXIF always comes from the original file (for HEIC, not the decoded copy).
-    readExif(original),
+    // EXIF comes from the original file (for HEIC, see readImageExif).
+    readImageExif(original, img),
   ]);
 
   // Orientations 5-8 rotate by 90 degrees, so width and height swap (a decoded HEIC is already upright).

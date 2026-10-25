@@ -5,7 +5,7 @@ import sharp from 'sharp';
 import { loadCatalogue, locationsVisible, requireEdit } from '../lib/access.js';
 import { badRequest, HttpError, notFound } from '../lib/errors.js';
 import { buildCandidates } from '../lib/candidates.js';
-import { openImage, processImage, readExif, uprightPipeline } from '../lib/images.js';
+import { openImage, processImage, readImageExif, uprightPipeline } from '../lib/images.js';
 import * as out from '../lib/serialize.js';
 
 const slugParam = { type: 'object', required: ['slug'], properties: { slug: { type: 'string', maxLength: 64 } } };
@@ -448,7 +448,7 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
             .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
             .jpeg({ quality: 88 })
             .toBuffer(),
-          readExif(upload.path),
+          readImageExif(upload.path, img),
         ]);
         // Most browsers can't show HEIC, so send back a small JPEG for the page to show instead.
         if (img.format.ext === 'heic') {
