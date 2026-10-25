@@ -1,7 +1,10 @@
 # Publishes ready-made Docker images to the GitHub Container Registry (ghcr.io) and creates a
-# GitHub release, whenever a version tag is pushed:
+# GitHub release. Two ways to release:
 #
-#   git tag -a v0.1.0-beta.1 -m "Featherkeeper 0.1.0-beta.1" && git push origin v0.1.0-beta.1
+#   1. Bump "version" in apps/api/package.json (and apps/web/package.json), add that version's
+#      section to CHANGELOG.md, and push to main. If there's no tag for it yet, this workflow
+#      creates v<version> and publishes it.
+#   2. Or push a tag yourself: git tag -a v0.1.0-beta.2 -m "..." && git push origin v0.1.0-beta.2
 #
 # Images: ghcr.io/<owner>/featherkeeper-{api,web,identifier}, tagged with the version (0.1.0-beta.1),
 # "beta" (always the newest release), and "latest" (the newest stable release, i.e. no "-beta").
@@ -11,6 +14,8 @@ name: Release
 on:
   push:
     tags: ['v*']
+    branches: [main]
+    paths: ['apps/api/package.json']
   workflow_dispatch:
     inputs:
       tag:
@@ -23,11 +28,51 @@ permissions:
 concurrency:
   group: release-${{ inputs.tag || github.ref_name }}
 
-env:
-  TAG: ${{ inputs.tag || github.ref_name }}
-
 jobs:
+  # Which tag to publish, creating it first when the release comes from a version bump on main.
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.t.outputs.tag }}
+      publish: ${{ steps.t.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: t
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          elif [ "${{ github.ref_type }}" = tag ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="v$(node -p "require('./apps/api/package.json').version")"
+            if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
+              echo "$TAG already exists; nothing to release."
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if ! grep -q "^## \[${TAG#v}\]" CHANGELOG.md; then
+              echo "CHANGELOG.md has no section for ${TAG#v}; not releasing."
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "Featherkeeper ${TAG#v}"
+            git push origin "$TAG"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "Publishing $TAG"
+
   images:
+    needs: prepare
+    if: needs.prepare.outputs.publish == 'true'
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -90,7 +135,9 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
   release:
-    needs: images
+    needs: [prepare, images]
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -130,8 +177,10 @@ jobs:
           fi
 
   report:
-    needs: [images, release]
-    if: always()
+    needs: [prepare, images, release]
+    if: always() && needs.prepare.outputs.publish == 'true'
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

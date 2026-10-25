@@ -4,6 +4,10 @@
   "private": true,
   "description": "Featherkeeper API server",
   "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tposella/featherkeeper.git"
+  },
   "type": "module",
   "main": "src/server.js",
   "engines": {
