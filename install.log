@@ -1,0 +1,92 @@
+[1;32m==>[0m Getting docker-compose.yml
+[1;32m==>[0m Writing .env
+[1;32m==>[0m Downloading the images (the first time takes a few minutes)
+ db Pulling 
+ api Pulling 
+ web Pulling 
+ web Pulled 
+ db Pulled 
+ api Pulled 
+[1;32m==>[0m Starting Featherkeeper
+ Network featherkeeper_default  Creating
+ Network featherkeeper_default  Created
+ Volume "featherkeeper_db-data"  Creating
+ Volume "featherkeeper_db-data"  Created
+ Volume "featherkeeper_photos"  Creating
+ Volume "featherkeeper_photos"  Created
+ Container featherkeeper-db-1  Creating
+ Container featherkeeper-db-1  Created
+ Container featherkeeper-api-1  Creating
+ Container featherkeeper-api-1  Created
+ Container featherkeeper-web-1  Creating
+ Container featherkeeper-web-1  Created
+ Container featherkeeper-db-1  Starting
+ Container featherkeeper-db-1  Started
+ Container featherkeeper-db-1  Waiting
+ Container featherkeeper-db-1  Healthy
+ Container featherkeeper-api-1  Starting
+ Container featherkeeper-api-1  Started
+ Container featherkeeper-api-1  Waiting
+ Container featherkeeper-api-1  Healthy
+ Container featherkeeper-web-1  Starting
+ Container featherkeeper-web-1  Started
+ Container featherkeeper-db-1  Waiting
+ Container featherkeeper-api-1  Waiting
+ Container featherkeeper-web-1  Waiting
+ Container featherkeeper-api-1  Healthy
+ Container featherkeeper-db-1  Healthy
+ Container featherkeeper-web-1  Healthy
+
+[1;32m==>[0m Featherkeeper is running: http://10.1.0.137:8090
+
+  Next:
+  1. Open http://10.1.0.137:8090 and create your account. The first account becomes the site admin,
+     so do this before anyone else can reach the site.
+  2. Add your eBird API key to /tmp/fk/.env (EBIRD_API_KEY, free at https://ebird.org/api/keygen)
+     if you haven't, then run: cd /tmp/fk && docker compose up -d
+  3. Nightly backups: add to crontab -e
+     15 3 * * * cd /tmp/fk && ./backup.sh /path/to/backups >> /var/log/featherkeeper-backup.log 2>&1
+
+  Update later with: cd /tmp/fk && docker compose pull && docker compose up -d
+  Docs: https://tposella.github.io/featherkeeper/docs/
+
+{"status":"ok","version":"0.2.0"}fresh install: ok
+[1;32m==>[0m Getting docker-compose.yml
+[1;32m==>[0m Keeping your existing .env
+[1;32m==>[0m Downloading the images (the first time takes a few minutes)
+ web Pulling 
+ db Pulling 
+ api Pulling 
+ web Pulled 
+ api Pulled 
+ db Pulled 
+[1;32m==>[0m Starting Featherkeeper
+ Container featherkeeper-db-1  Running
+ Container featherkeeper-api-1  Running
+ Container featherkeeper-web-1  Running
+ Container featherkeeper-db-1  Waiting
+ Container featherkeeper-db-1  Healthy
+ Container featherkeeper-api-1  Waiting
+ Container featherkeeper-api-1  Healthy
+ Container featherkeeper-api-1  Waiting
+ Container featherkeeper-web-1  Waiting
+ Container featherkeeper-db-1  Waiting
+ Container featherkeeper-web-1  Healthy
+ Container featherkeeper-db-1  Healthy
+ Container featherkeeper-api-1  Healthy
+
+[1;32m==>[0m Featherkeeper is running: http://10.1.0.137:8090
+
+  Next:
+  1. Open http://10.1.0.137:8090 and create your account. The first account becomes the site admin,
+     so do this before anyone else can reach the site.
+  2. Add your eBird API key to /tmp/fk/.env (EBIRD_API_KEY, free at https://ebird.org/api/keygen)
+     if you haven't, then run: cd /tmp/fk && docker compose up -d
+  3. Nightly backups: add to crontab -e
+     15 3 * * * cd /tmp/fk && ./backup.sh /path/to/backups >> /var/log/featherkeeper-backup.log 2>&1
+
+  Update later with: cd /tmp/fk && docker compose pull && docker compose up -d
+  Docs: https://tposella.github.io/featherkeeper/docs/
+
+re-run keeps .env: ok
+latest release has no install files yet: skipped
