@@ -853,7 +853,7 @@ describe('0.2: sign-ups, accounts, storage, duplicates, paging, taxonomy', () =>
     const found = (await owner.post(url, { hashes: [hash] })).body.duplicates[hash];
     assert.equal(found.length, 1);
     assert.equal(found[0].commonName, 'American Robin');
-    assert.equal((await stranger.post(url, { hashes: [hash] })).status, 403);
+    assert.equal((await stranger.post(url, { hashes: [hash] })).status, 404, 'a private catalogue stays hidden');
   });
 
   test("deleting a sighting's last photo deletes the sighting", async () => {
