@@ -5,6 +5,38 @@ number (0.1.0 → 0.1.1), a bigger one the middle (0.1 → 0.2). See [docs/relea
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-26
+
+Ready for a public site: invite-only sign-ups, account and storage management, bulk upload, and
+security hardening.
+
+### Added
+- **Invite-only sign-ups** (now the default): the site admin makes invite links (each works once and
+  expires) or opens sign-ups to anyone, under **Account → Site admin**.
+- **Delete accounts:** anyone can delete their own account (with their password); admins can delete
+  any account. Catalogues the account owns are deleted with it.
+- **Storage:** the admin page shows free disk space and each account's photo storage, and can set a
+  storage limit for everyone or per person. Your own usage shows under Account.
+- **Bulk upload:** add a shoot's photos at once, give each a species (typed, "Same for next", or AI
+  suggestions), and save. Photos of the same species within 30 minutes become one sighting.
+- **Duplicate warnings** when a photo you're adding is already in the catalogue (by file fingerprint;
+  older photos are fingerprinted in the background after updating).
+- **eBird taxonomy refresh:** species names, families and field-guide order follow eBird's yearly
+  updates (checked monthly, or on demand from the admin page). Species eBird has retired (splits and
+  lumps) are listed for review.
+
+### Changed
+- **Every sighting needs a photo.** Deleting a sighting's last photo deletes the sighting.
+- The Recent tab loads 50 sightings at a time, and the map only loads sightings with a location, so
+  large catalogues open quickly.
+- `ALLOW_REGISTRATION` now defaults to `false` (invite links). If your `.env` says `true`, sign-ups stay
+  open until you choose in the admin page.
+- Releases wait for that commit's tests to pass before they're published.
+
+### Security
+- Security headers on every page and API response: no framing by other sites (clickjacking), no
+  content-type sniffing, a stricter referrer policy, and camera and microphone access turned off.
+
 ## [0.1.2] - 2026-10-26
 
 ### Fixed
@@ -83,7 +115,8 @@ The first public beta.
 - Light and dark mode, and a phone layout with bottom navigation and swipeable photos.
 - Backup and smoke-test scripts, automatic database migrations.
 
-[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/tposella/featherkeeper/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/tposella/featherkeeper/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/tposella/featherkeeper/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/tposella/featherkeeper/compare/v0.1.0-beta.1...v0.1.0

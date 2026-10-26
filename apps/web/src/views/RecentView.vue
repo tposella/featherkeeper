@@ -8,16 +8,25 @@ const { catalogue } = useCatalogue();
 const sightings = ref([]);
 const loading = ref(true);
 const error = ref('');
+// 50 at a time, so catalogues with thousands of sightings still open quickly.
+const PAGE = 50;
+const nextOffset = ref(0);
+const total = ref(0);
 
-onMounted(async () => {
+async function loadMore() {
+  loading.value = true;
   try {
-    sightings.value = (await api.get(`/catalogues/${catalogue.value.slug}/sightings`)).sightings;
+    const res = await api.get(`/catalogues/${catalogue.value.slug}/sightings?limit=${PAGE}&offset=${nextOffset.value}`);
+    sightings.value.push(...res.sightings);
+    nextOffset.value = res.nextOffset;
+    total.value = res.total;
   } catch (err) {
     error.value = err.message;
   } finally {
     loading.value = false;
   }
-});
+}
+onMounted(loadMore);
 </script>
 
 <template>
@@ -42,6 +51,11 @@ onMounted(async () => {
         </RouterLink>
       </li>
     </ol>
+    <div v-if="nextOffset !== null && sightings.length" class="more">
+      <button class="btn" type="button" :disabled="loading" @click="loadMore">
+        {{ loading ? 'Loading...' : `Show more (${sightings.length} of ${total})` }}
+      </button>
+    </div>
   </div>
 </template>
 
@@ -83,5 +97,9 @@ onMounted(async () => {
 }
 .text {
   display: grid;
+}
+.more {
+  margin-top: 16px;
+  text-align: center;
 }
 </style>

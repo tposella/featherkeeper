@@ -168,7 +168,12 @@ async function saveReplace(p, replace) {
 }
 
 async function deletePhoto(photo) {
-  if (!confirm('Delete this photo? This cannot be undone.')) return;
+  // Every sighting has a photo, so removing a sighting's only photo removes the sighting too.
+  const only = sightings.value.find((s) => s.id === photo.sightingId)?.photos.length === 1;
+  const msg = only
+    ? 'This is the only photo of this sighting, so the sighting will be deleted too. This cannot be undone.'
+    : 'Delete this photo? This cannot be undone.';
+  if (!confirm(msg)) return;
   try {
     await api.del(`/photos/${photo.id}`);
     lightbox.value = null;

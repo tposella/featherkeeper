@@ -49,8 +49,8 @@ async function unmark(p) {
 async function remove(p) {
   const last = p.speciesPhotoCount <= 1;
   const msg = last
-    ? `This is your only photo of the ${p.species.commonName}. Delete it anyway? The species goes back to "seen, not photographed".`
-    : `Delete this photo of the ${p.species.commonName}? This cannot be undone.`;
+    ? `This is your only photo of the ${p.species.commonName}. Deleting it also deletes its sighting, and the species goes back to "not yet photographed". Delete it anyway?`
+    : `Delete this photo of the ${p.species.commonName}? If it's the only photo of its sighting, the sighting is deleted too. This cannot be undone.`;
   if (!confirm(msg)) return;
   busy.value = p.id;
   error.value = '';

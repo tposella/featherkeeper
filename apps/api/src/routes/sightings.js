@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
+import { Transform } from 'node:stream';
 import { rm, stat } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 import sharp from 'sharp';
@@ -7,6 +9,7 @@ import { badRequest, HttpError, notFound } from '../lib/errors.js';
 import { buildCandidates } from '../lib/candidates.js';
 import { openImage, processImage, readImageExif, uprightPipeline } from '../lib/images.js';
 import * as out from '../lib/serialize.js';
+import { checkQuota } from '../lib/accounts.js';
 
 const slugParam = { type: 'object', required: ['slug'], properties: { slug: { type: 'string', maxLength: 64 } } };
 const idParam = { type: 'object', required: ['id'], properties: { id: { type: 'integer' } } };
@@ -43,8 +46,16 @@ async function readUpload(request, storage, maxUploadMb) {
   if (!file) throw badRequest('Attach a photo in the "file" field');
   const path = storage.tempPath();
   const cleanup = () => rm(path, { force: true });
+  // A fingerprint of the file as it streams in, to spot the same photo uploaded twice.
+  const hash = createHash('sha256');
+  const hasher = new Transform({
+    transform(chunk, enc, done) {
+      hash.update(chunk);
+      done(null, chunk);
+    },
+  });
   try {
-    await pipeline(file.file, createWriteStream(path));
+    await pipeline(file.file, hasher, createWriteStream(path));
     if (file.file.truncated) throw new HttpError(413, `Photos can be at most ${maxUploadMb} MB`, 'too_large');
     const { size } = await stat(path);
     if (!size) throw badRequest('The uploaded file is empty');
@@ -54,7 +65,7 @@ async function readUpload(request, storage, maxUploadMb) {
         .filter(([, f]) => f && f.type === 'field' && typeof f.value === 'string')
         .map(([name, f]) => [name, f.value]),
     );
-    return { path, size, filename: file.filename ?? '', fields, cleanup };
+    return { path, size, filename: file.filename ?? '', fields, cleanup, sha256: hash.digest('hex') };
   } catch (err) {
     await cleanup();
     if (err.code === 'FST_REQ_FILE_TOO_LARGE') throw new HttpError(413, `Photos can be at most ${maxUploadMb} MB`, 'too_large');
@@ -89,11 +100,33 @@ function aiDecision(raw) {
   }
 }
 
-export default async function sightingRoutes(app, { db, storage, identifier, config, ebird }) {
+export default async function sightingRoutes(app, { db, storage, identifier, config, ebird, settings }) {
   // All sightings in a catalogue (used by the map and the recent-activity list).
-  app.get('/catalogues/:slug/sightings', { schema: { params: slugParam } }, async (request) => {
+  /**
+   * Sightings, newest first. ?limit and ?offset page through them (the Recent tab loads 50 at a
+   * time); ?located=1 returns only those with a location (the map). Without them: all of them.
+   */
+  app.get(
+    '/catalogues/:slug/sightings',
+    {
+      schema: {
+        params: slugParam,
+        querystring: {
+          type: 'object',
+          properties: {
+            limit: { type: 'integer', minimum: 1, maximum: 500 },
+            offset: { type: 'integer', minimum: 0 },
+            located: { type: 'integer', enum: [0, 1] },
+          },
+        },
+      },
+    },
+    async (request) => {
     const { catalogue, access } = await loadCatalogue(db, request.params.slug, request.user);
     const showLocation = locationsVisible(catalogue, access);
+    const { limit = null, offset = 0, located = 0 } = request.query;
+    const { total } = await db.one('SELECT count(*)::int AS total FROM sightings WHERE catalogue_id = $1', [catalogue.id]);
+    if (located && !showLocation) return { locationsHidden: true, total, sightings: [], nextOffset: null };
     const rows = await db.many(
       `SELECT s.*, u.display_name AS created_by_name, sp.common_name, sp.scientific_name,
               (SELECT p.id FROM photos p WHERE p.sighting_id = s.id ORDER BY p.created_at LIMIT 1) AS first_photo_id,
@@ -101,12 +134,16 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
          FROM sightings s
          JOIN species sp ON sp.id = s.species_id
          LEFT JOIN users u ON u.id = s.created_by
-        WHERE s.catalogue_id = $1
-        ORDER BY s.observed_at DESC NULLS LAST, s.created_at DESC`,
-      [catalogue.id],
+        WHERE s.catalogue_id = $1 AND ($2::boolean IS FALSE OR s.latitude IS NOT NULL)
+        ORDER BY s.observed_at DESC NULLS LAST, s.created_at DESC, s.id DESC
+        LIMIT $3 OFFSET $4`,
+      [catalogue.id, Boolean(located), limit, offset],
     );
     return {
       locationsHidden: !showLocation,
+      total,
+      // Where the next page starts, or null on the last page.
+      nextOffset: limit && rows.length === limit ? offset + limit : null,
       sightings: rows.map((r) => ({
         ...out.sighting(r, { showLocation }),
         commonName: r.common_name,
@@ -115,7 +152,8 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
         thumbUrl: r.first_photo_id ? `/api/photos/${r.first_photo_id}/thumb` : null,
       })),
     };
-  });
+    },
+  );
 
   app.post(
     '/catalogues/:slug/sightings',
@@ -233,6 +271,7 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
     const key = storage.newKey();
     let row;
     try {
+      await checkQuota(db, settings, config, user.id, upload.size);
       // The uploader's time zone, for cameras that record the time without one.
       const img = await processImage(upload.path, { timeZone: upload.fields.timezone });
       // The original is moved into place, never copied; derivatives are small buffers.
@@ -240,8 +279,8 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
       row = await db.tx(async (t) => {
         const p = await t.one(
           `INSERT INTO photos (sighting_id, storage_key, original_name, mime_type, size_bytes, width, height,
-                               taken_at, camera, lens, latitude, longitude, exif, uploaded_by, ai_suggestions)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+                               taken_at, camera, lens, latitude, longitude, exif, uploaded_by, ai_suggestions, sha256)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
           [
             sighting.id,
             key,
@@ -258,6 +297,7 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
             img.exif,
             user.id,
             aiDecision(upload.fields.ai),
+            upload.sha256,
           ],
         );
         // Fill in the sighting's date and place from the photo when they weren't entered.
@@ -329,18 +369,69 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
     },
   );
 
+  /**
+   * Delete a photo. Every sighting has at least one photo, so deleting a sighting's last photo
+   * deletes the sighting too (the page says so before asking).
+   */
   app.delete('/photos/:id', { schema: { params: idParam } }, async (request) => {
     const row = await db.one(
-      `SELECT p.id, p.storage_key, s.catalogue_id FROM photos p JOIN sightings s ON s.id = p.sighting_id WHERE p.id = $1`,
+      `SELECT p.id, p.storage_key, p.sighting_id, s.catalogue_id,
+              (SELECT count(*) FROM photos p2 WHERE p2.sighting_id = p.sighting_id)::int AS siblings
+         FROM photos p JOIN sightings s ON s.id = p.sighting_id WHERE p.id = $1`,
       [request.params.id],
     );
     if (!row) throw notFound('Photo not found');
     const { access } = await loadCatalogue(db, row.catalogue_id, request.user);
     requireEdit(access, request.user);
-    await db.query('DELETE FROM photos WHERE id = $1', [row.id]);
+    const last = row.siblings <= 1;
+    if (last) await db.query('DELETE FROM sightings WHERE id = $1', [row.sighting_id]);
+    else await db.query('DELETE FROM photos WHERE id = $1', [row.id]);
     await storage.remove(row.storage_key).catch((err) => request.log.warn(err, 'could not delete photo files'));
-    return { ok: true };
+    return { ok: true, sightingDeleted: last };
   });
+
+  /**
+   * Which of these files (by SHA-256 fingerprint) are already in the catalogue, so the page can
+   * warn before uploading the same photo twice.
+   */
+  app.post(
+    '/catalogues/:slug/photos/check',
+    {
+      config: { rateLimit: { max: 120, timeWindow: '10 minutes' } },
+      schema: {
+        params: slugParam,
+        body: {
+          type: 'object',
+          required: ['hashes'],
+          properties: { hashes: { type: 'array', maxItems: 500, items: { type: 'string', pattern: '^[0-9a-f]{64}$' } } },
+        },
+      },
+    },
+    async (request) => {
+      const { catalogue, access } = await loadCatalogue(db, request.params.slug, request.user);
+      requireEdit(access, request.user);
+      const rows = request.body.hashes.length
+        ? await db.many(
+            `SELECT p.sha256, p.id, p.taken_at, p.sighting_id, s.species_id, s.observed_at, sp.common_name
+               FROM photos p JOIN sightings s ON s.id = p.sighting_id JOIN species sp ON sp.id = s.species_id
+              WHERE s.catalogue_id = $1 AND p.sha256 = ANY($2)
+              ORDER BY p.id`,
+            [catalogue.id, request.body.hashes],
+          )
+        : [];
+      const duplicates = {};
+      for (const r of rows) {
+        (duplicates[r.sha256] ??= []).push({
+          photoId: r.id,
+          sightingId: r.sighting_id,
+          speciesId: r.species_id,
+          commonName: r.common_name,
+          takenAt: out.iso(r.taken_at ?? r.observed_at),
+        });
+      }
+      return { duplicates };
+    },
+  );
 
   /** Mark a photo as one to replace with a better shot (with an optional note), or clear the mark. */
   app.patch(

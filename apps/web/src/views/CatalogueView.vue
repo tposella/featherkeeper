@@ -150,7 +150,7 @@ provide(CATALOGUE_KEY, { catalogue, species, reload, reloadDex, dexStyle, setDex
             :total="catalogue.stats.species"
           />
           <RouterLink
-            v-if="catalogue.access.canEdit && $route.name !== 'log'"
+            v-if="catalogue.access.canEdit && !['log', 'log-bulk'].includes($route.name)"
             :to="{ name: 'log', params: { slug } }"
             class="btn primary log"
           >

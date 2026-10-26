@@ -293,6 +293,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const routes = [
   ['GET', /^\/config$/, () => ({
     version: __APP_VERSION__,
+    registration: 'open',
     allowRegistration: true,
     needsSetup: false,
     maxUploadMb: 100,
@@ -537,13 +538,21 @@ const routes = [
     return { added, alreadyPresent: 0, total: added };
   }],
 
-  ['GET', /^\/catalogues\/([\w-]+)\/sightings$/, ([slug]) => {
+  ['GET', /^\/catalogues\/([\w-]+)\/sightings$/, ([slug], body, query) => {
     const c = getCatalogue(slug);
-    const ss = sightings
+    const all = sightings
       .filter((s) => s.catalogueId === c.id)
       .sort((a, b) => (b.observedAt ?? '').localeCompare(a.observedAt ?? ''));
+    const located = query.get('located') === '1';
+    if (located && !showLocations(c)) return { locationsHidden: true, total: all.length, sightings: [], nextOffset: null };
+    const filtered = located ? all.filter((s) => s.latitude !== null) : all;
+    const limit = Number(query.get('limit')) || null;
+    const offset = Number(query.get('offset')) || 0;
+    const ss = limit ? filtered.slice(offset, offset + limit) : filtered;
     return {
       locationsHidden: !showLocations(c),
+      total: all.length,
+      nextOffset: limit && ss.length === limit ? offset + limit : null,
       sightings: ss.map((s) => {
         const sp = species.find((x) => x.id === s.speciesId);
         const ps = photos.filter((p) => p.sightingId === s.id);
@@ -625,6 +634,70 @@ const routes = [
     photos.push(p);
     return { photo: serializePhoto(p, c) };
   }],
+  // Account, site admin (0.2): storage, deleting accounts, sign-ups and invites, species names.
+  ['GET', /^\/auth\/me\/account$/, () => {
+    if (!me()) throw new DemoError(401, 'Sign in required');
+    const owned = catalogues.filter((c) => c.members.some((m) => m.userId === me().id && m.role === 'owner'));
+    const mine = photos.filter((p) => sightings.find((s) => s.id === p.sightingId && s.createdBy === 'You'));
+    return {
+      storage: { usedBytes: mine.length * 8_400_000, photos: mine.length, quotaMb: 0 },
+      ownedCatalogues: owned.map((c) => ({ slug: c.slug, name: c.name, sightings: sightings.filter((s) => s.catalogueId === c.id).length, photos: 0, otherMembers: c.members.length - 1 })),
+    };
+  }],
+  ['DELETE', /^\/auth\/me$/, () => {
+    throw new DemoError(400, 'Accounts can’t be deleted in the demo.');
+  }],
+  ['GET', /^\/auth\/invite\/(.+)$/, () => ({ valid: true, expiresAt: new Date(Date.now() + 7 * 864e5).toISOString() })],
+  ['POST', /^\/photo-info$/, () => ({ localDateTime: '', latitude: null, longitude: null, camera: '' })],
+  ['POST', /^\/catalogues\/([\w-]+)\/photos\/check$/, () => ({ duplicates: {} })],
+  ['GET', /^\/admin\/settings$/, () => {
+    if (!me()?.isSiteAdmin) throw new DemoError(403, 'Only the site admin can do that');
+    return {
+      registration: demo.registration ?? 'invite',
+      defaultQuotaMb: demo.defaultQuotaMb ?? 0,
+      disk: { totalBytes: 512 * 1024 ** 3, freeBytes: 371 * 1024 ** 3, photosBytes: photos.length * 8_400_000, photos: photos.length },
+      taxonomy: {
+        ebirdEnabled: true,
+        last: demo.taxonomy ?? {
+          refreshedAt: '2026-10-01T09:00:00Z',
+          checked: species.length,
+          updated: [{ ebirdCode: 'x', from: 'Sample old name (Genus oldus)', to: 'Sample new name (Genus novus)', renamed: true }],
+          renamed: 1,
+          notFound: [],
+          conflicts: [],
+        },
+      },
+    };
+  }],
+  ['PATCH', /^\/admin\/settings$/, (m, body) => {
+    if (body.registration) demo.registration = body.registration;
+    if (body.defaultQuotaMb !== undefined) demo.defaultQuotaMb = body.defaultQuotaMb;
+    return { ok: true };
+  }],
+  ['POST', /^\/admin\/taxonomy\/refresh$/, async () => {
+    await wait(800);
+    demo.taxonomy = { refreshedAt: new Date().toISOString(), checked: species.length, updated: [], renamed: 0, notFound: [], conflicts: [] };
+    return demo.taxonomy;
+  }],
+  ['GET', /^\/admin\/invites$/, () => ({ invites: demo.invites ?? [] })],
+  ['POST', /^\/admin\/invites$/, (m, body) => {
+    demo.invites ??= [];
+    const inv = { id: newId(), note: body.note || '', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + (body.days ?? 7) * 864e5).toISOString(), usedAt: null, usedBy: null, expired: false };
+    demo.invites.unshift(inv);
+    return { id: inv.id, url: `${location.origin}${location.pathname}#/register?invite=demo-invite-link`, expiresAt: inv.expiresAt };
+  }],
+  ['DELETE', /^\/admin\/invites\/(\d+)$/, ([id]) => {
+    demo.invites = (demo.invites ?? []).filter((i) => i.id !== Number(id));
+    return { ok: true };
+  }],
+  ['GET', /^\/admin\/users\/(\d+)\/owned$/, ([id]) => ({
+    catalogues: catalogues
+      .filter((c) => c.members.some((m) => m.userId === Number(id) && m.role === 'owner'))
+      .map((c) => ({ slug: c.slug, name: c.name, sightings: sightings.filter((s) => s.catalogueId === c.id).length, photos: 0, otherMembers: c.members.length - 1 })),
+  })],
+  ['DELETE', /^\/admin\/users\/(\d+)$/, () => {
+    throw new DemoError(400, 'Accounts can’t be deleted in the demo.');
+  }],
   // Version: in a real install the server checks GitHub for newer releases; the demo shows a sample alert.
   ['GET', /^\/version$/, () => {
     if (!me()?.isSiteAdmin) return { current: __APP_VERSION__, admin: false };
@@ -657,6 +730,11 @@ const routes = [
         createdAt: '2026-09-01T17:00:00Z',
         lastSignIn: '2026-10-20T15:00:00Z',
         catalogues: catalogues.filter((c) => c.members.some((m) => m.userId === u.id)).length,
+        ownedCatalogues: catalogues.filter((c) => c.members.some((m) => m.userId === u.id && m.role === 'owner')).length,
+        photos: u.id === 1 ? 52 : 9,
+        usedBytes: (u.id === 1 ? 52 : 9) * 8_400_000,
+        quotaMb: u.quotaMb ?? null,
+        effectiveQuotaMb: u.quotaMb ?? demo.defaultQuotaMb ?? 0,
       })),
     };
   }],
@@ -670,10 +748,11 @@ const routes = [
     if (!me()?.isSiteAdmin) throw new DemoError(403, 'Only the site admin can do that');
     const u = Object.values(USERS).find((x) => x.id === Number(id));
     if (!u) throw new DemoError(404, 'No such user');
-    if (u.isSiteAdmin && !body.isSiteAdmin && Object.values(USERS).filter((x) => x.isSiteAdmin).length <= 1) {
+    if ('isSiteAdmin' in body && u.isSiteAdmin && !body.isSiteAdmin && Object.values(USERS).filter((x) => x.isSiteAdmin).length <= 1) {
       throw new DemoError(409, 'The site needs at least one admin');
     }
-    u.isSiteAdmin = body.isSiteAdmin;
+    if ('isSiteAdmin' in body) u.isSiteAdmin = body.isSiteAdmin;
+    if ('quotaMb' in body) u.quotaMb = body.quotaMb;
     return { ok: true };
   }],
   ['PATCH', /^\/photos\/(\d+)$/, ([id], body) => {
@@ -721,7 +800,10 @@ const routes = [
     const s = sightings.find((x) => x.id === p.sightingId);
     requireEdit(getCatalogue(s.catalogueId));
     photos.splice(photos.indexOf(p), 1);
-    return { ok: true };
+    // Every sighting has a photo: removing the last one removes the sighting.
+    const last = !photos.some((x) => x.sightingId === s.id);
+    if (last) sightings.splice(sightings.indexOf(s), 1);
+    return { ok: true, sightingDeleted: last };
   }],
   ['POST', /^\/catalogues\/([\w-]+)\/identify$/, async ([slug], body) => {
     const c = getCatalogue(slug);

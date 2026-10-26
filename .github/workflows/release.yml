@@ -2,7 +2,9 @@
 # GitHub release. Two ways to release:
 #
 #   1. Run `node scripts/bump-version.mjs patch` (or minor), fill in CHANGELOG.md, and push to main.
-#      If there's no tag for the new version yet, this workflow creates v<version> and publishes it.
+#      If there's no tag for that version yet, this workflow waits for the commit's test runs (API,
+#      Docker, Web demo, AI) to pass, then creates v<version> and publishes it. If a test fails,
+#      nothing is published; push a fix (the version can stay the same) and it tries again.
 #   2. Or push a tag yourself: git tag -a v0.1.1 -m "..." && git push origin v0.1.1
 #
 # Images: ghcr.io/<owner>/featherkeeper-{api,web,identifier}, tagged with the version (0.1.1),
@@ -14,7 +16,6 @@ on:
   push:
     tags: ['v*']
     branches: [main]
-    paths: ['apps/api/package.json']
   workflow_dispatch:
     inputs:
       tag:
@@ -31,8 +32,10 @@ jobs:
   # Which tag to publish, creating it first when the release comes from a version bump on main.
   prepare:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     permissions:
       contents: write
+      actions: read
     outputs:
       tag: ${{ steps.t.outputs.tag }}
       publish: ${{ steps.t.outputs.publish }}
@@ -58,6 +61,22 @@ jobs:
               echo "publish=false" >> "$GITHUB_OUTPUT"
               exit 0
             fi
+            # Only release a commit whose tests passed: wait for this commit's other workflow runs.
+            export GH_TOKEN="${{ github.token }}"
+            for i in $(seq 1 160); do
+              RUNS=$(gh run list --repo "${{ github.repository }}" --commit "${{ github.sha }}" --limit 50 \
+                --json name,status,conclusion --jq '[.[] | select(.name != "Release" and .name != "Version check")]')
+              PENDING=$(echo "$RUNS" | jq '[.[] | select(.status != "completed")] | length')
+              FAILED=$(echo "$RUNS" | jq -r '[.[] | select(.status == "completed" and .conclusion != "success" and .conclusion != "skipped")] | map(.name) | join(", ")')
+              if [ -n "$FAILED" ]; then
+                echo "Not releasing $TAG: these checks failed for this commit: $FAILED"
+                echo "publish=false" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              if [ "$PENDING" = 0 ] && [ "$(echo "$RUNS" | jq length)" -gt 0 ]; then break; fi
+              echo "Waiting for $PENDING test run(s)..."; sleep 30
+            done
+            [ "$PENDING" = 0 ] || { echo "Tests didn't finish in time; not releasing."; echo "publish=false" >> "$GITHUB_OUTPUT"; exit 0; }
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag -a "$TAG" -m "Featherkeeper ${TAG#v}"

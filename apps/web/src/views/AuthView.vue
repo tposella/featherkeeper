@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api.js';
 import { loadSession, session } from '../session.js';
@@ -15,6 +15,20 @@ const error = ref('');
 const busy = ref(false);
 
 const isRegister = computed(() => props.mode === 'register');
+
+// Invite links: /register?invite=...  Checked first so a used or expired link says so up front.
+const invite = typeof route.query.invite === 'string' ? route.query.invite : '';
+const inviteState = ref(invite ? 'checking' : 'none'); // none | checking | valid | used | expired | not_found
+onMounted(async () => {
+  if (!invite || !isRegister.value) return;
+  try {
+    const res = await api.get(`/auth/invite/${encodeURIComponent(invite)}`);
+    inviteState.value = res.valid ? 'valid' : res.reason;
+  } catch {
+    inviteState.value = 'not_found';
+  }
+});
+const canRegister = computed(() => session.config.allowRegistration || inviteState.value === 'valid' || inviteState.value === 'checking');
 const title = computed(() => {
   if (isRegister.value) return session.config.needsSetup ? 'Create the admin account' : 'Create an account';
   return 'Sign in';
@@ -29,6 +43,7 @@ async function submit() {
         email: email.value,
         password: password.value,
         displayName: displayName.value,
+        ...(invite ? { invite } : {}),
       });
     } else {
       await api.post('/auth/login', { email: email.value, password: password.value });
@@ -53,8 +68,13 @@ async function submit() {
     <p v-if="isRegister && session.config.needsSetup" class="soft">
       This is a new Featherkeeper site. The first account becomes the site admin.
     </p>
-    <div v-if="isRegister && !session.config.allowRegistration" class="notice">
-      Registration is closed on this site. Ask the site admin to create an account for you.
+    <p v-if="isRegister && inviteState === 'valid'" class="notice" role="status">You’ve been invited. Create your account below.</p>
+    <div v-if="isRegister && !canRegister" class="notice">
+      <template v-if="inviteState === 'used'">That invite link has already been used.</template>
+      <template v-else-if="inviteState === 'expired'">That invite link has expired.</template>
+      <template v-else-if="inviteState === 'not_found'">That invite link isn’t valid.</template>
+      <template v-else>Sign-ups on this site are by invitation.</template>
+      Ask the site admin for a new invite link.
     </div>
     <form v-else @submit.prevent="submit">
       <div v-if="error" class="notice error" role="alert">{{ error }}</div>

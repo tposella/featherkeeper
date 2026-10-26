@@ -37,9 +37,20 @@ if grep -q '"needsSetup":true' <<<"$config" && [[ -z ${CI:-} ]]; then
   exit 1
 fi
 
-EMAIL="smoke-$(date +%s)@example.com"
-post /api/auth/register "{\"email\":\"$EMAIL\",\"password\":\"smoke-test-password\",\"displayName\":\"Smoke test\"}" >/dev/null
-pass "account created and signed in ($EMAIL)"
+# Sign in with an existing account (SMOKE_EMAIL / SMOKE_PASSWORD), or create a throwaway one when
+# anyone can sign up. Sites with invite-only sign-ups (the default) need the first option.
+if [[ -n ${SMOKE_EMAIL:-} ]]; then
+  post /api/auth/login "{\"email\":\"$SMOKE_EMAIL\",\"password\":\"${SMOKE_PASSWORD:-}\"}" >/dev/null
+  pass "signed in as $SMOKE_EMAIL"
+elif grep -q '"registration":"invite"' <<<"$config"; then
+  echo "Sign-ups on this site are by invite, so the test can't make its own account. Run it with yours:"
+  echo "  SMOKE_EMAIL=you@example.com SMOKE_PASSWORD='your password' $0 $BASE"
+  exit 1
+else
+  EMAIL="smoke-$(date +%s)@example.com"
+  post /api/auth/register "{\"email\":\"$EMAIL\",\"password\":\"smoke-test-password\",\"displayName\":\"Smoke test\"}" >/dev/null
+  pass "account created and signed in ($EMAIL)"
+fi
 
 slug=$(post /api/catalogues '{"name":"Smoke test","visibility":"private"}' | sed -E 's/.*"slug":"([^"]+)".*/\1/')
 [[ -n $slug ]] && pass "catalogue created (/c/$slug)" || fail "catalogue"

@@ -1,6 +1,7 @@
 # Every update to the app gets a new version (see docs/releasing.md). This fails a push to main
-# that changes the app without bumping the version in apps/api/package.json, or that bumps it
-# without a matching CHANGELOG.md section. Docs, tests and CI changes don't need a new version.
+# when the app has changed since the last release (the newest v* tag) but the version in
+# apps/api/package.json is still that release's, or when the version has no CHANGELOG.md section.
+# Fixes to a version that isn't released yet can keep its number. Docs, tests and CI don't count.
 # The result is pushed to the ci-report-version branch.
 name: Version check
 
@@ -25,14 +26,9 @@ jobs:
         id: v
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = pull_request ]; then
-            BASE="${{ github.event.pull_request.base.sha }}"
-          else
-            BASE="${{ github.event.before }}"
-          fi
           mkdir -p report
-          # A new branch or a force-push has no usable "before"; compare with the previous commit.
-          git cat-file -e "$BASE^{commit}" 2>/dev/null || BASE="$(git rev-parse HEAD~1)"
+          # Compare with the last release; before the first release, with the previous commit.
+          BASE=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || git rev-parse HEAD~1)
           OLD=$(git show "$BASE:apps/api/package.json" | node -e "process.stdin.on('data',d=>console.log(JSON.parse(d).version))" 2>/dev/null || echo none)
           NEW=$(node -p "require('./apps/api/package.json').version")
           WEB=$(node -p "require('./apps/web/package.json').version")

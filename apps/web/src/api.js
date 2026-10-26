@@ -53,7 +53,7 @@ export const api = {
   get: (url) => request('GET', url),
   post: (url, body) => request('POST', url, body ?? {}),
   patch: (url, body) => request('PATCH', url, body),
-  del: (url) => request('DELETE', url),
+  del: (url, body) => request('DELETE', url, body),
   /** Multipart upload. Text fields go before the file so the server can read them alongside it. */
   upload(url, file, fields = {}) {
     const form = new FormData();

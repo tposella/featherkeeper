@@ -23,6 +23,8 @@ const pages = [
   ['settings', '#/c/bow-valley/settings'],
   ['new-catalogue', '#/new'],
   ['admin', '#/admin'],
+  ['account', '#/account'],
+  ['log-bulk', '#/c/bow-valley/log/bulk'],
   ['sign-in', '#/login'],
 ];
 
@@ -299,6 +301,34 @@ for (const scheme of ['light', 'dark']) {
       await page.getByRole('button', { name: 'Accept' }).first().click();
       await page.waitForTimeout(500);
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-ai-accepted.png`, fullPage: true });
+
+      // Bulk upload: two photos, a species for the first, "Same for next", save.
+      await page.goto(new URL('#/c/bow-valley/log/bulk', base).href);
+      await page.getByRole('heading', { name: 'Bulk upload' }).waitFor();
+      await page.locator('input[type=file]').first().setInputFiles([
+        { name: 'shoot-1.png', mimeType: 'image/png', buffer: png },
+        { name: 'shoot-2.png', mimeType: 'image/png', buffer: png },
+      ]);
+      await page.waitForTimeout(800);
+      const bulkItems = await page.locator('.items .item').count();
+      await page.locator('.items .item').first().getByPlaceholder('Species').fill('Mallard');
+      await page.locator('.items .item').first().getByRole('button', { name: 'Same for next' }).click();
+      const readyText = (await page.locator('.savebar').innerText()).replace(/\s+/g, ' ');
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-bulk-ready.png`, fullPage: true });
+      await page.getByRole('button', { name: /^Save \d+ photo/ }).click();
+      await page.getByText(/^Saved \d+ sighting/).waitFor({ timeout: 8000 });
+      const savedText = (await page.locator('.savebar').innerText()).replace(/\s+/g, ' ');
+      console.log(`BULK items=${bulkItems} ready="${readyText.slice(0, 80)}" saved="${savedText.slice(0, 80)}"`);
+
+      // Site admin: an invite link for a new account.
+      await page.goto(new URL('#/admin', base).href);
+      await page.getByRole('button', { name: 'Make invite link' }).waitFor();
+      await page.getByLabel(/^Note/).fill('Sam from the birding club');
+      await page.getByRole('button', { name: 'Make invite link' }).click();
+      await page.waitForTimeout(400);
+      const inviteShown = await page.locator('.new-invite code').innerText();
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-admin-invite.png`, fullPage: true });
+      console.log(`ADMIN invite="${inviteShown.slice(0, 60)}" pending=${await page.locator('.invites li').count()}`);
 
       // New catalogue built from the birds around a town.
       await page.goto(new URL('#/new', base).href);

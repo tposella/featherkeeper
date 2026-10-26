@@ -2,6 +2,7 @@ import { loadCatalogue, requireEdit, requireManage } from '../lib/access.js';
 import { badRequest, conflict, forbidden, isUniqueViolation, notFound } from '../lib/errors.js';
 import * as out from '../lib/serialize.js';
 import { slugify, SLUG_PATTERN } from '../lib/slug.js';
+import { deleteCatalogue } from '../lib/accounts.js';
 
 const visibility = { type: 'string', enum: ['private', 'members', 'public'] };
 const catalogueFields = {
@@ -181,14 +182,7 @@ export default async function catalogueRoutes(app, { db, storage }) {
   app.delete('/catalogues/:slug', { schema: { params: slugParam } }, async (request) => {
     const { catalogue, access } = await loadCatalogue(db, request.params.slug, request.user);
     requireManage(access, request.user);
-    const keys = await db.many(
-      `SELECT p.storage_key FROM photos p JOIN sightings s ON s.id = p.sighting_id WHERE s.catalogue_id = $1`,
-      [catalogue.id],
-    );
-    await db.query('DELETE FROM catalogues WHERE id = $1', [catalogue.id]);
-    for (const { storage_key: key } of keys) {
-      await storage.remove(key).catch((err) => request.log.warn(err, 'could not delete photo files'));
-    }
+    await deleteCatalogue(db, storage, catalogue.id, request.log);
     return { ok: true };
   });
 

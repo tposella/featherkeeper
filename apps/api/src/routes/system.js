@@ -1,6 +1,7 @@
+import { registrationMode } from '../lib/settings.js';
 import { VERSION as version } from '../lib/version.js';
 
-export default async function systemRoutes(app, { db, config, ebird, geocoder, identifier, reference, sounds, updates }) {
+export default async function systemRoutes(app, { db, config, ebird, geocoder, identifier, reference, sounds, updates, settings }) {
   // Used by Docker health checks and uptime monitors.
   app.get('/health', async (request, reply) => {
     try {
@@ -14,9 +15,12 @@ export default async function systemRoutes(app, { db, config, ebird, geocoder, i
   // Public settings the frontend needs before anyone signs in.
   app.get('/config', async () => {
     const { count } = await db.one('SELECT count(*)::int AS count FROM users');
+    const registration = await registrationMode(settings, config);
     return {
       version,
-      allowRegistration: config.allowRegistration || count === 0,
+      // "open": anyone can sign up; "invite": only with an invite link (the first account always can).
+      registration: count === 0 ? 'open' : registration,
+      allowRegistration: registration === 'open' || count === 0,
       needsSetup: count === 0,
       maxUploadMb: config.maxUploadMb,
       ebirdEnabled: ebird.enabled,

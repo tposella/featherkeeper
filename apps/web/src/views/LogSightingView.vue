@@ -6,6 +6,7 @@ import { useCatalogue } from '../catalogue-context.js';
 import AiSuggestions from '../components/AiSuggestions.vue';
 import LocationPicker from '../components/LocationPicker.vue';
 import { readPhotoMetadata } from '../exif.js';
+import { describeDuplicate, markDuplicates } from '../duplicates.js';
 import { formatDate, fromLocalInput } from '../format.js';
 import { session } from '../session.js';
 
@@ -32,9 +33,9 @@ const busy = ref(false);
 // Centre the location map on the catalogue's most recent sighting with coordinates.
 const near = ref(null);
 api
-  .get(`/catalogues/${catalogue.value.slug}/sightings`)
+  .get(`/catalogues/${catalogue.value.slug}/sightings?limit=1&located=1`)
   .then((res) => {
-    near.value = res.sightings.find((s) => s.latitude !== null) ?? null;
+    near.value = res.sightings[0] ?? null;
   })
   .catch(() => {});
 
@@ -62,7 +63,10 @@ async function onFiles(event) {
   const tooBig = picked.filter((f) => f.size > maxBytes);
   if (tooBig.length) error.value = `${tooBig.map((f) => f.name).join(', ')} is larger than ${session.config.maxUploadMb} MB and was skipped.`;
   const ok = picked.filter((f) => f.size <= maxBytes);
-  files.value.push(...ok.map((file) => ({ file, url: URL.createObjectURL(file) })));
+  const added = ok.map((file) => ({ file, url: URL.createObjectURL(file), duplicates: null }));
+  files.value.push(...added);
+  // Warn about photos already in this catalogue (runs alongside the metadata reading below).
+  if (added.length) markDuplicates(catalogue.value.slug, files.value.slice(-added.length));
 
   // Prefill from the photos' metadata without overwriting what the user typed. Date and location
   // can come from different photos (e.g. a phone shot with GPS next to a camera shot without).
@@ -152,6 +156,11 @@ function onNoneOfThese() {
 
 async function save() {
   error.value = '';
+  // A sighting is a photo of a bird: at least one photo is needed.
+  if (!files.value.length) {
+    error.value = 'Add at least one photo of the bird.';
+    return;
+  }
   if (!speciesId.value) {
     error.value = 'Choose which species you saw.';
     return;
@@ -168,10 +177,21 @@ async function save() {
       notes: notes.value,
     });
     sightingId = sighting.id;
-    for (let i = 0; i < files.value.length; i += 1) {
-      progress.value = `Uploading photo ${i + 1} of ${files.value.length}...`;
-      const fields = i === 0 && aiDecision.value ? { ai: JSON.stringify(aiDecision.value) } : {};
-      await api.upload(`/sightings/${sightingId}/photos`, files.value[i].file, fields);
+    let uploaded = 0;
+    try {
+      for (let i = 0; i < files.value.length; i += 1) {
+        progress.value = `Uploading photo ${i + 1} of ${files.value.length}...`;
+        const fields = i === 0 && aiDecision.value ? { ai: JSON.stringify(aiDecision.value) } : {};
+        await api.upload(`/sightings/${sightingId}/photos`, files.value[i].file, fields);
+        uploaded += 1;
+      }
+    } catch (err) {
+      // No photo made it: don't leave a sighting without one behind.
+      if (!uploaded) {
+        await api.del(`/sightings/${sightingId}`).catch(() => {});
+        sightingId = null;
+      }
+      throw err;
     }
     await Promise.all([reload(), reloadDex()]);
     router.push({ name: 'species', params: { slug: catalogue.value.slug, speciesId: speciesId.value } });
@@ -190,6 +210,10 @@ async function save() {
   <p v-if="!catalogue.access.canEdit" class="notice">Only the owner and editors can log sightings in this catalogue.</p>
   <form v-else class="log" @submit.prevent="save">
     <h2>Log a sighting</h2>
+    <p class="soft small bulk-link">
+      Back from a shoot with lots of photos?
+      <RouterLink :to="{ name: 'log-bulk', params: { slug: catalogue.slug } }">Upload them all at once</RouterLink>.
+    </p>
     <div v-if="error" class="notice error" role="alert">{{ error }}</div>
 
     <section>
@@ -202,6 +226,7 @@ async function save() {
             <strong>{{ /\.hei[cf]$/i.test(f.file.name) ? 'HEIC photo' : 'Photo' }}</strong>
             {{ f.file.name }}
           </span>
+          <p v-if="f.duplicates" class="dup small" role="note">Already uploaded: {{ describeDuplicate(f.duplicates) }}</p>
           <button class="btn quiet small" type="button" @click="removeFile(i)">Remove</button>
         </li>
       </ul>
@@ -210,7 +235,7 @@ async function save() {
         <input class="visually-hidden" type="file" :accept="ACCEPT" multiple @change="onFiles" />
       </label>
       <p class="soft small hint">
-        Optional. JPEG, HEIC (iPhone), PNG, WebP, TIFF or AVIF<template v-if="session.config.maxUploadMb > 0">, up to
+        At least one photo. JPEG, HEIC (iPhone), PNG, WebP, TIFF or AVIF<template v-if="session.config.maxUploadMb > 0">, up to
         {{ session.config.maxUploadMb }} MB each</template>. Date and GPS are read from the photo.
       </p>
       <div v-if="fromPhoto" class="from-photo small" role="status">
@@ -356,6 +381,14 @@ label.btn {
   height: 132px;
   object-fit: cover;
   border-radius: var(--radius);
+}
+.dup {
+  max-width: 132px;
+  margin: 4px 0 0;
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  background: var(--goldfinch-wash);
+  color: var(--ink);
 }
 .no-preview {
   width: 132px;

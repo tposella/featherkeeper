@@ -20,6 +20,7 @@ const routes = [
       { path: 'recent', name: 'recent', component: () => import('./views/RecentView.vue') },
       { path: 'to-replace', name: 'to-replace', component: () => import('./views/ReplaceView.vue'), meta: { auth: true } },
       { path: 'log', name: 'log', component: () => import('./views/LogSightingView.vue'), meta: { auth: true } },
+      { path: 'log/bulk', name: 'log-bulk', component: () => import('./views/BulkLogView.vue'), meta: { auth: true } },
       { path: 'settings', name: 'settings', component: () => import('./views/SettingsView.vue'), meta: { auth: true } },
       {
         path: 'species/:speciesId(\\d+)',

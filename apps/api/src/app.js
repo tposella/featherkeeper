@@ -12,6 +12,9 @@ import { VERSION } from './lib/version.js';
 import { createWikipediaClient } from './integrations/wikipedia.js';
 import { createIdentifier } from './integrations/identify.js';
 import { createExamples } from './lib/examples.js';
+import { createSettings } from './lib/settings.js';
+import { backfillFingerprints } from './lib/fingerprints.js';
+import { scheduleTaxonomyRefresh } from './lib/taxonomy.js';
 import { createStorage } from './lib/storage.js';
 import { authPlugin } from './plugins/auth.js';
 import adminRoutes from './routes/admin.js';
@@ -56,6 +59,7 @@ export async function buildApp({
     sounds: sounds ?? createSoundsClient(config.sounds),
     identifier: identifier ?? createIdentifier(config.identify),
     updates: updates ?? createUpdateChecker({ ...config.updates, currentVersion: VERSION }),
+    settings: createSettings(db),
   };
 
   const app = Fastify({
@@ -68,12 +72,17 @@ export async function buildApp({
   deps.examples =
     examples ?? createExamples({ db, reference: deps.reference, userAgent: config.reference.userAgent, log: app.log });
 
-  // Once the server is listening, start fetching any example photos still missing (e.g. after an upgrade).
+  // Once the server is listening: fetch example photos still missing, fingerprint older photos, and
+  // keep the eBird taxonomy current (monthly). Hooks can't be added after start, so onClose is set now.
+  let stopTaxonomy = () => {};
+  app.addHook('onClose', async () => stopTaxonomy());
   app.addHook('onListen', async () => {
     deps.examples
       .prepare()
       .then((n) => n && app.log.info(`Fetching example photos for ${n} species in the background`))
       .catch((err) => app.log.warn({ err: err.message }, 'could not queue example photos'));
+    backfillFingerprints(db, deps.storage, app.log).catch((err) => app.log.warn({ err: err.message }, 'fingerprint backfill failed'));
+    stopTaxonomy = scheduleTaxonomyRefresh({ ...deps, log: app.log });
   });
 
   await app.register(cookie);

@@ -775,3 +775,177 @@ print(json.dumps({
     assert.equal((await editor.get('/api/catalogues/cochrane-backyard')).status, 404);
   });
 });
+
+describe('0.2: sign-ups, accounts, storage, duplicates, paging, taxonomy', () => {
+  let slug;
+  let robinId2;
+  const sha = async (buf) => (await import('node:crypto')).createHash('sha256').update(buf).digest('hex');
+
+  test('setup: a catalogue with species', async () => {
+    const res = await owner.post('/api/catalogues', { name: 'Zero Two', regionCode: 'CA-AB' });
+    assert.equal(res.status, 201, JSON.stringify(res.body));
+    slug = res.body.catalogue.slug;
+    assert.equal((await owner.post(`/api/catalogues/${slug}/import/ebird`, { regionCode: 'CA-AB' })).status, 200);
+    const dex = await owner.get(`/api/catalogues/${slug}/species`);
+    robinId2 = dex.body.species.find((s) => s.ebirdCode === 'amerob').id;
+  });
+
+  test('sign-ups by invite: closed without one, a link works once', async () => {
+    assert.equal((await owner.patch('/api/admin/settings', { registration: 'invite' })).status, 403);
+    assert.equal((await admin.patch('/api/admin/settings', { registration: 'invite' })).status, 200);
+    assert.equal((await anon.get('/api/config')).body.registration, 'invite');
+    const c = client(ctx.app);
+    const closed = await c.post('/api/auth/register', { email: 'new@example.com', password: 'long enough pw', displayName: 'New' });
+    assert.equal(closed.status, 403);
+    assert.equal(closed.body.error, 'invite_required');
+
+    const inv = await admin.post('/api/admin/invites', { note: 'New birder', days: 7 });
+    assert.equal(inv.status, 200);
+    assert.match(inv.body.url, /\/register\?invite=/);
+    assert.equal((await anon.get(`/api/auth/invite/${inv.body.token}`)).body.valid, true);
+    assert.equal((await anon.get('/api/auth/invite/not-a-real-token')).body.valid, false);
+    const ok = await c.post('/api/auth/register', { email: 'new@example.com', password: 'long enough pw', displayName: 'New', invite: inv.body.token });
+    assert.equal(ok.status, 201, JSON.stringify(ok.body));
+    const again = await client(ctx.app).post('/api/auth/register', { email: 'other@example.com', password: 'long enough pw', displayName: 'Other', invite: inv.body.token });
+    assert.equal(again.body.error, 'invite_invalid', 'each link works once');
+    assert.equal((await anon.get(`/api/auth/invite/${inv.body.token}`)).body.reason, 'used');
+    const list = (await admin.get('/api/admin/invites')).body.invites;
+    assert.match(list[0].usedBy, /New \(new@example\.com\)/);
+
+    assert.equal((await admin.patch('/api/admin/settings', { registration: 'open' })).status, 200);
+  });
+
+  test('storage limits: per user or site default; uploads over it are refused', async () => {
+    const { randomBytes } = await import('node:crypto');
+    const sharp = (await import('sharp')).default;
+    const big = await sharp(randomBytes(700 * 700 * 3), { raw: { width: 700, height: 700, channels: 3 } }).png().toBuffer();
+    const s = await owner.post(`/api/catalogues/${slug}/sightings`, { speciesId: robinId2 });
+    const users = (await admin.get('/api/admin/users')).body.users;
+    const ownerRow = users.find((u) => u.email === 'owner@example.com');
+    assert.equal((await admin.patch(`/api/admin/users/${ownerRow.id}`, { quotaMb: 1 })).status, 200);
+    const refused = await owner.upload(`/api/sightings/${s.body.sighting.id}/photos`, big, 'big.png', 'image/png');
+    assert.equal(refused.status, 413);
+    assert.equal(refused.body.error, 'quota_exceeded');
+
+    await admin.patch(`/api/admin/users/${ownerRow.id}`, { quotaMb: null });
+    assert.equal((await admin.patch('/api/admin/settings', { defaultQuotaMb: 1 })).status, 200);
+    assert.equal((await owner.upload(`/api/sightings/${s.body.sighting.id}/photos`, big, 'big.png', 'image/png')).status, 413, 'the site default applies');
+    await admin.patch('/api/admin/settings', { defaultQuotaMb: 0 });
+    const ok = await owner.upload(`/api/sightings/${s.body.sighting.id}/photos`, big, 'big.png', 'image/png');
+    assert.equal(ok.status, 201);
+    const after = (await admin.get('/api/admin/users')).body.users.find((u) => u.email === 'owner@example.com');
+    assert.ok(after.usedBytes >= big.length);
+    const settings = (await admin.get('/api/admin/settings')).body;
+    assert.equal(settings.defaultQuotaMb, 0);
+    assert.ok(settings.disk === null || settings.disk.totalBytes > 0);
+    const account = (await owner.get('/api/auth/me/account')).body;
+    assert.ok(account.storage.usedBytes >= big.length);
+    assert.ok(account.ownedCatalogues.some((c) => c.slug === slug));
+  });
+
+  test('duplicates: a photo already in the catalogue is reported by fingerprint', async () => {
+    const jpeg = await makeJpeg(333, 222);
+    const hash = await sha(jpeg);
+    const url = `/api/catalogues/${slug}/photos/check`;
+    assert.deepEqual((await owner.post(url, { hashes: [hash] })).body.duplicates, {});
+    const s = await owner.post(`/api/catalogues/${slug}/sightings`, { speciesId: robinId2 });
+    await owner.upload(`/api/sightings/${s.body.sighting.id}/photos`, jpeg);
+    const found = (await owner.post(url, { hashes: [hash] })).body.duplicates[hash];
+    assert.equal(found.length, 1);
+    assert.equal(found[0].commonName, 'American Robin');
+    assert.equal((await stranger.post(url, { hashes: [hash] })).status, 403);
+  });
+
+  test("deleting a sighting's last photo deletes the sighting", async () => {
+    const s = await owner.post(`/api/catalogues/${slug}/sightings`, { speciesId: robinId2 });
+    const a = await owner.upload(`/api/sightings/${s.body.sighting.id}/photos`, await makeJpeg(100, 100));
+    const b = await owner.upload(`/api/sightings/${s.body.sighting.id}/photos`, await makeJpeg(101, 100));
+    assert.equal((await owner.delete(`/api/photos/${a.body.photo.id}`)).body.sightingDeleted, false);
+    assert.equal((await owner.delete(`/api/photos/${b.body.photo.id}`)).body.sightingDeleted, true);
+    assert.equal((await owner.patch(`/api/sightings/${s.body.sighting.id}`, { notes: 'x' })).status, 404);
+  });
+
+  test('sightings page through, and the map gets only located ones', async () => {
+    await owner.post(`/api/catalogues/${slug}/sightings`, { speciesId: robinId2, latitude: 51.1, longitude: -114.4 });
+    const all = (await owner.get(`/api/catalogues/${slug}/sightings`)).body;
+    const total = all.total;
+    assert.equal(all.sightings.length, total);
+    const p1 = (await owner.get(`/api/catalogues/${slug}/sightings?limit=2`)).body;
+    assert.equal(p1.sightings.length, Math.min(2, total));
+    const p2 = (await owner.get(`/api/catalogues/${slug}/sightings?limit=2&offset=${p1.nextOffset}`)).body;
+    assert.equal(p1.sightings.length + p2.sightings.length, Math.min(4, total));
+    assert.ok(!p1.sightings.some((s) => p2.sightings.some((t) => t.id === s.id)), 'pages don’t overlap');
+    const located = (await owner.get(`/api/catalogues/${slug}/sightings?located=1`)).body;
+    assert.ok(located.sightings.length >= 1 && located.sightings.every((s) => s.latitude !== null));
+    assert.equal(located.total, total);
+  });
+
+  test('eBird taxonomy refresh: renames are applied, retired codes listed for review', async () => {
+    const robin = (await owner.get(`/api/catalogues/${slug}/species`)).body.species.find((s) => s.ebirdCode === 'amerob');
+    await ctx.db.query(`UPDATE species SET common_name = 'Robin (old name)' WHERE id = $1`, [robin.id]);
+    const retired = await ctx.db.one(
+      `INSERT INTO species (ebird_code, common_name, scientific_name) VALUES ('retired1', 'Lumped Warbler', 'Setophaga lumpa') RETURNING id`,
+    );
+    const cat = await ctx.db.one('SELECT id FROM catalogues WHERE slug = $1', [slug]);
+    await ctx.db.query('INSERT INTO catalogue_species (catalogue_id, species_id) VALUES ($1, $2)', [cat.id, retired.id]);
+
+    assert.equal((await owner.post('/api/admin/taxonomy/refresh')).status, 403);
+    const res = await admin.post('/api/admin/taxonomy/refresh');
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.ok(res.body.updated.some((u) => u.ebirdCode === 'amerob' && u.renamed && u.to.startsWith('American Robin')));
+    assert.ok(res.body.notFound.some((n) => n.ebirdCode === 'retired1'));
+    assert.equal((await owner.get(`/api/catalogues/${slug}/species`)).body.species.find((s) => s.id === robin.id).commonName, 'American Robin');
+    assert.ok((await admin.get('/api/admin/settings')).body.taxonomy.last.refreshedAt);
+  });
+
+  test('deleting accounts: your own (with a password), or by the admin; their catalogues go too', async () => {
+    const c = client(ctx.app);
+    await c.post('/api/auth/register', { email: 'leaver@example.com', password: 'long enough pw', displayName: 'Leaver' });
+    const cat = await c.post('/api/catalogues', { name: 'Leaving soon' });
+    const dex = await c.post(`/api/catalogues/${cat.body.catalogue.slug}/import/ebird`, { regionCode: 'CA-AB' });
+    assert.equal(dex.status, 200);
+    const sp = (await c.get(`/api/catalogues/${cat.body.catalogue.slug}/species`)).body.species[0];
+    const s = await c.post(`/api/catalogues/${cat.body.catalogue.slug}/sightings`, { speciesId: sp.id });
+    const up = await c.upload(`/api/sightings/${s.body.sighting.id}/photos`, await makeJpeg(120, 90));
+    assert.equal((await c.get('/api/auth/me/account')).body.ownedCatalogues.length, 1);
+
+    assert.equal((await c.delete('/api/auth/me')).status, 400, 'a password is required');
+    const res = await ctx.app.inject({
+      method: 'DELETE',
+      url: '/api/auth/me',
+      headers: { 'content-type': 'application/json', cookie: (await loginCookie('leaver@example.com', 'long enough pw')) },
+      payload: JSON.stringify({ password: 'long enough pw' }),
+    });
+    assert.equal(res.statusCode, 200, res.body);
+    assert.equal((await anon.get(`/api/photos/${up.body.photo.id}/thumb`)).status, 404, 'their photos are gone');
+    assert.equal((await admin.get(`/api/catalogues/${cat.body.catalogue.slug}`)).status, 404);
+    assert.equal((await client(ctx.app).post('/api/auth/login', { email: 'leaver@example.com', password: 'long enough pw' })).status, 401);
+
+    // The admin deletes the invited user; the last admin can't delete themselves.
+    const users = (await admin.get('/api/admin/users')).body.users;
+    const invited = users.find((u) => u.email === 'new@example.com');
+    assert.equal((await owner.delete(`/api/admin/users/${invited.id}`)).status, 403);
+    assert.equal((await admin.delete(`/api/admin/users/${invited.id}`)).status, 200);
+    const me = users.find((u) => u.email === 'admin@example.com');
+    assert.equal((await admin.delete(`/api/admin/users/${me.id}`)).status, 400);
+    const self = await ctx.app.inject({
+      method: 'DELETE',
+      url: '/api/auth/me',
+      headers: { 'content-type': 'application/json', cookie: await loginCookie('admin@example.com', 'correct horse battery') },
+      payload: JSON.stringify({ password: 'correct horse battery' }),
+    });
+    assert.equal(self.statusCode, 409, 'the last site admin stays');
+  });
+
+  async function loginCookie(email, password) {
+    const res = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'content-type': 'application/json' },
+      remoteAddress: `10.20.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`,
+      payload: JSON.stringify({ email, password }),
+    });
+    const set = res.headers['set-cookie'];
+    return (Array.isArray(set) ? set[0] : set).split(';')[0];
+  }
+});

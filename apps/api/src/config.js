@@ -56,7 +56,10 @@ export function loadConfig(env = process.env) {
     // Trust X-Forwarded-* headers from the reverse proxy in front of the stack.
     trustProxy: trustProxy(env.TRUST_PROXY),
     sessionDays: int(env.SESSION_DAYS, 30),
-    allowRegistration: bool(env.ALLOW_REGISTRATION, true),
+    // Until the admin picks a sign-up mode in the app: true = anyone can register, false = invite only.
+    allowRegistration: bool(env.ALLOW_REGISTRATION, false),
+    // Default photo storage limit per user, in MB (0 = none); the admin can change it in the app.
+    defaultQuotaMb: Math.max(0, int(env.DEFAULT_QUOTA_MB, 0)),
     admin: {
       email: env.ADMIN_EMAIL ?? '',
       password: env.ADMIN_PASSWORD ?? '',

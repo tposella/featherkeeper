@@ -48,6 +48,18 @@ jobs:
           set -o pipefail
           bash deploy/smoke-test.sh http://localhost:8080 2>&1 | tee "$REPORT/smoke.log"
 
+      - name: Security headers on pages, assets and the API
+        run: |
+          set -o pipefail
+          ASSET=$(curl -s http://localhost:8080/ | grep -o '/assets/[^"]*\.js' | head -1)
+          for path in / "$ASSET" /api/health; do
+            H=$(curl -sI "http://localhost:8080$path")
+            for h in content-security-policy x-frame-options x-content-type-options referrer-policy permissions-policy; do
+              echo "$H" | grep -qi "^$h:" || { echo "missing $h on $path"; exit 1; }
+            done
+            echo "$path: all security headers present" | tee -a "$REPORT/headers.log"
+          done
+
       - name: HEIC (iPhone) photos decode inside the API image
         run: |
           set -o pipefail

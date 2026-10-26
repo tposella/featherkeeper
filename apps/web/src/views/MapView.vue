@@ -16,6 +16,7 @@ const error = ref('');
 let map;
 
 const placed = computed(() => sightings.value.filter((s) => s.latitude !== null));
+const total = ref(0);
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -23,8 +24,10 @@ function escapeHtml(s) {
 
 onMounted(async () => {
   try {
-    const res = await api.get(`/catalogues/${catalogue.value.slug}/sightings`);
+    // Only sightings with a location; the count of all of them comes with it.
+    const res = await api.get(`/catalogues/${catalogue.value.slug}/sightings?located=1`);
     sightings.value = res.sightings;
+    total.value = res.total ?? res.sightings.length;
     hidden.value = res.locationsHidden;
   } catch (err) {
     error.value = err.message;
@@ -75,7 +78,7 @@ onUnmounted(() => map?.remove());
     <p v-else-if="hidden" class="notice">The owner of this catalogue keeps sighting locations private.</p>
     <template v-else>
       <p class="soft legend small">
-        <span class="count">{{ placed.length }} of {{ sightings.length }} sightings have a location.</span>
+        <span class="count">{{ placed.length }} of {{ total }} sightings have a location.</span>
       </p>
       <div ref="el" class="map" aria-label="Map of sightings"></div>
     </template>

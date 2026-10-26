@@ -109,9 +109,14 @@ Featherkeeper turns that into something more fun and more useful:
 - **AI identification (optional):** the top 3 matches with confidence bars, each with example photos and
   a side-by-side compare view. Suggestions are weighted by what eBird has recorded where the photo was
   taken. You **accept** or **reject** them; your decision is saved with the photo.
+- **Bulk upload:** add a whole shoot's photos at once, give each a species (typed, "same for next", or
+  AI suggestions), and save; photos of the same species taken within 30 minutes become one sighting.
+- **Duplicate warnings** when a photo is already in the catalogue. Every sighting has at least one photo.
 
 **Maps and history**
-- Map of all sightings, and a recent-sightings feed.
+- Map of all sightings, and a recent-sightings feed that loads 50 at a time.
+- Species names stay current: eBird's yearly renames are applied about once a month, and retired
+  species (splits and lumps) are listed for the admin to review.
 
 **Look and feel**
 - Works on phones: a bottom navigation bar with a raised **Log** button and a **More** sheet, a compact
@@ -254,6 +259,8 @@ Optional check that everything works end to end (it creates a throwaway "Smoke t
 
 ```bash
 ./deploy/smoke-test.sh
+# once there are accounts and sign-ups are invite-only, sign in as yourself:
+SMOKE_EMAIL=you@example.com SMOKE_PASSWORD='your password' ./deploy/smoke-test.sh
 ```
 
 ### Installing in a Proxmox LXC
@@ -288,8 +295,8 @@ The `web` container speaks plain HTTP on port 8080. Put any reverse proxy in fro
 
 Once the site is reached over HTTPS, set `PUBLIC_URL=https://your.domain` in `.env` and run
 `docker compose up -d`. This turns on secure cookies, so signing in then only works over HTTPS.
-If you don't want strangers creating accounts, set `ALLOW_REGISTRATION=false` (after your editors
-have registered).
+New accounts are **invite-only** by default: send people an invite link from **Account → Site admin**
+(or switch sign-ups to "Anyone" there).
 
 ### Turning on AI identification
 
@@ -314,7 +321,8 @@ All settings live in `.env` (see [`.env.example`](.env.example)). Changing one t
 | **Site** | | |
 | `PUBLIC_URL` | `http://localhost:8080` | The address people use. `https://` turns on secure cookies |
 | `WEB_PORT` | `8080` | Port the web container listens on, on the host |
-| `ALLOW_REGISTRATION` | `true` | Let anyone create an account (the first account is always allowed and becomes admin) |
+| `ALLOW_REGISTRATION` | `false` | Sign-ups before you choose in the admin page: `false` = invite links only, `true` = anyone (the first account is always allowed and becomes admin) |
+| `DEFAULT_QUOTA_MB` | `0` | Photo storage limit per account in MB (0 = none); also set in the admin page |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` | empty | Create the admin on first start instead of registering in the browser |
 | `SESSION_DAYS` | `30` | How long a sign-in lasts |
 | `TRUST_PROXY` | private networks | Which proxies may pass on the visitor's address: by default those on private networks (your nginx, cloudflared, Docker). `false`, a hop count, or a list of addresses/CIDRs also work |
@@ -387,25 +395,33 @@ docker compose restart api
 
 ## Accounts and password resets
 
-The first account created becomes the **site admin**. There's no email on a Featherkeeper site, so
-forgotten passwords are reset by an admin:
+The first account created becomes the **site admin**. Under **Account → Site admin** they can:
 
-- **In the app:** go to **Account → manage users and reset passwords**. **Reset password** either makes
-  a temporary password (shown once, for you to pass on) or lets you type one. The user is signed out
-  everywhere and can change it under **Account** after signing in. You can also make other people
-  site admins there.
-- **From the server's console** (for when the admin is the one locked out), in the folder with
-  `docker-compose.yml`:
+- choose **who can sign up**: by **invite link** (the default; each link works once and expires) or
+  **anyone**;
+- see **disk space** and each account's **photo storage**, and set a storage limit for everyone or for
+  one person;
+- **reset passwords** (a temporary password shown once, or one you type), make other people admins,
+  and **delete accounts**;
+- check **species names** against eBird's latest taxonomy.
 
-  ```bash
-  docker compose exec api node src/admin-cli.js list-users
-  docker compose exec api node src/admin-cli.js reset-password you@example.com
-  docker compose exec api node src/admin-cli.js reset-password you@example.com --password "a new password"
-  docker compose exec api node src/admin-cli.js make-admin you@example.com
-  ```
+Anyone can **delete their own account** under **Account**. Catalogues they own are deleted with it
+(export them first, or make an editor the owner); sightings they logged in other people's catalogues
+stay. The last site admin can't be deleted.
 
-  `reset-password` prints a temporary password unless you give one, and signs that account out
-  everywhere.
+There's no email on a Featherkeeper site, so forgotten passwords are reset by an admin. **From the
+server's console** (for when the admin is the one locked out), in the folder with `docker-compose.yml`:
+
+```bash
+docker compose exec api node src/admin-cli.js list-users
+docker compose exec api node src/admin-cli.js reset-password you@example.com
+docker compose exec api node src/admin-cli.js reset-password you@example.com --password "a new password"
+docker compose exec api node src/admin-cli.js make-admin you@example.com
+docker compose exec api node src/admin-cli.js fix-photo-times --timezone America/Vancouver --dry-run
+```
+
+`reset-password` prints a temporary password unless you give one, and signs that account out
+everywhere. `fix-photo-times` corrects photos uploaded before 0.1.2 whose camera recorded no time zone.
 
 ## Troubleshooting
 
@@ -480,7 +496,8 @@ Viewing follows each catalogue's visibility; changes need the owner or an editor
 | --- | --- |
 | System | `GET /health`, `GET /config` |
 | Accounts | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `PATCH /auth/me` |
-| Site admin | `GET /admin/users`, `POST /admin/users/:id/reset-password`, `PATCH /admin/users/:id` |
+| Site admin | `GET /admin/users`, `POST /admin/users/:id/reset-password`, `PATCH`/`DELETE /admin/users/:id`, `GET /admin/users/:id/owned`, `GET`/`PATCH /admin/settings`, `GET`/`POST /admin/invites`, `DELETE /admin/invites/:id`, `POST /admin/taxonomy/refresh` |
+| Your account | `GET /auth/me/account`, `DELETE /auth/me`, `GET /auth/invite/:token` |
 | Catalogues | `GET /catalogues`, `POST /catalogues`, `GET`/`PATCH`/`DELETE /catalogues/:slug`, `GET /catalogues/:slug/export.zip` |
 | Members | `GET`/`POST /catalogues/:slug/members`, `PATCH`/`DELETE /catalogues/:slug/members/:userId` |
 | Dex | `GET`/`POST /catalogues/:slug/species`, `GET`/`PATCH`/`DELETE /catalogues/:slug/species/:id`, `GET /species?q=` |
@@ -489,7 +506,7 @@ Viewing follows each catalogue's visibility; changes need the owner or an editor
 | eBird import | `POST /ebird/preview`, `POST /catalogues/:slug/import/ebird` |
 | Places | `GET /places?q=&catalogue=`, `GET /places/reverse?latitude=&longitude=` |
 | Sightings | `GET`/`POST /catalogues/:slug/sightings`, `PATCH`/`DELETE /sightings/:id` |
-| Photos | `POST /sightings/:id/photos`, `GET /photos/:id/thumb\|display\|original`, `PATCH`/`DELETE /photos/:id`, `GET /catalogues/:slug/to-replace`, `POST /photo-info` |
+| Photos | `POST /sightings/:id/photos`, `GET /photos/:id/thumb\|display\|original`, `PATCH`/`DELETE /photos/:id`, `GET /catalogues/:slug/to-replace`, `POST /photo-info`, `POST /catalogues/:slug/photos/check` |
 | AI | `POST /catalogues/:slug/identify` |
 
 ---
