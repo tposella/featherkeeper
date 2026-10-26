@@ -1,15 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { VERSION as version } from '../lib/version.js';
 
-const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
-// Release images carry their version (e.g. 0.1.0-beta.1); local builds fall back to package.json.
-const version = process.env.FEATHERKEEPER_VERSION && process.env.FEATHERKEEPER_VERSION !== 'dev' ? process.env.FEATHERKEEPER_VERSION : pkg.version;
-
-export default async function systemRoutes(app, { db, config, ebird, geocoder, identifier, reference, sounds }) {
+export default async function systemRoutes(app, { db, config, ebird, geocoder, identifier, reference, sounds, updates }) {
   // Used by Docker health checks and uptime monitors.
   app.get('/health', async (request, reply) => {
     try {
       await db.query('SELECT 1');
-      return { status: 'ok' };
+      return { status: 'ok', version };
     } catch {
       return reply.code(503).send({ status: 'database_unavailable' });
     }
@@ -30,4 +26,25 @@ export default async function systemRoutes(app, { db, config, ebird, geocoder, i
       identifyEnabled: identifier.enabled,
     };
   });
+
+  /**
+   * The running version, and whether a newer release is out. Everyone sees the version; the
+   * details of an available update are for site admins, who are the ones who can install it.
+   * ?refresh=1 (admins only) checks GitHub again straight away.
+   */
+  app.get(
+    '/version',
+    { schema: { querystring: { type: 'object', properties: { refresh: { type: 'integer', enum: [0, 1] } } } } },
+    async (request) => {
+      const admin = Boolean(request.user?.is_site_admin);
+      if (!admin) return { current: version, admin: false };
+      const status = await updates.status({ force: request.query.refresh === 1 });
+      return {
+        admin: true,
+        ...status,
+        repo: updates.repo,
+        releasesUrl: `https://github.com/${updates.repo}/releases`,
+      };
+    },
+  );
 }

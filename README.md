@@ -8,7 +8,7 @@ Featherkeeper runs on your own server (a Proxmox LXC, a Raspberry Pi, any Linux 
 Your photos and records stay with you. The only outside services it talks to are public birding and
 mapping databases, and each of them can be switched off.
 
-> **Status: public beta (0.1.0-beta).** Featherkeeper is usable day to day, but it's new: expect
+> **Status: early releases (0.x).** Featherkeeper is usable day to day, but it's new: expect
 > rough edges and changes between releases, and **keep backups** (see
 > [Updating, backups and restoring](#updating-backups-and-restoring); you can also download any
 > catalogue as a ZIP from its Settings). Found a bug or have an idea?
@@ -161,7 +161,10 @@ featherkeeper/
 │   ├── backup.sh               Database dump and photo backup, keeps the last 14
 │   └── nginx.example.conf      Server block for an nginx reverse proxy in front of Featherkeeper
 ├── docs/
-│   └── ai-identification.md    How AI identification works, its accuracy, and its options
+│   ├── ai-identification.md    How AI identification works, its accuracy, and its options
+│   └── releasing.md            Version numbers, making a release, and update alerts
+├── scripts/
+│   └── bump-version.mjs        Bumps the version everywhere and starts the CHANGELOG section
 ├── .github/
 │   ├── workflows/              CI (API tests, Docker stack test, AI accuracy, demo + screenshots)
 │   │                           and the release workflow that publishes images to ghcr.io
@@ -240,9 +243,8 @@ docker compose ps             # db, api and web should say "healthy" after a min
 
 The images come from the GitHub Container Registry (`ghcr.io/tposella/featherkeeper-*`), built for
 x86-64 and 64-bit ARM (the AI identifier is x86-64 only). `FEATHERKEEPER_TAG` in `.env` picks the
-release: `beta` (the newest, the default), `latest` (the newest stable one), or an exact version such as
-`0.1.0-beta.1`. To build the images yourself from this folder instead, use
-`docker compose up -d --build`.
+release: `latest` (the newest, the default) or an exact version such as `0.1.0` to stay on it. To build
+the images yourself from this folder instead, use `docker compose up -d --build`.
 
 Open `http://<server-ip>:8080` and **create your account. The first account becomes the site admin**,
 so do this before anyone else can reach the site. Then choose **New catalogue → Around a town or place**,
@@ -318,6 +320,9 @@ All settings live in `.env` (see [`.env.example`](.env.example)). Changing one t
 | `TRUST_PROXY` | `true` | Trust `X-Forwarded-*` headers from your reverse proxy |
 | `COOKIE_SECURE` | on for `https://` | Force secure cookies on or off |
 | `LOG_LEVEL` | `info` | API log detail: `debug`, `info`, `warn`, `error` |
+| `FEATHERKEEPER_TAG` | `latest` | Which release `docker compose pull` fetches, e.g. `0.1.0` to stay on it |
+| `UPDATE_CHECK` | `true` | Tell site admins (version badge, bottom left) when a newer release is on GitHub |
+| `UPDATE_CHECK_REPO` | `tposella/featherkeeper` | Where to look for releases (for forks) |
 | **Database** | | |
 | `POSTGRES_USER`, `POSTGRES_DB` | `featherkeeper` | Database user and name |
 | `POSTGRES_PASSWORD` | (required) | Database password. Only read when the database is first created |
@@ -352,6 +357,12 @@ cd /opt/featherkeeper && git pull && docker compose pull && docker compose up -d
 images for your `FEATHERKEEPER_TAG`. (If you build your own images, use `git pull && docker compose up -d --build`.)
 Database migrations run automatically on start. Hard-refresh the browser afterwards (Ctrl+Shift+R).
 Read the [CHANGELOG](CHANGELOG.md) before updating to see what's new.
+
+**Versions and update alerts:** every update has an `x.y.z` version (0.1.0 → 0.1.1 for a smaller
+change, 0.1 → 0.2 for a bigger one). The running version shows in the bottom-left corner (the footer
+on phones). For site admins, the server checks GitHub's releases every few hours, and the badge turns
+gold with the new version, its release notes and the update command when one is out. Switch the check
+off with `UPDATE_CHECK=false`. How releases are made: [docs/releasing.md](docs/releasing.md).
 
 **Export a catalogue:** its **Settings → Export** downloads a ZIP with spreadsheets (CSV) of the
 checklist, sightings and photos, and every original photo file in a folder per species. Owners and
@@ -423,6 +434,7 @@ ever sees a shrunk copy with all metadata removed. Outbound requests are lookups
 | Wikipedia | Species names | `SPECIES_INSIGHTS=false` |
 | xeno-canto | Scientific names, country, your API key | Empty `XENO_CANTO_API_KEY` |
 | OpenStreetMap Nominatim | Place searches, and coordinates to name a place | Empty `GEOCODER_URL` |
+| GitHub | A request for the list of Featherkeeper releases, every few hours | `UPDATE_CHECK=false` |
 
 Visitors' browsers also load map tiles from OpenStreetMap, and the example photos next to AI suggestions
 and recordings straight from iNaturalist, Wikimedia and xeno-canto, so those sites see the visitor's IP

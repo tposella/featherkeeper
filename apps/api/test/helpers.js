@@ -7,6 +7,7 @@ import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 import { createDb } from '../src/db/index.js';
 import { createExamples } from '../src/lib/examples.js';
+import { createUpdateChecker } from '../src/integrations/updates.js';
 import { migrate } from '../src/db/migrate.js';
 import { createStorage } from '../src/lib/storage.js';
 
@@ -182,6 +183,22 @@ async function fakeImageFetch(url) {
   return { ok: true, status: 200, arrayBuffer: async () => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length) };
 }
 
+/** GitHub's releases list, as the update checker sees it. */
+export const fakeReleases = [
+  { tag_name: 'v0.1.0-beta.1', name: 'Featherkeeper 0.1.0-beta.1', prerelease: true, draft: false, html_url: 'https://example.test/r/1', published_at: '2026-10-25T22:00:00Z', body: 'First beta' },
+  { tag_name: 'v0.1.1', name: 'Featherkeeper 0.1.1', prerelease: false, draft: false, html_url: 'https://example.test/r/2', published_at: '2026-10-26T18:00:00Z', body: '### Added\n- Version tracker\n\n### Docker images\nghcr.io/...' },
+  { tag_name: 'v9.9.9', name: 'Not published yet', prerelease: false, draft: true, html_url: 'https://example.test/r/3', published_at: null, body: '' },
+];
+export function fakeGitHubFetch(releases = fakeReleases) {
+  const fn = async (url) => {
+    fn.calls += 1;
+    fn.lastUrl = url;
+    return { ok: true, status: 200, json: async () => releases };
+  };
+  fn.calls = 0;
+  return fn;
+}
+
 export async function setup() {
   const dataDir = await mkdtemp(path.join(os.tmpdir(), 'fk-test-'));
   const config = {
@@ -210,6 +227,7 @@ export async function setup() {
     sounds: fakeSounds,
     reference: fakeReference,
     examples,
+    updates: createUpdateChecker({ enabled: true, repo: 'tposella/featherkeeper', currentVersion: '0.1.0', userAgent: 'test' }, fakeGitHubFetch()),
     logger: false,
   });
   await app.ready();

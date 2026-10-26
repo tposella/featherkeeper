@@ -5,6 +5,9 @@ import { accessFor } from '../src/lib/access.js';
 import { exifDateToIso } from '../src/lib/images.js';
 import { hashPassword, verifyPassword } from '../src/lib/passwords.js';
 import { slugify } from '../src/lib/slug.js';
+import { compareVersions, parseVersion } from '../src/lib/version.js';
+import { createUpdateChecker } from '../src/integrations/updates.js';
+import { fakeGitHubFetch, fakeReleases } from './helpers.js';
 
 test('slugify', () => {
   assert.equal(slugify('  Cochrane Backyard! '), 'cochrane-backyard');
@@ -210,4 +213,43 @@ test('xeno-canto results come first and alternate songs and calls', async () => 
   assert.deepEqual(list.map((r) => r.kind), ['song', 'call', 'song', 'song']);
   assert.equal(list[0].url, 'https://xeno-canto.org/2/download', 'best quality song first');
   assert.equal(list[0].licence, 'CC BY-NC-SA 4.0');
+});
+
+test('versions sort the semver way', () => {
+  const order = ['0.1.0-alpha', '0.1.0-beta.1', '0.1.0-beta.2', '0.1.0-beta.10', '0.1.0-rc.1', '0.1.0', '0.1.1', '0.2.0', '1.0.0-beta', '1.0.0', 'v1.0.1'];
+  assert.deepEqual([...order].reverse().sort(compareVersions), order);
+  assert.equal(compareVersions('0.1', '0.1.0'), 0, '0.1 means 0.1.0');
+  assert.equal(parseVersion('not a version'), null);
+});
+
+test('update checker: newest release, the right channel, and caching', async () => {
+  const fetch = fakeGitHubFetch();
+  const beta = createUpdateChecker({ repo: 'o/r', currentVersion: '0.1.0-beta.1', userAgent: 't' }, fetch);
+  const s = await beta.status();
+  assert.equal(s.updateAvailable, true);
+  assert.equal(s.latest.version, '0.1.1', 'drafts are ignored');
+  assert.equal(s.latest.notes, '### Added\n- Version tracker', 'notes stop before the Docker images section');
+  await beta.status();
+  assert.equal(fetch.calls, 1, 'GitHub is asked at most every few hours');
+  await beta.status({ force: true });
+  assert.equal(fetch.calls, 2);
+
+  const upToDate = createUpdateChecker({ repo: 'o/r', currentVersion: '0.1.1', userAgent: 't' }, fakeGitHubFetch());
+  assert.equal((await upToDate.status()).updateAvailable, false);
+
+  // A stable 1.0+ site isn't told about pre-releases.
+  const stableList = [...fakeReleases, { tag_name: 'v1.1.0-beta.1', prerelease: true, draft: false, html_url: 'x', body: '' }, { tag_name: 'v1.0.0', prerelease: false, draft: false, html_url: 'y', body: '' }];
+  const stable = createUpdateChecker({ repo: 'o/r', currentVersion: '1.0.0', userAgent: 't' }, fakeGitHubFetch(stableList));
+  assert.equal((await stable.status()).updateAvailable, false);
+  const onBeta = createUpdateChecker({ repo: 'o/r', currentVersion: '1.1.0-beta.0', userAgent: 't' }, fakeGitHubFetch(stableList));
+  assert.equal((await onBeta.status()).latest.version, '1.1.0-beta.1');
+
+  // A failed check is reported, not thrown.
+  const broken = createUpdateChecker({ repo: 'o/r', currentVersion: '0.1.0', userAgent: 't' }, async () => ({ ok: false, status: 403 }));
+  const b = await broken.status();
+  assert.equal(b.updateAvailable, false);
+  assert.match(b.error, /403/);
+
+  const off = createUpdateChecker({ enabled: false, repo: 'o/r', currentVersion: '0.1.0', userAgent: 't' }, fetch);
+  assert.equal((await off.status()).enabled, false);
 });

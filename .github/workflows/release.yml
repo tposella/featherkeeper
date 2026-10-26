@@ -1,13 +1,12 @@
 # Publishes ready-made Docker images to the GitHub Container Registry (ghcr.io) and creates a
 # GitHub release. Two ways to release:
 #
-#   1. Bump "version" in apps/api/package.json (and apps/web/package.json), add that version's
-#      section to CHANGELOG.md, and push to main. If there's no tag for it yet, this workflow
-#      creates v<version> and publishes it.
-#   2. Or push a tag yourself: git tag -a v0.1.0-beta.2 -m "..." && git push origin v0.1.0-beta.2
+#   1. Run `node scripts/bump-version.mjs patch` (or minor), fill in CHANGELOG.md, and push to main.
+#      If there's no tag for the new version yet, this workflow creates v<version> and publishes it.
+#   2. Or push a tag yourself: git tag -a v0.1.1 -m "..." && git push origin v0.1.1
 #
-# Images: ghcr.io/<owner>/featherkeeper-{api,web,identifier}, tagged with the version (0.1.0-beta.1),
-# "beta" (always the newest release), and "latest" (the newest stable release, i.e. no "-beta").
+# Images: ghcr.io/<owner>/featherkeeper-{api,web,identifier}, tagged with the version (0.1.1),
+# "latest" (the newest release) and "beta" (also the newest; kept for installs from the 0.1.0 betas).
 # The results are pushed to the ci-report-release branch.
 name: Release
 

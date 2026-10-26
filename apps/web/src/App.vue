@@ -1,8 +1,10 @@
 <script setup>
-import { defineAsyncComponent, ref } from 'vue';
+import { defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { session, signOut } from './session.js';
 import { theme, toggleTheme } from './theme.js';
+import VersionBadge from './components/VersionBadge.vue';
+import { loadVersion } from './version.js';
 
 const router = useRouter();
 const DEMO = import.meta.env.VITE_DEMO === 'true';
@@ -12,6 +14,13 @@ const iconUrl = `${import.meta.env.BASE_URL}favicon.svg`;
 const viewKey = ref(0);
 const main = ref(null);
 const skipToContent = () => main.value?.focus();
+
+// The version badge: load it now, and again when someone signs in or out (admins see update alerts).
+onMounted(() => loadVersion());
+watch(
+  () => session.user?.id,
+  () => loadVersion(),
+);
 
 async function onSignOut() {
   await signOut();
@@ -80,7 +89,9 @@ async function onSignOut() {
       AGPL-3.0. See the
       <a href="https://github.com/tposella/featherkeeper#credits-and-sources" target="_blank" rel="noopener">full credits</a>.
     </p>
+    <VersionBadge placement="footer" />
   </footer>
+  <VersionBadge placement="corner" />
 </template>
 
 <style scoped>

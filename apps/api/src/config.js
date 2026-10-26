@@ -62,6 +62,12 @@ export function loadConfig(env = process.env) {
       enabled: bool(env.SPECIES_INSIGHTS, true),
       userAgent: `Featherkeeper/0.1 (+${publicUrl})`,
     },
+    // Tell the site admin when a newer release is published on GitHub.
+    updates: {
+      enabled: bool(env.UPDATE_CHECK, true),
+      repo: env.UPDATE_CHECK_REPO ?? 'tposella/featherkeeper',
+      userAgent: `Featherkeeper (+${publicUrl})`,
+    },
     // "Calls and songs": iNaturalist by default; xeno-canto too when a key is set.
     sounds: {
       enabled: bool(env.SPECIES_SOUNDS, true),

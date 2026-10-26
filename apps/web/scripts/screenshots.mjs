@@ -208,6 +208,20 @@ for (const scheme of ['light', 'dark']) {
           `slotsShown=${slotsShown} slotsRemembered=${remembered} afterSwitchBack=${await page.locator('.plate .example-img').count()}`,
       );
 
+      // Version badge: bottom left on desktop, in the footer on phones; the demo admin sees a sample update.
+      await page.goto(new URL('#/c/bow-valley', base).href);
+      await page.waitForTimeout(900);
+      const versionBadge = page.locator(phone ? '.version.footer .badge' : '.version.corner .badge');
+      await versionBadge.scrollIntoViewIfNeeded();
+      const badgeText = (await versionBadge.innerText()).replace(/\s+/g, ' ');
+      await versionBadge.click();
+      await page.waitForTimeout(300);
+      const panelText = (await page.locator('.version .panel').innerText()).replace(/\s+/g, ' ').slice(0, 120);
+      await page.screenshot({ path: `${out}/${vpName}-${scheme}-version-panel.png` });
+      await page.getByRole('button', { name: 'Not now' }).click();
+      const afterNotNow = (await versionBadge.innerText()).replace(/\s+/g, ' ');
+      console.log(`VERSION badge="${badgeText}" panel="${panelText}" afterNotNow="${afterNotNow}"`);
+
       // Light/dark toggle: starts from the system setting, flips, survives a reload, and flips back.
       const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       const themeSwitch = page.getByRole('switch', { name: 'Dark mode' });

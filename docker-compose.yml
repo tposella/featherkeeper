@@ -3,8 +3,8 @@
 #   docker compose pull && docker compose up -d     ready-made images from ghcr.io (recommended)
 #   docker compose up -d --build                    build the images yourself from this folder
 #
-# FEATHERKEEPER_TAG in .env picks the release: "beta" (default, the newest release), "latest"
-# (the newest stable release) or an exact version such as 0.1.0-beta.1.
+# FEATHERKEEPER_TAG in .env picks the release: "latest" (the default, the newest release) or an
+# exact version such as 0.1.0 to stay on it.
 
 name: featherkeeper
 
@@ -25,7 +25,7 @@ services:
       retries: 20
 
   api:
-    image: ${FEATHERKEEPER_IMAGES:-ghcr.io/tposella}/featherkeeper-api:${FEATHERKEEPER_TAG:-beta}
+    image: ${FEATHERKEEPER_IMAGES:-ghcr.io/tposella}/featherkeeper-api:${FEATHERKEEPER_TAG:-latest}
     build: ./apps/api
     restart: unless-stopped
     env_file: .env
@@ -40,7 +40,7 @@ services:
         condition: service_healthy
 
   web:
-    image: ${FEATHERKEEPER_IMAGES:-ghcr.io/tposella}/featherkeeper-web:${FEATHERKEEPER_TAG:-beta}
+    image: ${FEATHERKEEPER_IMAGES:-ghcr.io/tposella}/featherkeeper-web:${FEATHERKEEPER_TAG:-latest}
     build: ./apps/web
     restart: unless-stopped
     ports:
@@ -53,7 +53,7 @@ services:
   # Uses about 2.5 GB of RAM; the model downloads into the "models" volume on first start.
   identifier:
     profiles: [ai]
-    image: ${FEATHERKEEPER_IMAGES:-ghcr.io/tposella}/featherkeeper-identifier:${FEATHERKEEPER_TAG:-beta}
+    image: ${FEATHERKEEPER_IMAGES:-ghcr.io/tposella}/featherkeeper-identifier:${FEATHERKEEPER_TAG:-latest}
     build: ./services/identifier
     restart: unless-stopped
     environment:

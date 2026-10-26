@@ -1,0 +1,78 @@
+# Every update to the app gets a new version (see docs/releasing.md). This fails a push to main
+# that changes the app without bumping the version in apps/api/package.json, or that bumps it
+# without a matching CHANGELOG.md section. Docs, tests and CI changes don't need a new version.
+# The result is pushed to the ci-report-version branch.
+name: Version check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Is the version bumped for app changes?
+        id: v
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          mkdir -p report
+          # A new branch or a force-push has no usable "before"; compare with the previous commit.
+          git cat-file -e "$BASE^{commit}" 2>/dev/null || BASE="$(git rev-parse HEAD~1)"
+          OLD=$(git show "$BASE:apps/api/package.json" | node -e "process.stdin.on('data',d=>console.log(JSON.parse(d).version))" 2>/dev/null || echo none)
+          NEW=$(node -p "require('./apps/api/package.json').version")
+          WEB=$(node -p "require('./apps/web/package.json').version")
+          # The app itself: server and web code, images, and the compose file. Not tests, docs or CI.
+          CHANGED=$(git diff --name-only "$BASE" HEAD -- \
+            'apps/api/src/**' 'apps/api/Dockerfile' 'apps/api/package.json' \
+            'apps/web/src/**' 'apps/web/index.html' 'apps/web/public/**' 'apps/web/nginx.conf' 'apps/web/Dockerfile' 'apps/web/package.json' \
+            'services/identifier/app.py' 'services/identifier/Dockerfile' 'services/identifier/requirements.txt' \
+            'docker-compose.yml' || true)
+          {
+            echo "base: $BASE"
+            echo "version: $OLD -> $NEW (web $WEB)"
+            echo "app files changed:"
+            echo "${CHANGED:-  (none)}"
+          } | tee report/version.log
+          FAIL=""
+          [ "$NEW" = "$WEB" ] || FAIL="apps/web/package.json ($WEB) doesn't match apps/api/package.json ($NEW). Use scripts/bump-version.mjs."
+          if [ -z "$FAIL" ] && [ -n "$CHANGED" ] && [ "$OLD" = "$NEW" ]; then
+            FAIL="The app changed but the version is still $NEW. Run: node scripts/bump-version.mjs patch (or minor)"
+          fi
+          if [ -z "$FAIL" ] && [ "$OLD" != "$NEW" ] && ! grep -q "^## \[$NEW\]" CHANGELOG.md; then
+            FAIL="Version $NEW has no section in CHANGELOG.md."
+          fi
+          if [ -n "$FAIL" ]; then
+            echo "::error::$FAIL" ; echo "result: FAIL: $FAIL" | tee -a report/version.log ; echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "result: ok" | tee -a report/version.log ; echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish report to the ci-report-version branch
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          cd report
+          echo "commit: ${{ github.sha }}" > status.txt
+          echo "version-check: ${{ steps.v.outputs.ok == 'true' && 'success' || 'failure' }}" >> status.txt
+          git init -q -b ci-report-version
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Version check for ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-report-version
+      - name: Fail if the version wasn't bumped
+        if: steps.v.outputs.ok != 'true'
+        run: exit 1

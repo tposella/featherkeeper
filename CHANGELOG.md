@@ -1,9 +1,27 @@
 # Changelog
 
-What changed in each release of Featherkeeper. Versions follow [semantic versioning](https://semver.org);
-`-beta` releases may still change in ways that need a note here before you update.
+What changed in each release of Featherkeeper. Versions are `x.y.z`: a smaller change bumps the last
+number (0.1.0 → 0.1.1), a bigger one the middle (0.1 → 0.2). See [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-10-26
+
+The first numbered release after the beta, and from here on every update gets a version.
+
+### Added
+- **Version badge** in the bottom-left corner (in the footer on phones) showing the running version.
+- **Update alerts** for site admins: the server checks GitHub's releases every few hours, and the badge
+  turns gold with the new version, its release notes and the update command. `UPDATE_CHECK=false`
+  switches it off.
+- `scripts/bump-version.mjs` and a release guide ([docs/releasing.md](docs/releasing.md)); pushing a
+  version bump to `main` publishes the release automatically.
+- A version check in CI: app changes need a new version and a CHANGELOG entry.
+
+### Changed
+- Versions are now plain `x.y.z` (no `-beta`). `FEATHERKEEPER_TAG` defaults to `latest`; the `beta`
+  image tag still follows the newest release, so existing installs keep updating.
+- `/api/health` includes the version.
 
 ## [0.1.0-beta.1] - 2026-10-25
 
@@ -43,5 +61,6 @@ The first public beta.
 - Light and dark mode, and a phone layout with bottom navigation and swipeable photos.
 - Backup and smoke-test scripts, automatic database migrations.
 
-[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.1.0-beta.1...HEAD
+[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/tposella/featherkeeper/compare/v0.1.0-beta.1...v0.1.0
 [0.1.0-beta.1]: https://github.com/tposella/featherkeeper/releases/tag/v0.1.0-beta.1

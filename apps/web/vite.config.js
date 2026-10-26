@@ -1,8 +1,13 @@
+import { readFileSync } from 'node:fs';
 import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
 
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+
 export default defineConfig({
   plugins: [vue()],
+  // The app's own version, for the demo (a real install shows the server's version).
+  define: { __APP_VERSION__: JSON.stringify(version) },
   // The GitHub Pages demo lives under /featherkeeper/; a real install is served from /.
   base: process.env.VITE_BASE ?? '/',
   server: {

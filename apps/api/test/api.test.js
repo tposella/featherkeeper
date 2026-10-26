@@ -69,6 +69,24 @@ describe('accounts', () => {
 });
 
 describe('site admin', () => {
+  test('version: everyone sees it; only the admin hears about updates', async () => {
+    const asVisitor = await anon.get('/api/version');
+    assert.equal(asVisitor.status, 200);
+    assert.equal(asVisitor.body.admin, false);
+    assert.equal(asVisitor.body.latest, undefined);
+    assert.ok(asVisitor.body.current);
+    assert.equal((await owner.get('/api/version')).body.admin, false);
+
+    const res = await admin.get('/api/version');
+    assert.equal(res.body.admin, true);
+    assert.equal(res.body.current, '0.1.0');
+    assert.equal(res.body.updateAvailable, true);
+    assert.equal(res.body.latest.version, '0.1.1');
+    assert.equal(res.body.latest.url, 'https://example.test/r/2');
+    assert.equal(res.body.releasesUrl, 'https://github.com/tposella/featherkeeper/releases');
+    assert.ok((await anon.get('/api/health')).body.version);
+  });
+
   test('only the site admin sees the user list', async () => {
     assert.equal((await anon.get('/api/admin/users')).status, 401);
     assert.equal((await owner.get('/api/admin/users')).status, 403);

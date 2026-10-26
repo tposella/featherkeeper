@@ -7,6 +7,8 @@ import { createGeocoder } from './integrations/geocode.js';
 import { createInaturalistClient } from './integrations/inat.js';
 import { createReferenceClient } from './integrations/reference.js';
 import { createSoundsClient } from './integrations/sounds.js';
+import { createUpdateChecker } from './integrations/updates.js';
+import { VERSION } from './lib/version.js';
 import { createWikipediaClient } from './integrations/wikipedia.js';
 import { createIdentifier } from './integrations/identify.js';
 import { createExamples } from './lib/examples.js';
@@ -39,6 +41,7 @@ export async function buildApp({
   wikipedia,
   sounds,
   examples,
+  updates,
   logger,
 }) {
   const deps = {
@@ -52,6 +55,7 @@ export async function buildApp({
     wikipedia: wikipedia ?? createWikipediaClient(config.insights),
     sounds: sounds ?? createSoundsClient(config.sounds),
     identifier: identifier ?? createIdentifier(config.identify),
+    updates: updates ?? createUpdateChecker({ ...config.updates, currentVersion: VERSION }),
   };
 
   const app = Fastify({

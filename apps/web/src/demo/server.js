@@ -292,7 +292,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const routes = [
   ['GET', /^\/config$/, () => ({
-    version: 'demo',
+    version: __APP_VERSION__,
     allowRegistration: true,
     needsSetup: false,
     maxUploadMb: 100,
@@ -624,6 +624,29 @@ const routes = [
     };
     photos.push(p);
     return { photo: serializePhoto(p, c) };
+  }],
+  // Version: in a real install the server checks GitHub for newer releases; the demo shows a sample alert.
+  ['GET', /^\/version$/, () => {
+    if (!me()?.isSiteAdmin) return { current: __APP_VERSION__, admin: false };
+    const [maj, min, pat] = __APP_VERSION__.split('-')[0].split('.').map(Number);
+    const next = `${maj}.${min}.${pat + 1}`;
+    return {
+      admin: true,
+      enabled: true,
+      current: __APP_VERSION__,
+      updateAvailable: true,
+      checkedAt: new Date().toISOString(),
+      error: null,
+      releasesUrl: 'https://github.com/tposella/featherkeeper/releases',
+      latest: {
+        version: next,
+        name: `Featherkeeper ${next}`,
+        url: 'https://github.com/tposella/featherkeeper/releases',
+        publishedAt: new Date().toISOString(),
+        prerelease: false,
+        notes: `A sample alert for the demo. In a real install this shows the release notes from GitHub.\n\n### Added\n- Something new\n\n### Fixed\n- Something that was broken`,
+      },
+    };
   }],
   // Site admin (the demo's "You" is the site admin).
   ['GET', /^\/admin\/users$/, () => {
