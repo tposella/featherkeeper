@@ -5,6 +5,22 @@ number (0.1.0 → 0.1.1), a bigger one the middle (0.1 → 0.2). See [docs/relea
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-26
+
+### Fixed
+- **Security:** the login rate limit could be dodged by making up an address in the `X-Forwarded-For`
+  header. Only proxies on private networks (your nginx, cloudflared, Docker) are trusted to pass on the
+  visitor's address now. If your `.env` sets `TRUST_PROXY=true`, it now means the same safe default.
+- **Photo times** from cameras that don't record a time zone (many DSLRs) were read as UTC, so they
+  showed hours off. They're now read in the uploader's time zone. To correct photos uploaded before
+  this release, run once on the server:
+  `docker compose exec api node src/admin-cli.js fix-photo-times --timezone America/Vancouver`
+  (use your own time zone; add `--dry-run` to preview).
+- An expired sign-in now takes you to the sign-in page (and back afterwards) instead of every action
+  failing with "Sign in required".
+- Large exports stream straight through nginx instead of being copied to a temporary file first,
+  which could fill the web container's disk.
+
 ## [0.1.1] - 2026-10-26
 
 ### Changed
@@ -67,7 +83,8 @@ The first public beta.
 - Light and dark mode, and a phone layout with bottom navigation and swipeable photos.
 - Backup and smoke-test scripts, automatic database migrations.
 
-[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/tposella/featherkeeper/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/tposella/featherkeeper/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/tposella/featherkeeper/compare/v0.1.0-beta.1...v0.1.0
 [0.1.0-beta.1]: https://github.com/tposella/featherkeeper/releases/tag/v0.1.0-beta.1

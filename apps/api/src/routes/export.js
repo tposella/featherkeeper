@@ -76,6 +76,9 @@ export default async function exportRoutes(app, { db, storage }) {
       reply.header('Content-Type', 'application/zip');
       reply.header('Content-Disposition', `attachment; filename="featherkeeper-${catalogue.slug}-${stamp}.zip"`);
       reply.header('Cache-Control', 'no-store');
+      // Tell nginx (ours and yours) to pass the download straight through rather than spooling it
+      // to a temporary file first, which for a big catalogue could fill the disk.
+      reply.header('X-Accel-Buffering', 'no');
       const zip = createZip();
       reply.send(zip.stream);
 

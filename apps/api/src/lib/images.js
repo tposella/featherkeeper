@@ -110,12 +110,12 @@ export async function openImage(file) {
  * EXIF for an opened image. HEIC files are read whole (exifr can miss EXIF stored late in the file
  * when it reads a path in chunks), and if that still finds nothing, the decoded JPEG's copy is used.
  */
-export async function readImageExif(original, img) {
-  if (img.format.ext !== 'heic') return readExif(original);
-  const fromHeic = await readExif(await readFile(original));
+export async function readImageExif(original, img, opts = {}) {
+  if (img.format.ext !== 'heic') return readExif(original, opts);
+  const fromHeic = await readExif(await readFile(original), opts);
   const found = (r) => r.takenAt || r.camera || r.latitude !== null;
   if (found(fromHeic) || img.input === original) return fromHeic;
-  const fromDecoded = await readExif(img.input);
+  const fromDecoded = await readExif(img.input, opts);
   return found(fromDecoded) ? fromDecoded : fromHeic;
 }
 
@@ -125,8 +125,55 @@ export function uprightPipeline(img) {
   return img.upright ? s : s.rotate();
 }
 
-/** "2024:05:18 07:42:10" (+ optional "-07:00") -> ISO string, or null. */
-export function exifDateToIso(value, offset) {
+/** The UTC offset, in minutes, of an IANA time zone at a moment (e.g. -420 for Vancouver in summer). */
+function zoneOffsetMinutes(timeZone, utcMs) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+      .formatToParts(new Date(utcMs))
+      .map((p) => [p.type, p.value]),
+  );
+  const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return Math.round((asUtc - utcMs) / 60000);
+}
+
+/** A wall-clock time in an IANA time zone -> epoch ms. Returns null for an unknown zone. */
+export function zonedTimeToUtc([y, mo, d, h, mi, s], timeZone) {
+  try {
+    const guess = Date.UTC(y, mo - 1, d, h, mi, s);
+    // Two passes settle the offset, including around daylight-saving changes.
+    let utc = guess - zoneOffsetMinutes(timeZone, guess) * 60000;
+    utc = guess - zoneOffsetMinutes(timeZone, utc) * 60000;
+    return utc;
+  } catch {
+    return null;
+  }
+}
+
+export function isTimeZone(value) {
+  if (typeof value !== 'string' || !value || value.length > 64) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * "2024:05:18 07:42:10" (+ optional "-07:00") -> ISO string, or null.
+ * Many cameras record the time without a time zone. Then `timeZone` (the uploader's, sent by
+ * their browser) says where that clock time was; without it, UTC is assumed.
+ */
+export function exifDateToIso(value, offset, timeZone) {
   if (!value) return null;
   // EXIF: "2024:05:18 07:42:10"; XMP: "2024-05-18T07:42:10-06:00" (its own offset wins).
   const m = String(value).match(/^(\d{4})[:-](\d{2})[:-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-]\d{2}:\d{2})?/);
@@ -134,8 +181,12 @@ export function exifDateToIso(value, offset) {
   const [, y, mo, d, h, mi, sec = '00', own] = m;
   const s = sec;
   if (y === '0000') return null;
-  const tz = own ?? (/^[+-]\d{2}:\d{2}$/.test(offset ?? '') ? offset : 'Z');
-  const date = new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}${tz}`);
+  const fixed = own ?? (/^[+-]\d{2}:\d{2}$/.test(offset ?? '') ? offset : null);
+  if (!fixed && isTimeZone(timeZone)) {
+    const ms = zonedTimeToUtc([+y, +mo, +d, +h, +mi, +s], timeZone);
+    if (ms !== null) return new Date(ms).toISOString();
+  }
+  const date = new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}${fixed ?? 'Z'}`);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
@@ -146,7 +197,7 @@ function round(n, places) {
 }
 
 /** Pull the fields the app cares about out of a photo's EXIF. Accepts a file path or Buffer. Never throws. */
-export async function readExif(input) {
+export async function readExif(input, { timeZone } = {}) {
   let raw;
   try {
     raw = await exifr.parse(input, {
@@ -192,7 +243,7 @@ export async function readExif(input) {
   const dateValue = raw.DateTimeOriginal ?? raw.CreateDate ?? raw.DateCreated ?? raw.ModifyDate;
   const wall = String(dateValue ?? '').match(/^(\d{4})[:-](\d{2})[:-](\d{2})[ T](\d{2}):(\d{2})/);
   return {
-    takenAt: exifDateToIso(dateValue, raw.OffsetTimeOriginal),
+    takenAt: exifDateToIso(dateValue, raw.OffsetTimeOriginal ?? raw.OffsetTime, timeZone),
     // The camera's own clock time, "YYYY-MM-DDTHH:mm", for prefilling forms.
     localDateTime: wall && wall[1] !== '0000' ? `${wall[1]}-${wall[2]}-${wall[3]}T${wall[4]}:${wall[5]}` : '',
     camera: camera || null,
@@ -207,16 +258,16 @@ export async function readExif(input) {
  * Validate an upload (file path or Buffer) and produce the display and thumbnail versions.
  * Both derived images are re-encoded without metadata, so they never carry GPS.
  */
-export async function processImage(input) {
+export async function processImage(input, opts = {}) {
   const img = await openImage(input);
   try {
-    return await derive(input, img);
+    return await derive(input, img, opts);
   } finally {
     await img.cleanup();
   }
 }
 
-async function derive(original, img) {
+async function derive(original, img, opts) {
   const { meta, format } = img;
   const base = uprightPipeline(img);
   const [display, thumb, exifData] = await Promise.all([
@@ -231,7 +282,7 @@ async function derive(original, img) {
       .webp({ quality: 78 })
       .toBuffer(),
     // EXIF comes from the original file (for HEIC, see readImageExif).
-    readImageExif(original, img),
+    readImageExif(original, img, opts),
   ]);
 
   // Orientations 5-8 rotate by 90 degrees, so width and height swap (a decoded HEIC is already upright).

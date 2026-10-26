@@ -47,6 +47,9 @@ async function submit() {
 <template>
   <div class="page narrow">
     <h1>{{ title }}</h1>
+    <div v-if="!isRegister && $route.query.expired" class="notice" role="status">
+      You’ve been signed out (your sign-in ran out, or ended on another device). Sign in again to carry on where you were.
+    </div>
     <p v-if="isRegister && session.config.needsSetup" class="soft">
       This is a new Featherkeeper site. The first account becomes the site admin.
     </p>

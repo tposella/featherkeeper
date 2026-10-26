@@ -10,6 +10,26 @@ function int(value, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/**
+ * Which proxies may tell us the visitor's address (X-Forwarded-For). By default only proxies on
+ * private networks: the web container, your own nginx, cloudflared and Docker are all on one, so
+ * the real visitor address comes through, but an address a visitor makes up in that header is
+ * ignored (otherwise they could dodge the login rate limit). TRUST_PROXY can also be "false",
+ * a number of proxy hops, or a list of addresses or CIDR ranges. "true" (trust any) is
+ * treated like the default, since trusting every address would let visitors fake theirs.
+ */
+export const PRIVATE_PROXIES = ['loopback', 'linklocal', 'uniquelocal'];
+function trustProxy(value) {
+  const v = String(value ?? '').trim().toLowerCase();
+  if (!v || ['true', 'yes', '1', 'on', 'private'].includes(v)) return PRIVATE_PROXIES;
+  if (['false', 'no', '0', 'off'].includes(v)) return false;
+  if (/^\d+$/.test(v)) return Number(v);
+  return String(value)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 function databaseUrl(env) {
   if (env.DATABASE_URL) return env.DATABASE_URL;
   const user = encodeURIComponent(env.POSTGRES_USER ?? 'featherkeeper');
@@ -34,7 +54,7 @@ export function loadConfig(env = process.env) {
     // Secure cookies need HTTPS between the browser and your proxy. Defaults to on when PUBLIC_URL is https.
     cookieSecure: bool(env.COOKIE_SECURE, publicUrl.startsWith('https://')),
     // Trust X-Forwarded-* headers from the reverse proxy in front of the stack.
-    trustProxy: bool(env.TRUST_PROXY, true),
+    trustProxy: trustProxy(env.TRUST_PROXY),
     sessionDays: int(env.SESSION_DAYS, 30),
     allowRegistration: bool(env.ALLOW_REGISTRATION, true),
     admin: {

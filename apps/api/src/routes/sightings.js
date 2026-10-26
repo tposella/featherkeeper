@@ -233,7 +233,8 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
     const key = storage.newKey();
     let row;
     try {
-      const img = await processImage(upload.path);
+      // The uploader's time zone, for cameras that record the time without one.
+      const img = await processImage(upload.path, { timeZone: upload.fields.timezone });
       // The original is moved into place, never copied; derivatives are small buffers.
       await storage.save(key, { 'display.webp': img.display, 'thumb.webp': img.thumb }, { [`original.${img.ext}`]: upload.path });
       row = await db.tx(async (t) => {
@@ -429,7 +430,7 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
     let img = null;
     try {
       img = await openImage(upload.path);
-      const meta = await readImageExif(upload.path, img);
+      const meta = await readImageExif(upload.path, img, { timeZone: upload.fields.timezone });
       return { localDateTime: meta.localDateTime, latitude: meta.latitude, longitude: meta.longitude, camera: meta.camera ?? '' };
     } finally {
       await img?.cleanup();
@@ -466,7 +467,7 @@ export default async function sightingRoutes(app, { db, storage, identifier, con
             .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
             .jpeg({ quality: 88 })
             .toBuffer(),
-          readImageExif(upload.path, img),
+          readImageExif(upload.path, img, { timeZone: upload.fields.timezone }),
         ]);
         // Most browsers can't show HEIC, so send back a small JPEG for the page to show instead.
         if (img.format.ext === 'heic') {

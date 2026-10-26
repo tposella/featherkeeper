@@ -317,7 +317,7 @@ All settings live in `.env` (see [`.env.example`](.env.example)). Changing one t
 | `ALLOW_REGISTRATION` | `true` | Let anyone create an account (the first account is always allowed and becomes admin) |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` | empty | Create the admin on first start instead of registering in the browser |
 | `SESSION_DAYS` | `30` | How long a sign-in lasts |
-| `TRUST_PROXY` | `true` | Trust `X-Forwarded-*` headers from your reverse proxy |
+| `TRUST_PROXY` | private networks | Which proxies may pass on the visitor's address: by default those on private networks (your nginx, cloudflared, Docker). `false`, a hop count, or a list of addresses/CIDRs also work |
 | `COOKIE_SECURE` | on for `https://` | Force secure cookies on or off |
 | `LOG_LEVEL` | `info` | API log detail: `debug`, `info`, `warn`, `error` |
 | `FEATHERKEEPER_TAG` | `latest` | Which release `docker compose pull` fetches, e.g. `0.1.0` to stay on it |

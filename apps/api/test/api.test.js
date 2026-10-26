@@ -68,6 +68,24 @@ describe('accounts', () => {
   });
 });
 
+describe('rate limits', () => {
+  test('the login limit follows the real visitor address, not one they make up', async () => {
+    // The visitor (203.0.113.7) puts a different made-up address in X-Forwarded-For each time; the
+    // web container's nginx appends the real one, and the API (reached from a private address) uses that.
+    const attempt = (fake, real) =>
+      ctx.app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        remoteAddress: '172.18.0.3',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': `${fake}, ${real}` },
+        payload: JSON.stringify({ email: 'owner@example.com', password: 'wrong password' }),
+      });
+    for (let i = 1; i <= 10; i += 1) assert.equal((await attempt(`198.51.100.${i}`, '203.0.113.7')).statusCode, 401);
+    assert.equal((await attempt('198.51.100.99', '203.0.113.7')).statusCode, 429, 'the 11th try is refused');
+    assert.equal((await attempt('198.51.100.99', '203.0.113.8')).statusCode, 401, 'someone else can still sign in');
+  });
+});
+
 describe('site admin', () => {
   test('version: everyone sees it; only the admin hears about updates', async () => {
     const asVisitor = await anon.get('/api/version');
@@ -424,6 +442,37 @@ describe('dex, sightings and photos', () => {
     assert.match(id.body.preview, /^data:image\/jpeg;base64,/);
   });
 
+  test("photo times without a time zone are read in the uploader's, and old ones can be fixed", async () => {
+    const sharp = (await import('sharp')).default;
+    const jpeg = await sharp({ create: { width: 320, height: 240, channels: 3, background: '#6f8f6a' } })
+      .withExif({ IFD0: { Make: 'Canon', Model: 'Canon EOS R7' }, IFD2: { DateTimeOriginal: '2024:05:18 07:42:10' } })
+      .jpeg()
+      .toBuffer();
+    const zoned = await editor.upload(`/api/sightings/${sightingId}/photos`, jpeg, 'IMG_1.JPG', 'image/jpeg', { timezone: 'America/Vancouver' });
+    assert.equal(zoned.body.photo.takenAt, '2024-05-18T14:42:10.000Z', '7:42 AM in Vancouver');
+
+    // An upload from before the fix (no time zone sent) was read as UTC; the console command corrects it.
+    const old = await editor.upload(`/api/sightings/${sightingId}/photos`, jpeg, 'IMG_2.JPG', 'image/jpeg');
+    assert.equal(old.body.photo.takenAt, '2024-05-18T07:42:10.000Z');
+    const { execFile } = await import('node:child_process');
+    const run = (args) =>
+      new Promise((resolve) => {
+        execFile(process.execPath, ['src/admin-cli.js', ...args], { env: { ...process.env, DATABASE_URL: ctx.databaseUrl, DATA_DIR: ctx.dataDir } }, (err, stdout, stderr) =>
+          resolve({ code: err?.code ?? 0, stdout, stderr }),
+        );
+      });
+    assert.equal((await run(['fix-photo-times'])).code, 2, 'needs a time zone');
+    const dry = await run(['fix-photo-times', '--timezone', 'America/Vancouver', '--dry-run']);
+    assert.match(dry.stdout, /1 of \d+ photos would change/, dry.stdout + dry.stderr);
+    const fix = await run(['fix-photo-times', '--timezone', 'America/Vancouver']);
+    assert.match(fix.stdout, /Corrected 1 of/, fix.stdout + fix.stderr);
+    const res = await editor.get(`/api/catalogues/cochrane-backyard/species/${robinId}`);
+    const photos = res.body.sightings.flatMap((s) => s.photos);
+    assert.equal(photos.find((p) => p.id === old.body.photo.id).takenAt, '2024-05-18T14:42:10.000Z');
+    await editor.delete(`/api/photos/${zoned.body.photo.id}`);
+    await editor.delete(`/api/photos/${old.body.photo.id}`);
+  });
+
   test('visitors get stripped derivatives; originals follow location privacy', async () => {
     const thumb = await anon.get(`/api/photos/${photoId}/thumb`);
     assert.equal(thumb.status, 200);
@@ -502,6 +551,7 @@ describe('dex, sightings and photos', () => {
     const res = await editor.get(url);
     assert.equal(res.status, 200);
     assert.equal(res.headers['content-type'], 'application/zip');
+    assert.equal(res.headers['x-accel-buffering'], 'no', 'nginx streams it instead of spooling to disk');
     assert.match(res.headers['content-disposition'], /attachment; filename="featherkeeper-cochrane-backyard-\d{4}-\d{2}-\d{2}\.zip"/);
 
     // Read it back with Python's zipfile, an independent ZIP reader.

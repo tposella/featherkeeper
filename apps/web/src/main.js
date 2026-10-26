@@ -9,6 +9,16 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import { router } from './router.js';
 import { loadSession, session } from './session.js';
+import { onUnauthorized } from './api.js';
+
+// The sign-in ran out (or ended on another device) while this page was open: show the sign-in page,
+// and come back here afterwards.
+onUnauthorized(() => {
+  if (!session.user) return;
+  session.user = null;
+  const here = router.currentRoute.value;
+  if (here.name !== 'login') router.push({ name: 'login', query: { next: here.fullPath, expired: '1' } });
+});
 
 loadSession()
   .catch(() => {
