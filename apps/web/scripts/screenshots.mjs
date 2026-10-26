@@ -356,5 +356,38 @@ for (const scheme of ['light', 'dark']) {
     await page.close();
   }
 }
+// Clean screenshots for the README and docs: a fresh demo, no demo banner and no sample update alert.
+await mkdir(`${out}/readme`, { recursive: true });
+const CLEAN_CSS = `
+  .demo-banner { display: none !important; }
+  .version .dot, .version .new, .version .new-short { display: none !important; }
+  .version.alerting .current { display: inline !important; }
+  .version.alerting .badge { background: var(--paper-raised) !important; border-color: var(--rule) !important; font-weight: 400 !important; color: var(--ink-soft) !important; }
+`;
+const shots = [
+  // name, viewport, colour scheme, page, scroll to (selector) or null
+  ['dex', { width: 1280, height: 800 }, 'light', '#/c/bow-valley', null],
+  ['dex-dark', { width: 1280, height: 800 }, 'dark', '#/c/bow-valley', null],
+  ['species', { width: 1280, height: 800 }, 'light', '#/c/bow-valley/species/37', null],
+  ['species-insights', { width: 1280, height: 800 }, 'light', '#/c/bow-valley/species/21', '.insights'],
+  ['families', { width: 1280, height: 800 }, 'light', '#/c/bow-valley/families', null],
+  ['season', { width: 1280, height: 800 }, 'light', '#/c/bow-valley/season', null],
+  ['phone-dex', { width: 390, height: 844 }, 'light', '#/c/bow-valley', null],
+  ['phone-species', { width: 390, height: 844 }, 'light', '#/c/bow-valley/species/37', null],
+];
+for (const [name, viewport, colorScheme, hash, scrollTo] of shots) {
+  const phone = viewport.width < 600;
+  const page = await browser.newPage({ viewport, colorScheme, deviceScaleFactor: phone ? 2 : 1, isMobile: phone, hasTouch: phone });
+  await page.goto(new URL(hash, base).href);
+  await page.addStyleTag({ content: CLEAN_CSS });
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(1500);
+  if (scrollTo) await page.locator(scrollTo).first().evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${out}/readme/${name}.png` });
+  await page.close();
+}
+console.log('README screenshots: done');
+
 await browser.close();
 console.log(`Screenshots saved to ${out}/`);
