@@ -34,7 +34,7 @@ no CHANGELOG section. Docs, tests and CI changes don't need a version.
 
 ## How sites learn about updates
 
-The version badge in the bottom-left corner (in the footer on phones) shows the running version to
+The version badge in the top bar, right of the Featherkeeper logo, shows the running version to
 everyone. For site admins, the server checks GitHub's public releases list every few hours; when a
 newer version is out the badge turns gold and opens to the release notes and the update command:
 

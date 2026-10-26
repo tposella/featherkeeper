@@ -2,8 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { dismissedVersion, dismissUpdate, loadVersion, versionInfo } from '../version.js';
 
-// The version in the corner (desktop) or the footer (phones), and the "update available" alert.
-const props = defineProps({ placement: { type: String, default: 'corner' } }); // 'corner' | 'footer'
+// The version, next to the logo in the top bar, and the "update available" alert.
 
 const open = ref(false);
 const dismissed = ref(dismissedVersion());
@@ -76,7 +75,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick));
 </script>
 
 <template>
-  <div v-if="label" :class="['version', placement, { alerting }]" @keydown.esc="close">
+  <div v-if="label" :class="['version', { alerting }]" @keydown.esc="close">
     <button
       ref="button"
       type="button"
@@ -87,8 +86,9 @@ onUnmounted(() => document.removeEventListener('click', onDocClick));
       @click="toggle"
     >
       <span v-if="alerting" class="dot" aria-hidden="true"></span>
-      <span>{{ label }}</span>
+      <span class="current">{{ label }}</span>
       <span v-if="alerting" class="new">Update: v{{ update.version }}</span>
+      <span v-if="alerting" class="new-short">Update</span>
     </button>
 
     <div v-if="open" ref="panel" class="panel" role="dialog" aria-label="Featherkeeper version" tabindex="-1">
@@ -139,28 +139,11 @@ onUnmounted(() => document.removeEventListener('click', onDocClick));
 </template>
 
 <style scoped>
+/* Sits in the top bar, right of the logo; the panel opens below it. */
 .version {
   position: relative;
   font-size: var(--step--1);
-}
-/* Desktop: a small badge in the bottom-left corner. Phones use the footer copy instead. */
-.version.corner {
-  position: fixed;
-  left: 12px;
-  bottom: 12px;
-  z-index: 800;
-}
-.version.footer {
-  display: none;
-}
-@media (max-width: 640px) {
-  .version.corner {
-    display: none;
-  }
-  .version.footer {
-    display: block;
-    margin: 10px 0 0;
-  }
+  flex: none;
 }
 .badge {
   display: inline-flex;
@@ -175,16 +158,14 @@ onUnmounted(() => document.removeEventListener('click', onDocClick));
   border-radius: 999px;
   padding: 3px 10px;
   cursor: pointer;
-  opacity: 0.85;
+  white-space: nowrap;
 }
 .badge:hover,
 .badge:focus-visible {
-  opacity: 1;
   color: var(--ink);
   border-color: var(--jay);
 }
 .alerting .badge {
-  opacity: 1;
   color: var(--ink);
   border-color: var(--goldfinch);
   background: var(--goldfinch-wash);
@@ -194,11 +175,15 @@ onUnmounted(() => document.removeEventListener('click', onDocClick));
   border-left: 1px solid var(--goldfinch);
   padding-left: 6px;
 }
+.new-short {
+  display: none;
+}
 .dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--goldfinch);
+  flex: none;
 }
 @media (prefers-reduced-motion: no-preference) {
   .alerting .dot {
@@ -213,7 +198,8 @@ onUnmounted(() => document.removeEventListener('click', onDocClick));
 .panel {
   position: absolute;
   left: 0;
-  bottom: calc(100% + 8px);
+  top: calc(100% + 10px);
+  z-index: 960;
   width: min(420px, calc(100vw - 24px));
   max-height: min(70vh, 560px);
   overflow: auto;
@@ -226,13 +212,30 @@ onUnmounted(() => document.removeEventListener('click', onDocClick));
   text-align: left;
   outline: none;
 }
-.footer .panel {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  width: auto;
-  bottom: calc(76px + env(safe-area-inset-bottom));
-  z-index: 960;
+/* Phones: a compact badge ("Update" instead of both versions), and the panel spans the screen
+   under the top bar (the .version box goes static so the panel positions against the bar). */
+@media (max-width: 640px) {
+  .version {
+    position: static;
+  }
+  .badge {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    gap: 5px;
+  }
+  .alerting .current,
+  .new {
+    display: none;
+  }
+  .new-short {
+    display: inline;
+  }
+  .panel {
+    left: 12px;
+    right: 12px;
+    top: calc(100% + 4px);
+    width: auto;
+  }
 }
 .panel p {
   margin: 0 0 8px;

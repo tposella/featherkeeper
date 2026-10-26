@@ -5,6 +5,12 @@ number (0.1.0 → 0.1.1), a bigger one the middle (0.1 → 0.2). See [docs/relea
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-26
+
+### Changed
+- The version badge and update alert moved to the top bar, right of the Featherkeeper logo, so it no
+  longer floats over the page. Its details open below it.
+
 ## [0.1.0] - 2026-10-26
 
 The first numbered release after the beta, and from here on every update gets a version.
@@ -61,6 +67,7 @@ The first public beta.
 - Light and dark mode, and a phone layout with bottom navigation and swipeable photos.
 - Backup and smoke-test scripts, automatic database migrations.
 
-[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/tposella/featherkeeper/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/tposella/featherkeeper/compare/v0.1.0-beta.1...v0.1.0
 [0.1.0-beta.1]: https://github.com/tposella/featherkeeper/releases/tag/v0.1.0-beta.1

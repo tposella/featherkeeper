@@ -208,10 +208,10 @@ for (const scheme of ['light', 'dark']) {
           `slotsShown=${slotsShown} slotsRemembered=${remembered} afterSwitchBack=${await page.locator('.plate .example-img').count()}`,
       );
 
-      // Version badge: bottom left on desktop, in the footer on phones; the demo admin sees a sample update.
+      // Version badge: in the top bar next to the logo; the demo admin sees a sample update.
       await page.goto(new URL('#/c/bow-valley', base).href);
       await page.waitForTimeout(900);
-      const versionBadge = page.locator(phone ? '.version.footer .badge' : '.version.corner .badge');
+      const versionBadge = page.locator('.topbar .version .badge');
       await versionBadge.scrollIntoViewIfNeeded();
       const badgeText = (await versionBadge.innerText()).replace(/\s+/g, ' ');
       await versionBadge.click();
@@ -220,7 +220,12 @@ for (const scheme of ['light', 'dark']) {
       await page.screenshot({ path: `${out}/${vpName}-${scheme}-version-panel.png` });
       await page.getByRole('button', { name: 'Not now' }).click();
       const afterNotNow = (await versionBadge.innerText()).replace(/\s+/g, ' ');
-      console.log(`VERSION badge="${badgeText}" panel="${panelText}" afterNotNow="${afterNotNow}"`);
+      const box = await versionBadge.boundingBox();
+      const brand = await page.locator('.topbar .brand').boundingBox();
+      console.log(
+        `VERSION badge="${badgeText}" panel="${panelText}" afterNotNow="${afterNotNow}" ` +
+          `rightOfLogo=${box.x > brand.x + brand.width - 1 && Math.abs(box.y + box.height / 2 - (brand.y + brand.height / 2)) < 12}`,
+      );
 
       // Light/dark toggle: starts from the system setting, flips, survives a reload, and flips back.
       const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);

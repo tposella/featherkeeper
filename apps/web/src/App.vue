@@ -32,10 +32,13 @@ async function onSignOut() {
   <a class="skip" href="#main" @click.prevent="skipToContent">Skip to content</a>
   <component :is="DemoBanner" v-if="DEMO" @switched="viewKey++" />
   <header class="topbar">
-    <RouterLink to="/" class="brand">
-      <img :src="iconUrl" alt="" width="28" height="28" />
-      <span>Featherkeeper</span>
-    </RouterLink>
+    <div class="brand-group">
+      <RouterLink to="/" class="brand">
+        <img :src="iconUrl" alt="" width="28" height="28" />
+        <span>Featherkeeper</span>
+      </RouterLink>
+      <VersionBadge />
+    </div>
     <nav class="topnav" aria-label="Account">
       <button
         type="button"
@@ -89,9 +92,7 @@ async function onSignOut() {
       AGPL-3.0. See the
       <a href="https://github.com/tposella/featherkeeper#credits-and-sources" target="_blank" rel="noopener">full credits</a>.
     </p>
-    <VersionBadge placement="footer" />
   </footer>
-  <VersionBadge placement="corner" />
 </template>
 
 <style scoped>
@@ -124,6 +125,7 @@ main:focus {
   padding: 8px 12px;
 }
 .topbar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -140,6 +142,12 @@ main:focus {
   font-size: var(--step-1);
   color: var(--ink);
   text-decoration: none;
+}
+.brand-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 .topnav {
   display: flex;
@@ -192,6 +200,9 @@ main:focus {
     font-size: var(--step-0);
     gap: 8px;
     min-width: 0;
+  }
+  .brand-group {
+    gap: 6px;
   }
   .brand span {
     overflow: hidden;

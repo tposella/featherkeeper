@@ -321,7 +321,7 @@ All settings live in `.env` (see [`.env.example`](.env.example)). Changing one t
 | `COOKIE_SECURE` | on for `https://` | Force secure cookies on or off |
 | `LOG_LEVEL` | `info` | API log detail: `debug`, `info`, `warn`, `error` |
 | `FEATHERKEEPER_TAG` | `latest` | Which release `docker compose pull` fetches, e.g. `0.1.0` to stay on it |
-| `UPDATE_CHECK` | `true` | Tell site admins (version badge, bottom left) when a newer release is on GitHub |
+| `UPDATE_CHECK` | `true` | Tell site admins (version badge in the top bar) when a newer release is on GitHub |
 | `UPDATE_CHECK_REPO` | `tposella/featherkeeper` | Where to look for releases (for forks) |
 | **Database** | | |
 | `POSTGRES_USER`, `POSTGRES_DB` | `featherkeeper` | Database user and name |
@@ -359,8 +359,7 @@ Database migrations run automatically on start. Hard-refresh the browser afterwa
 Read the [CHANGELOG](CHANGELOG.md) before updating to see what's new.
 
 **Versions and update alerts:** every update has an `x.y.z` version (0.1.0 → 0.1.1 for a smaller
-change, 0.1 → 0.2 for a bigger one). The running version shows in the bottom-left corner (the footer
-on phones). For site admins, the server checks GitHub's releases every few hours, and the badge turns
+change, 0.1 → 0.2 for a bigger one). The running version shows in the top bar, next to the logo. For site admins, the server checks GitHub's releases every few hours, and the badge turns
 gold with the new version, its release notes and the update command when one is out. Switch the check
 off with `UPDATE_CHECK=false`. How releases are made: [docs/releasing.md](docs/releasing.md).
 
