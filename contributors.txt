@@ -1,0 +1,12 @@
+== GitHub API: /contributors (includes anonymous, i.e. emails not linked to an account)
+tposella  type=User  email=-  contributions=68
+
+== GitHub API: /stats/contributors (the Insights graph)
+
+== Commit authors and committers on main (from git)
+      1 Tyler Posella <122863303+Tyler-Posella@users.noreply.github.com>
+     67 Tyler Posella <development@posella.ca>
+      1 committer: GitHub <noreply@github.com>
+     67 committer: Tyler Posella <development@posella.ca>
+
+== Commit messages mentioning Claude or Anthropic: 0
