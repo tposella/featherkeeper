@@ -4,510 +4,83 @@
 around you, log every sighting, keep an album of your photos for each species, and see at a glance
 which birds you've photographed and which you're still looking for.
 
-Featherkeeper runs on your own server (a Proxmox LXC, a Raspberry Pi, any Linux box with Docker).
-Your photos and records stay with you. The only outside services it talks to are public birding and
-mapping databases, and each of them can be switched off.
+You run it on your own server, the way you'd run Immich or Jellyfin: a Proxmox LXC, a Raspberry Pi,
+a NAS or any Linux machine with Docker. Your photos and records stay with you.
 
-> **Status: early releases (0.x).** Featherkeeper is usable day to day, but it's new: expect
-> rough edges and changes between releases, and **keep backups** (see
-> [Updating, backups and restoring](#updating-backups-and-restoring); you can also download any
-> catalogue as a ZIP from its Settings). Found a bug or have an idea?
-> [Open an issue](https://github.com/tposella/featherkeeper/issues/new/choose). What changed in each
-> release is in the [CHANGELOG](CHANGELOG.md).
->
-> Try the demo with sample data: **https://tposella.github.io/featherkeeper/**
+**[Documentation](https://tposella.github.io/featherkeeper/docs/)** ·
+**[Live demo](https://tposella.github.io/featherkeeper/)** ·
+[Releases](https://github.com/tposella/featherkeeper/releases) ·
+[Changelog](CHANGELOG.md) ·
+[Report a bug](https://github.com/tposella/featherkeeper/issues/new/choose)
 
----
+![The dex: photographed species in colour, the rest as greyed example photos](docs/images/dex.png)
 
-## Contents
+> **Early releases (0.x).** Usable day to day, but new: expect changes between releases, read the
+> [upgrade notes](https://tposella.github.io/featherkeeper/docs/updating/#upgrade-notes) before
+> updating, and keep backups.
 
-- [Why Featherkeeper](#why-featherkeeper)
-- [Features](#features)
-- [What's in this repository](#whats-in-this-repository)
-- [How it fits together](#how-it-fits-together)
-- [Install](#install)
-  - [Requirements](#requirements)
-  - [Quick start with Docker](#quick-start-with-docker)
-  - [Installing in a Proxmox LXC](#installing-in-a-proxmox-lxc)
-  - [Putting it on the internet (reverse proxy, Cloudflare Tunnel)](#putting-it-on-the-internet)
-  - [Turning on AI identification](#turning-on-ai-identification)
-- [Configuration reference](#configuration-reference)
-- [Updating, backups and restoring](#updating-backups-and-restoring)
-- [Accounts and password resets](#accounts-and-password-resets)
-- [Troubleshooting](#troubleshooting)
-- [Privacy: what leaves your server](#privacy-what-leaves-your-server)
-- [Development](#development)
-- [API overview](#api-overview)
-- [Credits and sources](#credits-and-sources)
-- [Licence](#licence)
+## Quick start
 
----
+On Debian or Ubuntu (an LXC, a VM or a spare machine), one line installs Docker if needed, sets
+Featherkeeper up in `/opt/featherkeeper` with a random database password, and starts it:
 
-## Why Featherkeeper
+```bash
+curl -fsSL https://github.com/tposella/featherkeeper/releases/latest/download/install.sh | sudo bash
+```
 
-Bird photographers tend to keep their "life list" in a spreadsheet, a notes app, or their memory.
-Featherkeeper turns that into something more fun and more useful:
+Or on any Linux machine with Docker, download the two files and start it yourself:
 
-- **A dex to fill.** Start with every species recorded near your town and watch the grid fill in as you
-  photograph them. Birds you haven't photographed yet show as greyed-out example photos (or empty
-  frames, if you prefer), and your own photos fill them in full colour.
-- **Help finding the next one.** See what's around this month, when in the year and what time of day
-  each bird is usually photographed nearby, its habitat, and where it was reported in the last 30 days.
-- **Your photos, organised.** Every photo is filed under its species with its date, place and camera
-  details read from the file.
-- **Shareable, on your terms.** Keep a catalogue private, share it with signed-in friends, or make it
-  public for anyone with the link.
+```bash
+mkdir -p /opt/featherkeeper && cd /opt/featherkeeper
+curl -fsSLO https://github.com/tposella/featherkeeper/releases/latest/download/docker-compose.yml
+curl -fsSL  https://github.com/tposella/featherkeeper/releases/latest/download/example.env -o .env
+nano .env        # set PUBLIC_URL, POSTGRES_PASSWORD (openssl rand -hex 24) and EBIRD_API_KEY
+docker compose up -d
+```
+
+Then open `http://<server-ip>:8080` and create your account: **the first account becomes the site
+admin**. A free [eBird API key](https://ebird.org/api/keygen) turns on species import, hotspots and
+recent sightings.
+
+Everything else (requirements, Proxmox, reverse proxies and Cloudflare Tunnel, AI identification,
+every setting, updating, backups) is in the
+**[documentation](https://tposella.github.io/featherkeeper/docs/install/)**.
 
 ## Features
 
-**Catalogues and sharing**
-- Several catalogues per site (your backyard, a local park, a whole province), each with an **owner**
-  and any number of **editors**.
-- Per-catalogue visibility: **Private** (owner and editors), **Signed-in users**, or **Public**.
-- Option to **hide exact locations** from viewers, for nest sites, sensitive species or your home.
-  Hidden locations also hide original photo files, because those carry GPS.
+- **A dex to fill:** every species recorded near your town, in field-guide order. Birds you haven't
+  photographed show as greyed example photos until your own photo fills them in.
+- **eBird import** around a town or for a whole region, with a preview before anything is saved.
+- **Species pages** with your album, "want to replace" marks, when and where each bird is usually
+  seen nearby, habitat, and calls and songs.
+- **Logging from photos:** date, time, GPS and camera are read from each file (JPEG, iPhone HEIC, PNG,
+  WebP, TIFF, AVIF). Bulk upload a whole shoot, with duplicate warnings.
+- **Families** and **In season** views to see what's left and what's around this month.
+- **Optional AI identification** that runs on your own server (BioCLIP 2), weighted by what's been
+  recorded where the photo was taken.
+- **Catalogues you can share:** private, signed-in users or public, with editors, and an option to
+  hide exact locations.
+- **Self-hosting comforts:** images for x86-64 and ARM, invite-only sign-ups, storage limits, update
+  alerts, ZIP export, a backup script, and password resets from the console.
+- Works on phones, with light and dark mode.
 
-**Building the species list**
-- **Import from eBird** in two ways:
-  - *Around a town or place:* search a town or click the map, choose a distance (5 to 50 km), and get
-    every species recorded at the eBird hotspots in that circle.
-  - *A whole region:* a province, state, county or country by its eBird code (e.g. `CA-AB`).
-- Preview the list with checkboxes before anything is saved. Add species by hand at any time.
-
-**The dex**
-- A grid in field-guide (taxonomic) order with plate numbers (#001, #002...).
-- Species you haven't photographed show as **greyed examples** by default, like a pokédex: an openly
-  licensed example photo in grey, replaced by your own photo in full colour once you add one. You can
-  switch to **empty slots** instead. Owners set the default in Settings, and anyone can switch on the Dex
-  tab. Your server fetches the example photos in the background as soon as species are added, and at
-  startup for any still missing. It stores them in the database as small WebP files with the
-  photographer's credit and serves them from there.
-- Filter by **Photographed / Not yet**, search by name or number, and filter by family.
-- **Families** view: progress per bird family (ducks, owls, woodpeckers...) with mini plates for every
-  species, sortable by "most left to photograph" or "closest to complete".
-- **In season** view: birds reported nearby in the last 30 days and birds usually photographed there in
-  any chosen month, with unphotographed species first. Rarities reported nearby but missing from your
-  catalogue are listed separately, with an "Add to catalogue" button.
-
-**Species pages**
-- Your **album** of every photo of that bird, with a chosen **thumbnail** (or "always use my newest").
-- Mark a subpar photo as **want to replace**, with an optional note ("backlit", "only the tail"). The
-  **To replace** tab (editors only) lists those photos. It shows when you've added a newer photo of the
-  same species since, and lets you unmark the old photo, delete it, or log a new sighting.
-- **When and where to find it:** month-of-year and time-of-day charts from nearby observations, habitat
-  from Wikipedia, recent eBird reports with places, and a summary of your own sightings.
-- **Calls and songs:** openly licensed recordings with players, labelled song or call where known,
-  nearest to your area first.
-- Notes, and every sighting with **edit** and **delete**.
-
-**Logging sightings**
-- Add photos (JPEG, HEIC from iPhones, PNG, WebP, TIFF or AVIF, up to 100 MB each by default). **Date, time, GPS and
-  camera** are read from each photo. The place name is filled in from the nearest eBird hotspot, or from
-  OpenStreetMap.
-- **Search for a place** by name (hotspots near your catalogue first), click the map, or use your
-  device's location.
-- **AI identification (optional):** the top 3 matches with confidence bars, each with example photos and
-  a side-by-side compare view. Suggestions are weighted by what eBird has recorded where the photo was
-  taken. You **accept** or **reject** them; your decision is saved with the photo.
-- **Bulk upload:** add a whole shoot's photos at once, give each a species (typed, "same for next", or
-  AI suggestions), and save; photos of the same species taken within 30 minutes become one sighting.
-- **Duplicate warnings** when a photo is already in the catalogue. Every sighting has at least one photo.
-
-**Maps and history**
-- Map of all sightings, and a recent-sightings feed that loads 50 at a time.
-- Species names stay current: eBird's yearly renames are applied about once a month, and retired
-  species (splits and lumps) are listed for the admin to review.
-
-**Look and feel**
-- Works on phones: a bottom navigation bar with a raised **Log** button and a **More** sheet, a compact
-  header, full-screen photo viewing with swipe, and finger-sized buttons. Desktop keeps the tabs.
-- Light and dark mode. Follows your system setting by default, with a toggle in the header that your
-  browser remembers.
-
-**Running it**
-- Ready-made Docker images for x86-64 and ARM, and one `docker compose up` on any Linux host. Works
-  behind nginx, Caddy, Traefik or a Cloudflare Tunnel.
-- **Export** any catalogue as a ZIP (CSV spreadsheets plus original photos), and admin password resets
-  in the app or from the server console.
-- Automatic database migrations, health checks, a smoke-test script and a backup script.
-
-## What's in this repository
-
-```
-featherkeeper/
-├── apps/
-│   ├── api/                    Node.js API (Fastify + PostgreSQL)
-│   │   ├── src/
-│   │   │   ├── server.js       Startup: wait for the database, migrate, create the admin, listen
-│   │   │   ├── admin-cli.js    Console commands: list users, reset a password, make an admin
-│   │   │   ├── app.js          Builds the Fastify app and wires the services together
-│   │   │   ├── config.js       Every setting, read from environment variables
-│   │   │   ├── db/             Connection pool, migration runner, SQL migrations
-│   │   │   ├── routes/         HTTP endpoints (auth, catalogues, dex, sightings, eBird, season, ...)
-│   │   │   ├── integrations/   eBird, iNaturalist, Wikipedia, xeno-canto, OpenStreetMap, AI identifier
-│   │   │   └── lib/            Permissions, image processing and EXIF, storage, candidates for AI
-│   │   ├── test/               Unit, API and live-service tests (node:test)
-│   │   └── Dockerfile
-│   └── web/                    Vue 3 single-page app (Vite)
-│       ├── src/
-│       │   ├── views/          Pages: catalogues, dex, families, in season, species, log, map, settings
-│       │   ├── components/     Area picker, location picker, AI suggestions, album picker, charts...
-│       │   └── demo/           In-browser fake API and sample data for the GitHub Pages demo
-│       ├── scripts/            Screenshot and browser-test script used in CI
-│       ├── nginx.conf          Serves the app and forwards /api to the API container
-│       └── Dockerfile
-├── services/
-│   └── identifier/             Optional Python service running BioCLIP 2 for AI identification
-│       ├── app.py              FastAPI app: scores a photo against candidate species
-│       ├── eval/               Accuracy check against real bird photos (run in CI)
-│       └── Dockerfile
-├── deploy/
-│   ├── smoke-test.sh           End-to-end check of a running install
-│   ├── backup.sh               Database dump and photo backup, keeps the last 14
-│   └── nginx.example.conf      Server block for an nginx reverse proxy in front of Featherkeeper
-├── docs/
-│   ├── ai-identification.md    How AI identification works, its accuracy, and its options
-│   └── releasing.md            Version numbers, making a release, and update alerts
-├── scripts/
-│   └── bump-version.mjs        Bumps the version everywhere and starts the CHANGELOG section
-├── .github/
-│   ├── workflows/              CI (API tests, Docker stack test, AI accuracy, demo + screenshots)
-│   │                           and the release workflow that publishes images to ghcr.io
-│   └── ISSUE_TEMPLATE/         Bug report and feature idea forms
-├── docker-compose.yml          The whole stack
-├── .env.example                Every setting, documented
-├── CHANGELOG.md                What changed in each release
-├── SECURITY.md                 How to report a security problem privately
-└── LICENSE                     GNU Affero General Public License v3.0
-```
-
-## How it fits together
-
-```
- Browser ──HTTPS──▶ Cloudflare Tunnel / your reverse proxy (optional)
-                         │
-                         ▼
- ┌──────────────────── Docker Compose stack ───────────────────────────────┐
- │  web  (nginx + the built Vue app, port 8080)                             │
- │    │  /api/*                                                             │
- │    ▼                                                                     │
- │  api  (Node.js + Fastify) ─── db  (PostgreSQL 16)                        │
- │    │        └──────────────── photos volume (originals + display + thumb)│
- │    └──▶ identifier  (Python + BioCLIP 2, optional "ai" profile)          │
- └──────────────────────────────────────────────────────────────────────────┘
-      │ outbound, read-only lookups (each can be switched off):
-      ├─ eBird API 2.0 ............ species lists, hotspots, recent sightings, taxonomy
-      ├─ iNaturalist API .......... seasonal counts, time of day, example photos, sounds
-      ├─ Wikipedia API ............ habitat text
-      ├─ xeno-canto API ........... song and call recordings (only with your key)
-      └─ OpenStreetMap Nominatim .. place search and place names
-   The browser loads map tiles from OpenStreetMap, and example photos and sound files
-   from iNaturalist, Wikimedia and xeno-canto.
-```
-
-Only the `web` container publishes a port. The database, API and identifier are reachable only
-inside the stack.
-
-## Install
-
-### Requirements
-
-| | Minimum | Notes |
+| Species page | Families | On a phone |
 | --- | --- | --- |
-| Host | Any 64-bit Linux with **Docker Engine 24+** and the **Compose v2** plugin | A Proxmox LXC, VM, NAS or Raspberry Pi 4/5 all work |
-| RAM | 1 GB | **4 GB** if you turn on AI identification (it uses about 2.3 GB) |
-| Disk | 2 GB plus your photos | Plus about 8 GB for the AI image and model |
-| eBird API key | Free, recommended | Needed for species import, hotspots and recent sightings. Get one at **https://ebird.org/api/keygen** |
-| xeno-canto key | Free, optional | Adds labelled, quality-rated recordings. From your xeno-canto account page |
+| ![Species page](docs/images/species.png) | ![Families](docs/images/families.png) | ![Phone](docs/images/phone-dex.png) |
 
-### Quick start with Docker
+## No telemetry
 
-```bash
-git clone https://github.com/tposella/featherkeeper.git /opt/featherkeeper
-cd /opt/featherkeeper
-cp .env.example .env
-openssl rand -hex 24          # copy this: it becomes your database password
-nano .env
-```
+Featherkeeper doesn't phone home. There are no analytics, usage statistics or crash reports, and no
+account with the project. Your photos never leave your server. The only outside requests are lookups
+to public birding and mapping databases (eBird, iNaturalist, Wikipedia, xeno-canto, OpenStreetMap)
+and a check for new releases on GitHub, each of which can be switched off. Details:
+[privacy](https://tposella.github.io/featherkeeper/docs/privacy/).
 
-Set at least these in `.env`:
+## Contributing
 
-| Setting | Example |
-| --- | --- |
-| `PUBLIC_URL` | `http://192.168.1.50:8080` (the address you'll open; change to `https://...` later) |
-| `POSTGRES_PASSWORD` | the random string from `openssl` |
-| `EBIRD_API_KEY` | your eBird key |
-
-Then start it with the ready-made images:
-
-```bash
-docker compose pull
-docker compose up -d
-docker compose ps             # db, api and web should say "healthy" after a minute or two
-```
-
-The images come from the GitHub Container Registry (`ghcr.io/tposella/featherkeeper-*`), built for
-x86-64 and 64-bit ARM (the AI identifier is x86-64 only). `FEATHERKEEPER_TAG` in `.env` picks the
-release: `latest` (the newest, the default) or an exact version such as `0.1.0` to stay on it. To build
-the images yourself from this folder instead, use `docker compose up -d --build`.
-
-Open `http://<server-ip>:8080` and **create your account. The first account becomes the site admin**,
-so do this before anyone else can reach the site. Then choose **New catalogue → Around a town or place**,
-search for your town, and pick your starting species.
-
-Optional check that everything works end to end (it creates a throwaway "Smoke test" catalogue):
-
-```bash
-./deploy/smoke-test.sh
-# once there are accounts and sign-ups are invite-only, sign in as yourself:
-SMOKE_EMAIL=you@example.com SMOKE_PASSWORD='your password' ./deploy/smoke-test.sh
-```
-
-### Installing in a Proxmox LXC
-
-1. Create a Debian 12 LXC (unprivileged is fine). Under **Options → Features** turn on **nesting** and
-   **keyctl**, which Docker needs inside an LXC. Give it 1 GB of RAM, or 4 GB for AI identification.
-2. In the LXC console, install Docker and git:
-   ```bash
-   apt update && apt install -y curl git
-   curl -fsSL https://get.docker.com | sh
-   ```
-3. Follow the [quick start](#quick-start-with-docker).
-4. **Photos on a separate disk (recommended):** add a mount point to the LXC (e.g. `/mnt/photos`), run
-   `chown 1000:1000 /mnt/photos`, and set `PHOTOS_DIR=/mnt/photos` in `.env` **before** uploading photos.
-   They then survive rebuilding the LXC and can be backed up separately.
-5. **Never expose the Docker TCP socket** (port 2375/2376). Featherkeeper doesn't need it; manage it from
-   the LXC's shell.
-
-Proxmox's own documentation recommends running Docker in a VM rather than an LXC. Docker in an LXC
-works well in practice, but if a Proxmox update ever breaks it, a small VM is the drop-in alternative.
-
-### Putting it on the internet
-
-The `web` container speaks plain HTTP on port 8080. Put any reverse proxy in front of it:
-
-- **nginx:** use [`deploy/nginx.example.conf`](deploy/nginx.example.conf). The important line is
-  `client_max_body_size 110m;`, because nginx's default 1 MB limit rejects photos.
-- **Cloudflare Tunnel:** point a public hostname at your nginx, or straight at `http://<lxc-ip>:8080`.
-  Cloudflare's Free plan caps uploads at **100 MB per request**, which is why `MAX_UPLOAD_MB` defaults
-  to 100.
-- **Caddy / Traefik:** a plain reverse proxy to port 8080 works; just raise the request body limit.
-
-Once the site is reached over HTTPS, set `PUBLIC_URL=https://your.domain` in `.env` and run
-`docker compose up -d`. This turns on secure cookies, so signing in then only works over HTTPS.
-New accounts are **invite-only** by default: send people an invite link from **Account → Site admin**
-(or switch sign-ups to "Anyone" there).
-
-### Turning on AI identification
-
-In `.env`:
-
-```
-COMPOSE_PROFILES=ai
-IDENTIFY_PROVIDER=bioclip
-```
-
-Then `docker compose pull && docker compose up -d` and watch `docker compose logs -f identifier` until it says
-`ready`. The first start downloads the model (a few GB, one time). Details, measured accuracy and
-options are in [docs/ai-identification.md](docs/ai-identification.md).
-
-## Configuration reference
-
-All settings live in `.env` (see [`.env.example`](.env.example)). Changing one takes effect after
-`docker compose up -d`.
-
-| Setting | Default | What it does |
-| --- | --- | --- |
-| **Site** | | |
-| `PUBLIC_URL` | `http://localhost:8080` | The address people use. `https://` turns on secure cookies |
-| `WEB_PORT` | `8080` | Port the web container listens on, on the host |
-| `ALLOW_REGISTRATION` | `false` | Sign-ups before you choose in the admin page: `false` = invite links only, `true` = anyone (the first account is always allowed and becomes admin) |
-| `DEFAULT_QUOTA_MB` | `0` | Photo storage limit per account in MB (0 = none); also set in the admin page |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` | empty | Create the admin on first start instead of registering in the browser |
-| `SESSION_DAYS` | `30` | How long a sign-in lasts |
-| `TRUST_PROXY` | private networks | Which proxies may pass on the visitor's address: by default those on private networks (your nginx, cloudflared, Docker). `false`, a hop count, or a list of addresses/CIDRs also work |
-| `COOKIE_SECURE` | on for `https://` | Force secure cookies on or off |
-| `LOG_LEVEL` | `info` | API log detail: `debug`, `info`, `warn`, `error` |
-| `FEATHERKEEPER_TAG` | `latest` | Which release `docker compose pull` fetches, e.g. `0.1.0` to stay on it |
-| `UPDATE_CHECK` | `true` | Tell site admins (version badge in the top bar) when a newer release is on GitHub |
-| `UPDATE_CHECK_REPO` | `tposella/featherkeeper` | Where to look for releases (for forks) |
-| **Database** | | |
-| `POSTGRES_USER`, `POSTGRES_DB` | `featherkeeper` | Database user and name |
-| `POSTGRES_PASSWORD` | (required) | Database password. Only read when the database is first created |
-| **Photos** | | |
-| `PHOTOS_DIR` | Docker volume | A host folder for photos, owned by uid 1000 |
-| `MAX_UPLOAD_MB` | `100` | Largest photo upload; `0` means no limit |
-| **eBird** | | |
-| `EBIRD_API_KEY` | empty | Free key from ebird.org/api/keygen. Empty switches eBird features off |
-| **Place search** | | |
-| `GEOCODER_URL` | OpenStreetMap Nominatim | Your own Nominatim server, or empty to switch place search off |
-| **Species information** | | |
-| `REFERENCE_PHOTOS` | `true` | Example photos next to AI suggestions and in the greyed-examples dex view |
-| `SPECIES_INSIGHTS` | `true` | "In season" and "When and where to find it" |
-| `SPECIES_SOUNDS` | `true` | "Calls and songs" |
-| `XENO_CANTO_API_KEY` | empty | Adds xeno-canto recordings (labelled song or call) |
-| **AI identification** | | |
-| `COMPOSE_PROFILES` | empty | `ai` starts the identifier container |
-| `IDENTIFY_PROVIDER` | `none` | `bioclip` (bundled model) or `http` (your own service) |
-| `IDENTIFIER_MODEL` | `hf-hub:imageomics/bioclip-2` | `hf-hub:imageomics/bioclip` is smaller and faster, less accurate |
-| `IDENTIFIER_THREADS` | all cores | CPU threads the model may use |
-| `IDENTIFIER_TEMPERATURE` | `1.0` | Above 1 makes confidence values less extreme |
-| `IDENTIFY_URL`, `IDENTIFY_API_KEY` | empty | For `IDENTIFY_PROVIDER=http` |
-| `IDENTIFY_TIMEOUT_MS` | `180000` | How long the API waits for an identification |
-
-## Updating, backups and restoring
-
-**Update:**
-```bash
-cd /opt/featherkeeper && git pull && docker compose pull && docker compose up -d
-```
-`git pull` brings the latest `docker-compose.yml` and scripts; `docker compose pull` fetches the
-images for your `FEATHERKEEPER_TAG`. (If you build your own images, use `git pull && docker compose up -d --build`.)
-Database migrations run automatically on start. Hard-refresh the browser afterwards (Ctrl+Shift+R).
-Read the [CHANGELOG](CHANGELOG.md) before updating to see what's new.
-
-**Versions and update alerts:** every update has an `x.y.z` version (0.1.0 → 0.1.1 for a smaller
-change, 0.1 → 0.2 for a bigger one). The running version shows in the top bar, next to the logo. For site admins, the server checks GitHub's releases every few hours, and the badge turns
-gold with the new version, its release notes and the update command when one is out. Switch the check
-off with `UPDATE_CHECK=false`. How releases are made: [docs/releasing.md](docs/releasing.md).
-
-**Export a catalogue:** its **Settings → Export** downloads a ZIP with spreadsheets (CSV) of the
-checklist, sightings and photos, and every original photo file in a folder per species. Owners and
-editors can do this at any time; it doesn't replace server backups, but it's an easy copy to keep.
-
-**Back up** (database dump plus photos into a dated folder; keeps the 14 newest):
-```bash
-./deploy/backup.sh /mnt/backups/featherkeeper
-```
-To run it nightly, add this with `crontab -e`:
-```
-15 3 * * * cd /opt/featherkeeper && ./deploy/backup.sh /mnt/backups/featherkeeper >> /var/log/featherkeeper-backup.log 2>&1
-```
-A Proxmox vzdump of the LXC is a good second layer.
-
-**Restore** a backup into a fresh install (after `docker compose up -d` has created empty containers):
-```bash
-B=/mnt/backups/featherkeeper/2026-10-22_0315
-docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < "$B/database.dump"
-docker compose exec -T api tar -C /data -xf - < "$B/photos.tar"
-docker compose restart api
-```
-
-## Accounts and password resets
-
-The first account created becomes the **site admin**. Under **Account → Site admin** they can:
-
-- choose **who can sign up**: by **invite link** (the default; each link works once and expires) or
-  **anyone**;
-- see **disk space** and each account's **photo storage**, and set a storage limit for everyone or for
-  one person;
-- **reset passwords** (a temporary password shown once, or one you type), make other people admins,
-  and **delete accounts**;
-- check **species names** against eBird's latest taxonomy.
-
-Anyone can **delete their own account** under **Account**. Catalogues they own are deleted with it
-(export them first, or make an editor the owner); sightings they logged in other people's catalogues
-stay. The last site admin can't be deleted.
-
-There's no email on a Featherkeeper site, so forgotten passwords are reset by an admin. **From the
-server's console** (for when the admin is the one locked out), in the folder with `docker-compose.yml`:
-
-```bash
-docker compose exec api node src/admin-cli.js list-users
-docker compose exec api node src/admin-cli.js reset-password you@example.com
-docker compose exec api node src/admin-cli.js reset-password you@example.com --password "a new password"
-docker compose exec api node src/admin-cli.js make-admin you@example.com
-docker compose exec api node src/admin-cli.js fix-photo-times --timezone America/Vancouver --dry-run
-```
-
-`reset-password` prints a temporary password unless you give one, and signs that account out
-everywhere. `fix-photo-times` corrects photos uploaded before 0.1.2 whose camera recorded no time zone.
-
-## Troubleshooting
-
-| Symptom | Fix |
-| --- | --- |
-| A container isn't `healthy` | `docker compose logs api` (or `db`, `web`, `identifier`) shows why |
-| Can't sign in after switching to HTTPS | `PUBLIC_URL` must be the `https://` address, and your proxy must send `X-Forwarded-Proto` |
-| Photo uploads fail with "413" | Raise `client_max_body_size` in your reverse proxy (110m for the default 100 MB limit) |
-| "Cannot reach the identifier container" | Set `COMPOSE_PROFILES=ai` in `.env` (note the `=`), then `docker compose up -d` |
-| "No date or location found" for a photo | The file has no metadata: messaging apps and some exports strip it. Enter the details by hand |
-| A HEIC (iPhone) photo shows no preview while logging | Normal in most browsers other than Safari: it uploads and displays fine once saved |
-| Locked out of the admin account | `docker compose exec api node src/admin-cli.js reset-password you@example.com` (see [Accounts](#accounts-and-password-resets)) |
-| eBird import says the key was rejected | Check `EBIRD_API_KEY` in `.env`, then `docker compose up -d` |
-| Map or place search is empty | The server or browser can't reach OpenStreetMap; check the network or set `GEOCODER_URL` |
-
-## Privacy: what leaves your server
-
-Featherkeeper never uploads your photos to an outside service. The AI model runs locally, and it only
-ever sees a shrunk copy with all metadata removed. Outbound requests are lookups:
-
-| Service | What is sent | Switch off with |
-| --- | --- | --- |
-| eBird | Region codes, approximate coordinates (rounded to about 1 km), species codes, your API key | Empty `EBIRD_API_KEY` |
-| iNaturalist | Scientific names, approximate coordinates of the catalogue area | `SPECIES_INSIGHTS`, `SPECIES_SOUNDS`, `REFERENCE_PHOTOS` = `false` |
-| Wikipedia | Species names | `SPECIES_INSIGHTS=false` |
-| xeno-canto | Scientific names, country, your API key | Empty `XENO_CANTO_API_KEY` |
-| OpenStreetMap Nominatim | Place searches, and coordinates to name a place | Empty `GEOCODER_URL` |
-| GitHub | A request for the list of Featherkeeper releases, every few hours | `UPDATE_CHECK=false` |
-
-Visitors' browsers also load map tiles from OpenStreetMap, and the example photos next to AI suggestions
-and recordings straight from iNaturalist, Wikimedia and xeno-canto, so those sites see the visitor's IP
-address, as with any embedded image. The dex's greyed example photos are the exception: your server
-downloads them once and serves them itself.
-
-## Development
-
-```bash
-# Frontend only, with sample data and no server (the same build as the GitHub Pages demo)
-cd apps/web && npm install && VITE_DEMO=true npm run dev        # http://localhost:5173
-
-# Full stack for development
-docker run -d --name fk-db -p 5432:5432 -e POSTGRES_USER=featherkeeper \
-  -e POSTGRES_PASSWORD=featherkeeper -e POSTGRES_DB=featherkeeper postgres:16
-cd apps/api && npm install && npm run dev                       # API on :3000
-cd apps/web && npm run dev                                      # proxies /api to :3000
-
-# API tests (needs a database named featherkeeper_test; it is wiped on each run)
-docker exec fk-db createdb -U featherkeeper featherkeeper_test
-cd apps/api && npm test
-```
-
-**Continuous integration** (GitHub Actions, in `.github/workflows/`):
-
-| Workflow | What it does |
-| --- | --- |
-| `api.yml` | API unit and integration tests against PostgreSQL 16, plus live tests against eBird (if the `EBIRD_API_KEY` repository secret is set), iNaturalist and Wikipedia |
-| `docker.yml` | Builds the images, starts the stack exactly as a self-hoster would, and runs `deploy/smoke-test.sh`, including a real eBird import and a 45 MB photo upload |
-| `ai.yml` | Runs BioCLIP 2 on real bird photos and reports accuracy, speed and memory |
-| `web-demo.yml` | Builds the demo, runs browser tests (including photo metadata), takes screenshots of every screen, and publishes to GitHub Pages |
-
-Each workflow pushes its logs and screenshots to a `ci-report*` branch for review.
-
-**Database changes:** add a new numbered file in `apps/api/src/db/migrations/`. Never edit one that has
-shipped.
-
-## API overview
-
-All endpoints are under `/api` and return JSON. Sign-in uses an HTTP-only session cookie.
-Viewing follows each catalogue's visibility; changes need the owner or an editor.
-
-| Area | Endpoints |
-| --- | --- |
-| System | `GET /health`, `GET /config` |
-| Accounts | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `PATCH /auth/me` |
-| Site admin | `GET /admin/users`, `POST /admin/users/:id/reset-password`, `PATCH`/`DELETE /admin/users/:id`, `GET /admin/users/:id/owned`, `GET`/`PATCH /admin/settings`, `GET`/`POST /admin/invites`, `DELETE /admin/invites/:id`, `POST /admin/taxonomy/refresh` |
-| Your account | `GET /auth/me/account`, `DELETE /auth/me`, `GET /auth/invite/:token` |
-| Catalogues | `GET /catalogues`, `POST /catalogues`, `GET`/`PATCH`/`DELETE /catalogues/:slug`, `GET /catalogues/:slug/export.zip` |
-| Members | `GET`/`POST /catalogues/:slug/members`, `PATCH`/`DELETE /catalogues/:slug/members/:userId` |
-| Dex | `GET`/`POST /catalogues/:slug/species`, `GET`/`PATCH`/`DELETE /catalogues/:slug/species/:id`, `GET /species?q=` |
-| Species info | `GET /catalogues/:slug/species/:id/insights`, `GET /catalogues/:slug/species/:id/sounds`, `GET /reference` |
-| Season | `GET /catalogues/:slug/season?month=` |
-| eBird import | `POST /ebird/preview`, `POST /catalogues/:slug/import/ebird` |
-| Places | `GET /places?q=&catalogue=`, `GET /places/reverse?latitude=&longitude=` |
-| Sightings | `GET`/`POST /catalogues/:slug/sightings`, `PATCH`/`DELETE /sightings/:id` |
-| Photos | `POST /sightings/:id/photos`, `GET /photos/:id/thumb\|display\|original`, `PATCH`/`DELETE /photos/:id`, `GET /catalogues/:slug/to-replace`, `POST /photo-info`, `POST /catalogues/:slug/photos/check` |
-| AI | `POST /catalogues/:slug/identify` |
+Bug reports and ideas are welcome in [issues](https://github.com/tposella/featherkeeper/issues). To
+run it from source, see [development](https://tposella.github.io/featherkeeper/docs/development/).
+Security problems: see [SECURITY.md](SECURITY.md).
 
 ---
 

@@ -37,7 +37,7 @@ export function createUpdateChecker({ enabled = true, repo, currentVersion, user
       prerelease: Boolean(top.prerelease),
       // The first part of the release notes, as plain text, for a short "what's new".
       notes: String(top.body ?? '')
-        .split(/\n### Docker images/)[0]
+        .split(/\n### (?:Install or update|Docker images)/)[0]
         .trim()
         .slice(0, 4000),
     };

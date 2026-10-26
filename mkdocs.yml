@@ -1,0 +1,60 @@
+# The documentation site, published with the demo at https://tposella.github.io/featherkeeper/docs/
+# Preview locally: pip install mkdocs-material && mkdocs serve
+site_name: Featherkeeper
+site_description: A self-hosted birding log that works like a pokédex.
+site_url: https://tposella.github.io/featherkeeper/docs/
+repo_url: https://github.com/tposella/featherkeeper
+repo_name: tposella/featherkeeper
+edit_uri: edit/main/docs/
+docs_dir: docs
+copyright: Featherkeeper is free software under the GNU AGPL v3.0.
+
+nav:
+  - Home: index.md
+  - Install: install.md
+  - Configuration: configuration.md
+  - Updating and backups: updating.md
+  - Accounts and admin: admin.md
+  - AI identification: ai-identification.md
+  - Troubleshooting: troubleshooting.md
+  - Privacy: privacy.md
+  - Development: development.md
+  - Releasing: releasing.md
+  - Demo: https://tposella.github.io/featherkeeper/
+
+theme:
+  name: material
+  palette:
+    - media: '(prefers-color-scheme: light)'
+      scheme: default
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: '(prefers-color-scheme: dark)'
+      scheme: slate
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.details
+
+plugins:
+  - search

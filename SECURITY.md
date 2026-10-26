@@ -20,8 +20,9 @@ You'll get a reply within a week. Once it's fixed, a release goes out with a not
 
 ## Supported versions
 
-Featherkeeper is in beta, so only the **newest release** gets security fixes. Keep up to date with
-`git pull && docker compose pull && docker compose up -d`.
+Featherkeeper is in early releases (0.x), so only the **newest release** gets security fixes. Keep up
+to date with `docker compose pull && docker compose up -d` in the install folder (see
+[Updating](https://tposella.github.io/featherkeeper/docs/updating/)).
 
 ## Good practice when you run it
 

@@ -14,7 +14,7 @@ const button = ref(null);
 const update = computed(() => (versionInfo.admin && versionInfo.updateAvailable ? versionInfo.latest : null));
 const alerting = computed(() => Boolean(update.value && update.value.version !== dismissed.value));
 const label = computed(() => (versionInfo.current ? `v${versionInfo.current}` : ''));
-const COMMAND = 'cd /opt/featherkeeper && git pull && docker compose pull && docker compose up -d';
+const COMMAND = 'docker compose pull && docker compose up -d';
 
 // Release notes are Markdown; show headings and bullet points as simple text blocks.
 const notes = computed(() =>
@@ -104,7 +104,10 @@ onUnmounted(() => document.removeEventListener('click', onDocClick));
             <p v-else-if="n.text">{{ n.text }}</p>
           </template>
         </div>
-        <p class="small">To update, run this on the server:</p>
+        <p class="small">
+          To update, read any “Before you update” notes above, then run this on the server in the Featherkeeper folder
+          (<code>/opt/featherkeeper</code> if you used the installer):
+        </p>
         <pre class="cmd"><code>{{ COMMAND }}</code></pre>
         <div class="row">
           <button class="btn" type="button" @click="copy">{{ copied ? 'Copied' : 'Copy command' }}</button>

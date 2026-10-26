@@ -178,14 +178,23 @@ jobs:
           OWNER="${GITHUB_REPOSITORY_OWNER,,}"
           cat >> notes.md <<NOTES
 
+          ### Install or update
+          New install on Debian or Ubuntu: \`curl -fsSL https://github.com/${{ github.repository }}/releases/download/$TAG/install.sh | sudo bash\`
+          Update an existing install, in its folder: \`docker compose pull && docker compose up -d\`
+
           ### Docker images
           \`\`\`
           ghcr.io/$OWNER/featherkeeper-api:$VERSION
           ghcr.io/$OWNER/featherkeeper-web:$VERSION
           ghcr.io/$OWNER/featherkeeper-identifier:$VERSION
           \`\`\`
-          To install or update, see the README: \`docker compose pull && docker compose up -d\`.
           NOTES
+          # Files to install without cloning the repository (the README's quick start): the compose
+          # file without its "build:" lines, so it only pulls the published images.
+          mkdir -p assets
+          sed '/^[[:space:]]*build:/d' docker-compose.yml > assets/docker-compose.yml
+          cp .env.example assets/example.env
+          cp deploy/install.sh deploy/backup.sh assets/
           FLAGS=()
           [[ "$VERSION" == *-* ]] && FLAGS+=(--prerelease)
           if gh release view "$TAG" > /dev/null 2>&1; then
@@ -193,6 +202,7 @@ jobs:
           else
             gh release create "$TAG" --verify-tag --title "Featherkeeper $VERSION" --notes-file notes.md "${FLAGS[@]}"
           fi
+          gh release upload "$TAG" assets/* --clobber
 
   report:
     needs: [prepare, images, release]

@@ -1,0 +1,92 @@
+# Runs deploy/install.sh the way a new user would, on a clean machine with the published images:
+# fresh install, then a second run (an update) that must keep .env. When the latest release has the
+# install files attached, it also installs straight from the release downloads.
+# Results go to the ci-report-install branch.
+name: Install
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/install.sh'
+      - 'deploy/backup.sh'
+      - 'docker-compose.yml'
+      - '.env.example'
+      - '.github/workflows/install.yml'
+  pull_request:
+    paths:
+      - 'deploy/install.sh'
+      - 'docker-compose.yml'
+      - '.env.example'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      REPORT: ${{ github.workspace }}/report
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fresh install from this commit's files
+        run: |
+          set -o pipefail
+          mkdir -p "$REPORT"
+          bash -n deploy/install.sh
+          sudo bash deploy/install.sh --from "$GITHUB_WORKSPACE" --dir /tmp/fk --port 8090 --yes --no-docker-install 2>&1 | tee "$REPORT/install.log"
+          curl -fsS http://localhost:8090/api/health | tee -a "$REPORT/install.log"
+          curl -fsS http://localhost:8090/ | grep -q '<div id="app">'
+          # The installer wrote a private .env with a random database password.
+          sudo test "$(sudo stat -c %a /tmp/fk/.env)" = 600
+          PW=$(sudo grep '^POSTGRES_PASSWORD=' /tmp/fk/.env | cut -d= -f2)
+          if [ ${#PW} -ne 48 ] || [ "$PW" = change-me-to-a-long-random-string ]; then echo "no random password"; exit 1; fi
+          sudo grep -q '^PUBLIC_URL=http://' /tmp/fk/.env
+          if sudo grep -q 'build:' /tmp/fk/docker-compose.yml; then echo "compose still has build lines"; exit 1; fi
+          echo "fresh install: ok" | tee -a "$REPORT/install.log"
+
+      - name: Running it again updates and keeps the settings
+        run: |
+          set -o pipefail
+          BEFORE=$(sudo sha256sum /tmp/fk/.env)
+          sudo bash deploy/install.sh --from "$GITHUB_WORKSPACE" --dir /tmp/fk --port 8090 --yes --no-docker-install 2>&1 | tee -a "$REPORT/install.log"
+          if [ "$BEFORE" != "$(sudo sha256sum /tmp/fk/.env)" ]; then echo ".env changed"; exit 1; fi
+          curl -fsS http://localhost:8090/api/health >/dev/null
+          echo "re-run keeps .env: ok" | tee -a "$REPORT/install.log"
+
+      - name: Install from the latest release's downloads (once they exist)
+        run: |
+          set -o pipefail
+          URL="https://github.com/${{ github.repository }}/releases/latest/download/install.sh"
+          if ! curl -fsIL "$URL" >/dev/null 2>&1; then
+            echo "latest release has no install files yet: skipped" | tee -a "$REPORT/install.log"
+            exit 0
+          fi
+          curl -fsSL "$URL" -o /tmp/install.sh
+          sudo env FEATHERKEEPER_REPO="${{ github.repository }}" bash /tmp/install.sh --dir /tmp/fk-release --port 8091 --yes --no-docker-install 2>&1 | tee -a "$REPORT/install.log"
+          curl -fsS http://localhost:8091/api/health | tee -a "$REPORT/install.log"
+          echo "release download install: ok" | tee -a "$REPORT/install.log"
+
+      - name: Logs
+        if: always()
+        run: |
+          for d in /tmp/fk /tmp/fk-release; do
+            [ -d "$d" ] && (cd "$d" && sudo docker compose logs --no-color --tail 80 >> "$REPORT/containers.log" 2>&1 || true)
+          done
+
+      - name: Publish report to the ci-report-install branch
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          cd "$REPORT"
+          echo "commit: ${{ github.sha }}" > status.txt
+          echo "install: ${{ job.status }}" >> status.txt
+          git init -q -b ci-report-install
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Install test for ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-report-install

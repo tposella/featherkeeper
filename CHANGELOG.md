@@ -5,10 +5,37 @@ number (0.1.0 → 0.1.1), a bigger one the middle (0.1 → 0.2). See [docs/relea
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-26
+
+Install it like other self-hosted apps: a one-line installer and ready-to-download files with every
+release, and a documentation site.
+
+### Added
+- **One-line installer** for Debian and Ubuntu:
+  `curl -fsSL https://github.com/tposella/featherkeeper/releases/latest/download/install.sh | sudo bash`.
+  It installs Docker if needed, writes a `.env` with a random database password, and starts
+  Featherkeeper. Running it again updates and keeps your settings, database and photos.
+- Every release now has `docker-compose.yml`, `example.env`, `install.sh` and `backup.sh` attached, so
+  installing no longer needs the repository.
+- **Documentation site** at https://tposella.github.io/featherkeeper/docs/, with upgrade notes for
+  each release.
+
+### Changed
+- **Privacy:** outside services (OpenStreetMap, iNaturalist, Wikipedia, xeno-canto, GitHub) no longer
+  receive your site's address in the user agent. They see "Featherkeeper" and its version only.
+- The update alert's command is now `docker compose pull && docker compose up -d`, which works for
+  installs from the installer, the downloads or a clone, and it points to "Before you update" notes.
+- The README is shorter; the full guide moved to the documentation site.
+
 ## [0.2.0] - 2026-10-26
 
 Ready for a public site: invite-only sign-ups, account and storage management, bulk upload, and
 security hardening.
+
+### Before you update
+- Sign-ups are now **invite-only by default** (`ALLOW_REGISTRATION=false`). If you relied on open
+  sign-ups, open them again under **Account → Site admin**.
+- Every sighting needs a photo from now on, and deleting a sighting's last photo deletes the sighting.
 
 ### Added
 - **Invite-only sign-ups** (now the default): the site admin makes invite links (each works once and
@@ -115,7 +142,8 @@ The first public beta.
 - Light and dark mode, and a phone layout with bottom navigation and swipeable photos.
 - Backup and smoke-test scripts, automatic database migrations.
 
-[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/tposella/featherkeeper/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tposella/featherkeeper/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/tposella/featherkeeper/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/tposella/featherkeeper/compare/v0.1.0...v0.1.1

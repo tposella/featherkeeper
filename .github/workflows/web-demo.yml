@@ -1,5 +1,5 @@
 # Builds the frontend in demo mode (sample data, no backend), screenshots every screen,
-# and publishes it to GitHub Pages so anyone can click through it.
+# builds the documentation site (MkDocs) into /docs/, and publishes both to GitHub Pages.
 # Screenshots and logs are also pushed to the `ci-report` branch for review.
 name: Web demo
 
@@ -8,6 +8,8 @@ on:
     branches: [main]
     paths:
       - 'apps/web/**'
+      - 'docs/**'
+      - 'mkdocs.yml'
       - '.github/workflows/web-demo.yml'
   workflow_dispatch:
 
@@ -48,6 +50,14 @@ jobs:
         run: |
           set -o pipefail
           VITE_DEMO=true npm run build 2>&1 | tee "$REPORT/build.log"
+
+      - name: Build the documentation site
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -o pipefail
+          pip install --quiet "mkdocs>=1.6,<2" "mkdocs-material>=9.5,<10"
+          # --strict fails the build on a broken link or a page missing from the menu.
+          mkdocs build --strict -d apps/web/dist/docs 2>&1 | tee "$REPORT/docs.log"
 
       - name: Make test photos with camera metadata
         run: |

@@ -1,4 +1,9 @@
 // All runtime settings come from environment variables. See .env.example at the repo root.
+import { VERSION } from './lib/version.js';
+
+// How Featherkeeper introduces itself to outside services (Nominatim and Wikipedia ask for an
+// identifying user agent). It names the project, not your site, so your site's address isn't shared.
+const USER_AGENT = `Featherkeeper/${VERSION} (+https://github.com/tposella/featherkeeper)`;
 
 function bool(value, fallback) {
   if (value === undefined || value === '') return fallback;
@@ -73,28 +78,28 @@ export function loadConfig(env = process.env) {
     },
     geocoder: {
       url: env.GEOCODER_URL ?? 'https://nominatim.openstreetmap.org',
-      userAgent: `Featherkeeper/0.1 (+${publicUrl})`,
+      userAgent: USER_AGENT,
     },
     // Example photos of suggested species, from iNaturalist and Wikipedia.
     reference: {
       enabled: bool(env.REFERENCE_PHOTOS, true),
-      userAgent: `Featherkeeper/0.1 (+${publicUrl})`,
+      userAgent: USER_AGENT,
     },
     // "In season" and "when and where to find it": iNaturalist counts and Wikipedia habitat text.
     insights: {
       enabled: bool(env.SPECIES_INSIGHTS, true),
-      userAgent: `Featherkeeper/0.1 (+${publicUrl})`,
+      userAgent: USER_AGENT,
     },
     // Tell the site admin when a newer release is published on GitHub.
     updates: {
       enabled: bool(env.UPDATE_CHECK, true),
       repo: env.UPDATE_CHECK_REPO ?? 'tposella/featherkeeper',
-      userAgent: `Featherkeeper (+${publicUrl})`,
+      userAgent: USER_AGENT,
     },
     // "Calls and songs": iNaturalist by default; xeno-canto too when a key is set.
     sounds: {
       enabled: bool(env.SPECIES_SOUNDS, true),
-      userAgent: `Featherkeeper/0.1 (+${publicUrl})`,
+      userAgent: USER_AGENT,
       xenoCantoKey: env.XENO_CANTO_API_KEY ?? '',
     },
     identify: {
