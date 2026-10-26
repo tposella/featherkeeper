@@ -75,7 +75,9 @@ jobs:
         if: always()
         run: |
           for d in /tmp/fk /tmp/fk-release; do
-            [ -d "$d" ] && (cd "$d" && sudo docker compose logs --no-color --tail 80 >> "$REPORT/containers.log" 2>&1 || true)
+            if [ -d "$d" ]; then
+              (cd "$d" && sudo docker compose logs --no-color --tail 80 >> "$REPORT/containers.log" 2>&1) || true
+            fi
           done
 
       - name: Publish report to the ci-report-install branch
