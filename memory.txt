@@ -1,0 +1,6 @@
+peak memory per container (MiB):
+featherkeeper-api-1 106
+featherkeeper-db-1 36
+featherkeeper-identifier-1 2239
+featherkeeper-web-1 5
+CPU cores: 4
