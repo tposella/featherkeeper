@@ -1,0 +1,11 @@
+base: v0.2.1
+version: 0.2.1 -> 0.2.2 (web 0.2.2)
+app files changed:
+apps/api/package.json
+apps/api/src/integrations/inat.js
+apps/api/src/lib/seasonality.js
+apps/api/src/routes/season.js
+apps/web/package.json
+apps/web/src/demo/server.js
+apps/web/src/views/SeasonView.vue
+result: ok
