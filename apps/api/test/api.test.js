@@ -727,6 +727,10 @@ print(json.dumps({
     assert.equal(byName['Black-capped Chickadee'].now, null);
     assert.equal(byName['Black-capped Chickadee'].usual.observations, 42);
     assert.equal(byName['Bald Eagle'], undefined, 'neither reported nor usual');
+    assert.equal(res.body.sources.seasonality, 'inaturalist');
+    assert.equal(byName['Black-capped Chickadee'].seasonality.kind, 'year-round');
+    assert.equal(byName['American Robin'].seasonality.kind, 'now-only');
+    assert.ok(byName['American Robin'].seasonality.lift > 3.5);
     assert.deepEqual(res.body.notInCatalogue.map((s) => s.commonName), ['Bohemian Waxwing']);
 
     const may = await owner.get('/api/catalogues/cochrane-backyard-2/season?month=5&current=10');

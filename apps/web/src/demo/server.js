@@ -871,6 +871,15 @@ const routes = [
     // Pretend summer birds are around May-September and everything else all year.
     const summer = new Set(['rufhum', 'easkin', 'treswa', 'yelwar', 'westan', 'sposan', 'fragul', 'amwpel', 'osprey', 'killde', 'moublu', 'sancra']);
     const winter = new Set(['bohwax', 'comgol', 'goleag']);
+    // Passing migrants and short-stay birds count as "only around now"; other summer and winter
+    // birds as seasonal; the rest as year-round (a real install works this out from iNaturalist).
+    const passing = new Set(['fragul', 'amwpel', 'sancra', 'bohwax']);
+    const demoSeasonality = (code, i) => {
+      const yearPhotos = 120 + ((i * 53) % 900);
+      if (passing.has(code)) return { kind: 'now-only', lift: 4.2 + (i % 4) * 0.6, share: 0.42, yearPhotos };
+      if (summer.has(code) || winter.has(code)) return { kind: 'seasonal', lift: 1.9 + (i % 5) * 0.2, share: 0.19, yearPhotos };
+      return { kind: 'year-round', lift: 0.8 + (i % 4) * 0.1, share: 0.08, yearPhotos };
+    };
     const inSeason = (code) => (summer.has(code) ? month >= 5 && month <= 9 : winter.has(code) ? month <= 3 || month >= 10 : true);
     const species = [];
     dex.forEach((d, i) => {
@@ -881,13 +890,14 @@ const routes = [
         plate: i + 1,
         now: nowHit ? { observedAt: daysAgo(i % 9), where: PLACES[i % PLACES.length].name, howMany: 1 + (i % 5) } : null,
         usual: { observations: 8 + ((i * 37) % 140) },
+        seasonality: demoSeasonality(d.ebirdCode, i),
       });
     });
     return {
       month,
       currentMonth: current,
       area: { kind: 'area', label: c.area.label, radiusKm: c.area.radiusKm, regionCode: null },
-      sources: { now: month === current ? 'ebird' : null, usual: 'inaturalist', nowError: null, usualError: null },
+      sources: { now: month === current ? 'ebird' : null, usual: 'inaturalist', seasonality: 'inaturalist', nowError: null, usualError: null },
       species,
       notInCatalogue:
         month === current

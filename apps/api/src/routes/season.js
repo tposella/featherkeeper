@@ -2,6 +2,7 @@ import { loadCatalogue } from '../lib/access.js';
 import { catalogueArea } from '../lib/area.js';
 import { notFound } from '../lib/errors.js';
 import { DEX_SQL, dexEntry } from './dex.js';
+import { seasonalityFor } from '../lib/seasonality.js';
 
 const slugParam = { type: 'object', required: ['slug'], properties: { slug: { type: 'string', maxLength: 64 } } };
 
@@ -16,7 +17,8 @@ const ebirdSource = (area) =>
 export default async function seasonRoutes(app, { db, ebird, inat, wikipedia, sounds }) {
   /**
    * What's around: species reported in the last 30 days (eBird, current month only) and species
-   * usually photographed in the chosen month over the last five years (iNaturalist).
+   * usually photographed in the chosen month over the last five years (iNaturalist), each with how
+   * tied it is to this time of year (see lib/seasonality.js).
    */
   app.get(
     '/catalogues/:slug/season',
@@ -41,22 +43,23 @@ export default async function seasonRoutes(app, { db, ebird, inat, wikipedia, so
       const result = { month, currentMonth, area: publicArea(area), sources: {}, species: [], notInCatalogue: [] };
       if (!area) return result;
 
-      const [now, usual] = await Promise.all([
+      const point = area.kind !== 'region' && inat.enabled ? { latitude: area.latitude, longitude: area.longitude, radiusKm: area.radiusKm } : null;
+      const [now, usual, allYear] = await Promise.all([
         month === currentMonth && ebird.enabled
           ? ebird.recentObservations(ebirdSource(area)).catch((err) => ({ error: err.message }))
           : null,
-        area.kind !== 'region' && inat.enabled
-          ? inat
-              .monthlySpecies({ latitude: area.latitude, longitude: area.longitude, radiusKm: area.radiusKm, month })
-              .catch((err) => ({ error: err.message }))
-          : null,
+        point ? inat.monthlySpecies({ ...point, month }).catch((err) => ({ error: err.message })) : null,
+        // The same counts for every month, to tell year-round birds from seasonal ones.
+        point ? inat.monthlySpecies({ ...point, month: null }).catch(() => null) : null,
       ]);
       result.sources = {
         now: Array.isArray(now) ? 'ebird' : null,
         nowError: now?.error ?? null,
         usual: Array.isArray(usual) ? 'inaturalist' : null,
         usualError: usual?.error ?? null,
+        seasonality: Array.isArray(usual) && Array.isArray(allYear) ? 'inaturalist' : null,
       };
+      const seasonal = Array.isArray(usual) && Array.isArray(allYear) ? seasonalityFor(usual, allYear) : new Map();
 
       const nowByCode = new Map((Array.isArray(now) ? now : []).map((o) => [o.ebirdCode, o]));
       const usualBySci = new Map((Array.isArray(usual) ? usual : []).map((u) => [u.scientificName.toLowerCase(), u]));
@@ -72,6 +75,7 @@ export default async function seasonRoutes(app, { db, ebird, inat, wikipedia, so
           plate: i + 1,
           now: n ? { observedAt: n.observedAt, where: n.where, howMany: n.howMany } : null,
           usual: u ? { observations: u.observations } : null,
+          seasonality: seasonal.get(row.scientific_name.toLowerCase()) ?? null,
         });
       });
       result.notInCatalogue = [...nowByCode.values()]

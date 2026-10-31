@@ -13,6 +13,24 @@ const loading = ref(false);
 const error = ref('');
 const adding = ref(null);
 
+// "Only this time of year": hide birds that are around all year. Remembered in this browser.
+const SEASONAL_KEY = 'featherkeeper.season.seasonalOnly';
+function readSeasonalOnly() {
+  try {
+    return localStorage.getItem(SEASONAL_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+const seasonalOnly = ref(readSeasonalOnly());
+watch(seasonalOnly, (on) => {
+  try {
+    localStorage.setItem(SEASONAL_KEY, on ? '1' : '0');
+  } catch {
+    // private window or storage blocked: just don't remember it
+  }
+});
+
 async function load() {
   loading.value = true;
   error.value = '';
@@ -35,14 +53,39 @@ const where = computed(() => {
   return `within ${a.radiusKm} km of ${a.label || 'this catalogue’s area'}`;
 });
 
+const hasSeasonality = computed(() => Boolean(data.value?.sources?.seasonality));
+const filtering = computed(() => seasonalOnly.value && hasSeasonality.value);
+const isSeasonal = (s) => s.seasonality && s.seasonality.kind !== 'year-round';
+
 // Ranking: reported recently first (newest first), then by how often it's usually photographed.
+// With "Only this time of year" on: the most season-bound birds first.
 function score(s) {
   return (s.now ? 1e9 + Date.parse(String(s.now.observedAt).replace(' ', 'T')) / 1e4 : 0) + (s.usual?.observations ?? 0);
 }
-const toFind = computed(() =>
-  (data.value?.species ?? []).filter((s) => s.status !== 'photographed').sort((a, b) => score(b) - score(a)),
+function order(list) {
+  if (filtering.value) return list.filter(isSeasonal).sort((a, b) => b.seasonality.lift - a.seasonality.lift || score(b) - score(a));
+  return list.sort((a, b) => score(b) - score(a));
+}
+const toFind = computed(() => order((data.value?.species ?? []).filter((s) => s.status !== 'photographed')));
+const done = computed(() => order((data.value?.species ?? []).filter((s) => s.status === 'photographed')));
+const hiddenYearRound = computed(() =>
+  filtering.value ? (data.value?.species ?? []).filter((s) => !isSeasonal(s)).length : 0,
 );
-const done = computed(() => (data.value?.species ?? []).filter((s) => s.status === 'photographed'));
+
+const monthName = computed(() => MONTHS[month.value - 1]);
+function seasonLabel(s) {
+  const k = s.seasonality?.kind;
+  if (k === 'now-only') return isNow.value ? 'Only around now' : `Mostly in ${monthName.value}`;
+  if (k === 'seasonal') return 'Seasonal';
+  if (k === 'year-round') return 'Year-round';
+  return '';
+}
+function seasonTitle(s) {
+  const z = s.seasonality;
+  if (!z) return '';
+  const pct = Math.round(z.share * 100);
+  return `${pct}% of its ${z.yearPhotos} photos near here are from ${monthName.value}: ${z.lift}× as likely as an average bird this month`;
+}
 
 async function add(s) {
   adding.value = s.ebirdCode;
@@ -69,6 +112,23 @@ async function add(s) {
         </label>
         <span v-if="where"> {{ where }}</span>
       </h2>
+      <button
+        v-if="data?.area"
+        type="button"
+        role="switch"
+        class="switch"
+        :aria-checked="filtering"
+        :disabled="!hasSeasonality"
+        :title="
+          hasSeasonality
+            ? 'Show only birds tied to this time of year, and hide the ones that are around all year'
+            : 'Needs a catalogue area around a town or place, and iNaturalist data'
+        "
+        @click="seasonalOnly = !seasonalOnly"
+      >
+        <span class="track" aria-hidden="true"><span class="knob"></span></span>
+        <span class="switch-label">Only this time of year</span>
+      </button>
     </div>
 
     <div v-if="error" class="notice error" role="alert">{{ error }}</div>
@@ -90,6 +150,13 @@ async function add(s) {
           <template v-if="data.sources.usual">
             “Usually here” counts photographed observations in {{ MONTHS[month - 1] }} over the last five years (iNaturalist).
           </template>
+          <template v-if="filtering">
+            Showing birds that are mostly found in {{ monthName }} here, the most season-bound first; {{ hiddenYearRound }}
+            year-round species hidden.
+          </template>
+          <template v-else-if="hasSeasonality">
+            Badges show which birds are tied to this time of year and which are around all year.
+          </template>
           <template v-if="data.sources.nowError || data.sources.usualError">
             Some data couldn’t be loaded right now: {{ data.sources.nowError || data.sources.usualError }}
           </template>
@@ -98,7 +165,8 @@ async function add(s) {
         <section>
           <h3>Still to photograph <span class="n">{{ toFind.length }}</span></h3>
           <p v-if="!toFind.length" class="empty">
-            You’ve photographed every species in this catalogue that’s around in {{ MONTHS[month - 1] }}.
+            <template v-if="filtering">No seasonal birds left to photograph in {{ monthName }}: everything still missing is around all year.</template>
+            <template v-else>You’ve photographed every species in this catalogue that’s around in {{ MONTHS[month - 1] }}.</template>
           </p>
           <ol class="list">
             <li v-for="s in toFind" :key="s.id">
@@ -109,6 +177,7 @@ async function add(s) {
                   <span class="sci soft small">{{ s.scientificName }}</span>
                 </span>
                 <span class="facts small">
+                  <span v-if="seasonLabel(s)" :class="['fact', 'season', s.seasonality.kind]" :title="seasonTitle(s)">{{ seasonLabel(s) }}</span>
                   <span v-if="s.now" class="fact now">
                     Reported {{ timeAgo(s.now.observedAt) }}<template v-if="s.now.where"> at {{ s.now.where }}</template
                     ><template v-if="s.now.howMany">, {{ s.now.howMany }} seen</template>
@@ -133,6 +202,7 @@ async function add(s) {
                   <span :class="['mini', s.status]"><img v-if="s.coverUrl" :src="s.coverUrl" alt="" /><img v-else-if="dexStyle === 'examples' && s.example" :src="s.example.url" class="example-img" alt="" /></span>
                   <span class="names"><strong>{{ s.commonName }}</strong></span>
                   <span class="facts small">
+                    <span v-if="seasonLabel(s)" :class="['fact', 'season', s.seasonality.kind]" :title="seasonTitle(s)">{{ seasonLabel(s) }}</span>
                     <span v-if="s.now" class="fact now">Reported {{ timeAgo(s.now.observedAt) }}</span>
                     <span v-if="s.usual" class="fact usual">Usually here: {{ s.usual.observations }} photos</span>
                   </span>
@@ -172,6 +242,13 @@ async function add(s) {
 </template>
 
 <style scoped>
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
 .head h2 {
   display: flex;
   flex-wrap: wrap;
@@ -261,6 +338,74 @@ details summary h3 {
 .fact.now {
   border-color: var(--jay);
   color: var(--jay);
+}
+.fact.season {
+  cursor: help;
+  font-weight: 650;
+}
+.fact.now-only {
+  background: var(--goldfinch-wash);
+  border-color: var(--goldfinch, #c9a227);
+}
+.fact.seasonal {
+  border-color: var(--goldfinch, #c9a227);
+}
+.fact.year-round {
+  color: var(--ink-soft);
+  border-style: dashed;
+}
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: inherit;
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  padding: 6px 2px;
+  cursor: pointer;
+}
+.switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.track {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--rule);
+  transition: background 0.15s;
+  flex: none;
+}
+.knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  transition: transform 0.15s;
+}
+.switch[aria-checked='true'] .track {
+  background: var(--jay);
+}
+.switch[aria-checked='true'] .knob {
+  transform: translateX(18px);
+}
+.switch:focus-visible .track {
+  outline: 2px solid var(--jay);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .knob {
+    transition: none;
+  }
 }
 @media (max-width: 640px) {
   .row-link {

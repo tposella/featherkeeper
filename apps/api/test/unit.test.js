@@ -253,3 +253,33 @@ test('update checker: newest release, the right channel, and caching', async () 
   const off = createUpdateChecker({ enabled: false, repo: 'o/r', currentVersion: '0.1.0', userAgent: 't' }, fetch);
   assert.equal((await off.status()).enabled, false);
 });
+
+test('seasonality: year-round, seasonal and passing birds, with effort and small samples allowed for', async () => {
+  const { seasonality, seasonalityFor } = await import('../src/lib/seasonality.js');
+  const even = 1 / 12;
+  assert.equal(seasonality(50, 600, even).kind, 'year-round', 'a twelfth of its photos in a twelfth of the year');
+  assert.equal(seasonality(120, 600, even).kind, 'seasonal', 'about 5 months of the year');
+  assert.equal(seasonality(300, 600, even).kind, 'now-only', 'half its photos in this month');
+  // Busy summer months: everything has more photos, so a year-round bird is still year-round.
+  assert.equal(seasonality(90, 600, 0.15).kind, 'year-round');
+  // Two photos, both this month: not enough to call it a migrant.
+  assert.equal(seasonality(2, 2, even), null);
+  assert.equal(seasonality(6, 6, even), null);
+  assert.ok(seasonality(10, 10, even).lift < 10, 'small samples are pulled below the raw 12');
+  assert.equal(seasonality(0, 100, 0), null, 'no baseline');
+
+  const month = [
+    { scientificName: 'Bombycilla garrulus', observations: 40 },
+    { scientificName: 'Pica hudsonia', observations: 30 },
+  ];
+  const year = [
+    { scientificName: 'Bombycilla garrulus', observations: 60 },
+    { scientificName: 'Pica hudsonia', observations: 400 },
+    { scientificName: 'Setophaga petechia', observations: 300 },
+  ];
+  const map = seasonalityFor(month, year);
+  assert.equal(map.get('bombycilla garrulus').kind, 'now-only');
+  assert.equal(map.get('pica hudsonia').kind, 'year-round');
+  assert.equal(map.has('setophaga petechia'), false, 'not around this month');
+  assert.equal(seasonalityFor([], year).size, 0);
+});

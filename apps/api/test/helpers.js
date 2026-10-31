@@ -90,7 +90,14 @@ export const fakeGeocoder = {
 
 export const fakeInat = {
   enabled: true,
-  async monthlySpecies() {
+  async monthlySpecies({ month } = {}) {
+    // Every month together: chickadees all year, robins nearly only in the month asked for.
+    if (!month) {
+      return [
+        { scientificName: 'Poecile atricapillus', commonName: 'Black-capped Chickadee', observations: 500 },
+        { scientificName: 'Turdus migratorius', commonName: 'American Robin', observations: 12 },
+      ];
+    }
     return [
       { scientificName: 'Poecile atricapillus', commonName: 'Black-capped Chickadee', observations: 42 },
       { scientificName: 'Turdus migratorius', commonName: 'American Robin', observations: 10 },

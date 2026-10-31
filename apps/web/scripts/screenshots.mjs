@@ -389,5 +389,32 @@ for (const [name, viewport, colorScheme, hash, scrollTo] of shots) {
 }
 console.log('README screenshots: done');
 
+// In season: every bird has a season badge, and "Only this time of year" hides the year-round ones.
+{
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  await page.goto(new URL('#/c/bow-valley/season', base).href);
+  await page.addStyleTag({ content: CLEAN_CSS });
+  await page.locator('.fact.season').first().waitFor({ timeout: 15000 });
+  const before = await page.locator('.fact.year-round').count();
+  const seasonal = await page.locator('.fact.now-only, .fact.seasonal').count();
+  if (!before || !seasonal) throw new Error(`season badges: expected both kinds, got ${before} year-round and ${seasonal} seasonal`);
+  const toggle = page.getByRole('switch', { name: 'Only this time of year' });
+  await toggle.click();
+  if ((await toggle.getAttribute('aria-checked')) !== 'true') throw new Error('season switch did not turn on');
+  const after = await page.locator('.fact.year-round').count();
+  if (after) throw new Error(`season switch left ${after} year-round birds showing`);
+  if (!(await page.locator('.fact.now-only, .fact.seasonal').count())) throw new Error('season switch hid the seasonal birds too');
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${out}/readme/season-seasonal.png` });
+  // It's remembered after a reload.
+  await page.reload();
+  await page.locator('.fact.season').first().waitFor({ timeout: 15000 });
+  if ((await page.getByRole('switch', { name: 'Only this time of year' }).getAttribute('aria-checked')) !== 'true') {
+    throw new Error('season switch was not remembered');
+  }
+  await page.close();
+  console.log(`In season switch: ok (${before} year-round hidden, ${seasonal} seasonal kept)`);
+}
+
 await browser.close();
 console.log(`Screenshots saved to ${out}/`);

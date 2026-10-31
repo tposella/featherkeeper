@@ -5,6 +5,15 @@ number (0.1.0 → 0.1.1), a bigger one the middle (0.1 → 0.2). See [docs/relea
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-31
+
+### Added
+- **In season: "Only this time of year".** Each bird on the In season tab now has a badge: **Only
+  around now**, **Seasonal** or **Year-round**, worked out from when it's photographed near your area
+  compared with all birds (so busy summer months don't skew it). Hover a badge for the numbers. The
+  new switch hides the year-round birds and puts the most season-bound first, so you can chase the
+  ones you won't get another chance at until next year. The switch is remembered in your browser.
+
 ## [0.2.1] - 2026-10-26
 
 Install it like other self-hosted apps: a one-line installer and ready-to-download files with every
@@ -142,7 +151,8 @@ The first public beta.
 - Light and dark mode, and a phone layout with bottom navigation and swipeable photos.
 - Backup and smoke-test scripts, automatic database migrations.
 
-[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/tposella/featherkeeper/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/tposella/featherkeeper/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tposella/featherkeeper/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/tposella/featherkeeper/compare/v0.1.1...v0.1.2

@@ -55,7 +55,8 @@ every setting, updating, backups) is in the
   seen nearby, habitat, and calls and songs.
 - **Logging from photos:** date, time, GPS and camera are read from each file (JPEG, iPhone HEIC, PNG,
   WebP, TIFF, AVIF). Bulk upload a whole shoot, with duplicate warnings.
-- **Families** and **In season** views to see what's left and what's around this month.
+- **Families** and **In season** views to see what's left and what's around this month, with a switch
+  to show only the birds tied to this time of year.
 - **Optional AI identification** that runs on your own server (BioCLIP 2), weighted by what's been
   recorded where the photo was taken.
 - **Catalogues you can share:** private, signed-in users or public, with editors, and an option to

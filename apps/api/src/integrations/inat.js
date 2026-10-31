@@ -82,13 +82,13 @@ export function createInaturalistClient({ enabled = true, userAgent }, fetchImpl
     },
 
     /**
-     * Species observed within radiusKm of a point in `month` (1-12) during the last `years` full years
-     * plus the current one. Returns [{ scientificName, commonName, observations }], most observed first.
+     * Species observed within radiusKm of a point in `month` (1-12, or null for every month) during the
+     * last `years` full years plus the current one. Returns [{ scientificName, commonName, observations }], most observed first.
      */
     async monthlySpecies({ latitude, longitude, radiusKm, month, years = 5 }) {
       if (!enabled) return [];
       const thisYear = new Date().getUTCFullYear();
-      const key = `${latitude.toFixed(2)},${longitude.toFixed(2)},${radiusKm},${month},${years}`;
+      const key = `${latitude.toFixed(2)},${longitude.toFixed(2)},${radiusKm},${month ?? 'all'},${years}`;
       const hit = cache.get(key);
       if (hit && hit.expires > Date.now()) return hit.value;
 
@@ -97,7 +97,7 @@ export function createInaturalistClient({ enabled = true, userAgent }, fetchImpl
         lat: latitude.toFixed(4),
         lng: longitude.toFixed(4),
         radius: String(radiusKm),
-        month: String(month),
+        ...(month ? { month: String(month) } : {}),
         d1: `${thisYear - years}-01-01`,
         quality_grade: 'research',
         per_page: '500',

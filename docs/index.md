@@ -51,6 +51,9 @@ GitHub, and each one can be switched off. The full list is on the [privacy page]
   complete".
 - **In season** view: birds reported nearby in the last 30 days and birds usually photographed there in
   any month, with rarities missing from your catalogue listed separately.
+- **Only this time of year:** In season marks each bird as only around now, seasonal or year-round, and
+  a switch shows just the seasonal ones, so you can go after the birds you won't see again until next
+  year.
 
 ![Families view](images/families.png)
 
