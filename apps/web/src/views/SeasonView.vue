@@ -55,7 +55,7 @@ const where = computed(() => {
 
 const hasSeasonality = computed(() => Boolean(data.value?.sources?.seasonality));
 const filtering = computed(() => seasonalOnly.value && hasSeasonality.value);
-const isSeasonal = (s) => s.seasonality && s.seasonality.kind !== 'year-round';
+const isSeasonal = (s) => ['now-only', 'seasonal'].includes(s.seasonality?.kind);
 
 // Ranking: reported recently first (newest first), then by how often it's usually photographed.
 // With "Only this time of year" on: the most season-bound birds first.
@@ -63,7 +63,12 @@ function score(s) {
   return (s.now ? 1e9 + Date.parse(String(s.now.observedAt).replace(' ', 'T')) / 1e4 : 0) + (s.usual?.observations ?? 0);
 }
 function order(list) {
-  if (filtering.value) return list.filter(isSeasonal).sort((a, b) => b.seasonality.lift - a.seasonality.lift || score(b) - score(a));
+  if (filtering.value) {
+    // Fewest months around first (the hardest to get another chance at), then the strongest this month.
+    return list
+      .filter(isSeasonal)
+      .sort((a, b) => a.seasonality.monthsAround - b.seasonality.monthsAround || b.seasonality.lift - a.seasonality.lift || score(b) - score(a));
+  }
   return list.sort((a, b) => score(b) - score(a));
 }
 const toFind = computed(() => order((data.value?.species ?? []).filter((s) => s.status !== 'photographed')));
@@ -78,13 +83,49 @@ function seasonLabel(s) {
   if (k === 'now-only') return isNow.value ? 'Only around now' : `Mostly in ${monthName.value}`;
   if (k === 'seasonal') return 'Seasonal';
   if (k === 'year-round') return 'Year-round';
+  if (k === 'off-peak') return isNow.value ? 'Uncommon now' : `Uncommon in ${monthName.value}`;
   return '';
+}
+
+const SHORT = MONTHS.map((m) => m.slice(0, 3));
+const INITIALS = MONTHS.map((m) => m[0]);
+/** [false, ..., true, true, true, false] -> "Sep–Nov"; wraps the year ("Nov–Mar"); "All year" for 12. */
+function monthRanges(months) {
+  if (!months?.some(Boolean)) return '';
+  if (months.every(Boolean)) return 'all year';
+  // Start just after a month it isn't around, so a winter run like Nov–Mar stays in one piece.
+  const start = months.findIndex((m, i) => !m && months[(i + 1) % 12]) + 1;
+  const runs = [];
+  let run = null;
+  for (let k = 0; k < 12; k++) {
+    const i = (start + k) % 12;
+    if (months[i]) {
+      if (run) run.end = i;
+      else run = { start: i, end: i };
+    } else if (run) {
+      runs.push(run);
+      run = null;
+    }
+  }
+  if (run) runs.push(run);
+  return runs.map((r) => (r.start === r.end ? SHORT[r.start] : `${SHORT[r.start]}–${SHORT[r.end]}`)).join(', ');
+}
+function aroundText(s) {
+  const r = monthRanges(s.seasonality?.months);
+  return r ? `Around ${r}` : '';
 }
 function seasonTitle(s) {
   const z = s.seasonality;
   if (!z) return '';
   const pct = Math.round(z.share * 100);
-  return `${pct}% of its ${z.yearPhotos} photos near here are from ${monthName.value}: ${z.lift}× as likely as an average bird this month`;
+  const around = aroundText(s);
+  return `${around ? `${around} near here. ` : ''}${pct}% of its ${z.yearPhotos} photos near here are from ${monthName.value}.`;
+}
+function barTitle(s, i) {
+  const z = s.seasonality;
+  const p = Math.round((z.profile[i] ?? 0) * 100);
+  const state = z.months[i] ? 'around' : p > 0 ? 'rarely seen' : 'not seen';
+  return `${MONTHS[i]}: ${state}${p ? ` (${p}% of its busiest month)` : ''}`;
 }
 
 async function add(s) {
@@ -151,8 +192,9 @@ async function add(s) {
             “Usually here” counts photographed observations in {{ MONTHS[month - 1] }} over the last five years (iNaturalist).
           </template>
           <template v-if="filtering">
-            Showing birds that are mostly found in {{ monthName }} here, the most season-bound first; {{ hiddenYearRound }}
-            year-round species hidden.
+            Showing birds found here in {{ monthName }} but not all year, with the fewest months first. The chart shows how often
+            each is photographed here through the year; highlighted months are when it’s around. {{ hiddenYearRound }} year-round or
+            uncommon-now species hidden.
           </template>
           <template v-else-if="hasSeasonality">
             Badges show which birds are tied to this time of year and which are around all year.
@@ -178,6 +220,19 @@ async function add(s) {
                 </span>
                 <span class="facts small">
                   <span v-if="seasonLabel(s)" :class="['fact', 'season', s.seasonality.kind]" :title="seasonTitle(s)">{{ seasonLabel(s) }}</span>
+                  <span v-if="filtering && s.seasonality" class="calendar" role="img" :aria-label="aroundText(s)">
+                    <span class="bars" aria-hidden="true">
+                      <span
+                        v-for="(p, i) in s.seasonality.profile"
+                        :key="i"
+                        :class="['bar', { on: s.seasonality.months[i], cur: i === month - 1 }]"
+                        :title="barTitle(s, i)"
+                        ><span class="fill" :style="{ height: `${Math.max(p > 0 ? 8 : 0, p * 100)}%` }"></span
+                        ><span class="ini">{{ INITIALS[i] }}</span></span
+                      >
+                    </span>
+                    <span class="around">{{ aroundText(s) }}</span>
+                  </span>
                   <span v-if="s.now" class="fact now">
                     Reported {{ timeAgo(s.now.observedAt) }}<template v-if="s.now.where"> at {{ s.now.where }}</template
                     ><template v-if="s.now.howMany">, {{ s.now.howMany }} seen</template>
@@ -203,6 +258,19 @@ async function add(s) {
                   <span class="names"><strong>{{ s.commonName }}</strong></span>
                   <span class="facts small">
                     <span v-if="seasonLabel(s)" :class="['fact', 'season', s.seasonality.kind]" :title="seasonTitle(s)">{{ seasonLabel(s) }}</span>
+                  <span v-if="filtering && s.seasonality" class="calendar" role="img" :aria-label="aroundText(s)">
+                    <span class="bars" aria-hidden="true">
+                      <span
+                        v-for="(p, i) in s.seasonality.profile"
+                        :key="i"
+                        :class="['bar', { on: s.seasonality.months[i], cur: i === month - 1 }]"
+                        :title="barTitle(s, i)"
+                        ><span class="fill" :style="{ height: `${Math.max(p > 0 ? 8 : 0, p * 100)}%` }"></span
+                        ><span class="ini">{{ INITIALS[i] }}</span></span
+                      >
+                    </span>
+                    <span class="around">{{ aroundText(s) }}</span>
+                  </span>
                     <span v-if="s.now" class="fact now">Reported {{ timeAgo(s.now.observedAt) }}</span>
                     <span v-if="s.usual" class="fact usual">Usually here: {{ s.usual.observations }} photos</span>
                   </span>
@@ -350,9 +418,53 @@ details summary h3 {
 .fact.seasonal {
   border-color: var(--goldfinch, #c9a227);
 }
+.fact.off-peak {
+  color: var(--ink-soft);
+}
 .fact.year-round {
   color: var(--ink-soft);
   border-style: dashed;
+}
+.calendar {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-basis: 100%;
+  order: 1;
+}
+.bars {
+  display: inline-grid;
+  grid-template-columns: repeat(12, 11px);
+  gap: 2px;
+}
+.bar {
+  display: grid;
+  grid-template-rows: 22px auto;
+  cursor: help;
+}
+.fill {
+  align-self: end;
+  display: block;
+  border-radius: 2px 2px 0 0;
+  background: var(--rule);
+}
+.bar.on .fill {
+  background: var(--goldfinch);
+}
+.ini {
+  font-size: 9px;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.bar.cur .ini {
+  color: var(--ink);
+  font-weight: 800;
+  text-decoration: underline;
+}
+.around {
+  font-weight: 650;
+  padding-bottom: 12px;
 }
 .switch {
   display: inline-flex;

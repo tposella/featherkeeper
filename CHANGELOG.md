@@ -5,6 +5,19 @@ number (0.1.0 → 0.1.1), a bigger one the middle (0.1 → 0.2). See [docs/relea
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-11-02
+
+### Added
+- **In season: the months each bird is around.** With "Only this time of year" on, every bird shows a
+  small 12-month chart of how often it's photographed near your area, with the months it's around
+  highlighted, and a summary such as "Around Nov–Mar". Hover a month for the details.
+
+### Changed
+- Seasonal badges now come from those months: **Only around now** (3 months a year or fewer),
+  **Seasonal** (4 to 8), **Year-round** (9 or more), and a new **Uncommon now** for birds only rarely
+  seen this month. A month counts when the bird is photographed there at least a fifth as often as in
+  its busiest month. "Only this time of year" lists the birds with the fewest months first.
+
 ## [0.2.2] - 2026-10-31
 
 ### Added
@@ -151,7 +164,8 @@ The first public beta.
 - Light and dark mode, and a phone layout with bottom navigation and swipeable photos.
 - Backup and smoke-test scripts, automatic database migrations.
 
-[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/tposella/featherkeeper/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/tposella/featherkeeper/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/tposella/featherkeeper/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/tposella/featherkeeper/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tposella/featherkeeper/compare/v0.1.2...v0.2.0

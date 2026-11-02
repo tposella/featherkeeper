@@ -117,9 +117,28 @@ export function createInaturalistClient({ enabled = true, userAgent }, fetchImpl
         });
       }
       const value = [...bySpecies.values()].sort((a, b) => b.observations - a.observations);
-      cache.set(key, { value, expires: Date.now() + TTL_MS });
+      // Five years of counts barely move from one day to the next; keep them a few days.
+      cache.set(key, { value, expires: Date.now() + 3 * TTL_MS });
       if (cache.size > 500) cache.delete(cache.keys().next().value);
       return value;
+    },
+
+    /**
+     * monthlySpecies for all 12 months (January first), for telling which months each bird is around.
+     * Fetched three at a time to stay polite to iNaturalist; cached like monthlySpecies.
+     */
+    async allMonths(point, years = 5) {
+      if (!enabled) return null;
+      const out = new Array(12);
+      const queue = Array.from({ length: 12 }, (_, i) => i);
+      const worker = async () => {
+        while (queue.length) {
+          const i = queue.shift();
+          out[i] = await this.monthlySpecies({ ...point, month: i + 1, years });
+        }
+      };
+      await Promise.all([worker(), worker(), worker()]);
+      return out;
     },
   };
 }

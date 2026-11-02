@@ -404,6 +404,12 @@ console.log('README screenshots: done');
   const after = await page.locator('.fact.year-round').count();
   if (after) throw new Error(`season switch left ${after} year-round birds showing`);
   if (!(await page.locator('.fact.now-only, .fact.seasonal').count())) throw new Error('season switch hid the seasonal birds too');
+  const calendars = await page.locator('.calendar').count();
+  const rows = await page.locator('.fact.now-only, .fact.seasonal').count();
+  if (calendars !== rows) throw new Error(`season switch: ${rows} seasonal birds but ${calendars} month charts`);
+  const around = await page.locator('.calendar .around').allTextContents();
+  if (!around.every((t) => /^Around [A-Z][a-z]{2}/.test(t))) throw new Error(`season months: unexpected ${JSON.stringify(around)}`);
+  console.log(`In season months: ${around.join(' | ')}`);
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/readme/season-seasonal.png` });
   // It's remembered after a reload.

@@ -254,32 +254,43 @@ test('update checker: newest release, the right channel, and caching', async () 
   assert.equal((await off.status()).enabled, false);
 });
 
-test('seasonality: year-round, seasonal and passing birds, with effort and small samples allowed for', async () => {
-  const { seasonality, seasonalityFor } = await import('../src/lib/seasonality.js');
-  const even = 1 / 12;
-  assert.equal(seasonality(50, 600, even).kind, 'year-round', 'a twelfth of its photos in a twelfth of the year');
-  assert.equal(seasonality(120, 600, even).kind, 'seasonal', 'about 5 months of the year');
-  assert.equal(seasonality(300, 600, even).kind, 'now-only', 'half its photos in this month');
-  // Busy summer months: everything has more photos, so a year-round bird is still year-round.
-  assert.equal(seasonality(90, 600, 0.15).kind, 'year-round');
-  // Two photos, both this month: not enough to call it a migrant.
-  assert.equal(seasonality(2, 2, even), null);
-  assert.equal(seasonality(6, 6, even), null);
-  assert.ok(seasonality(10, 10, even).lift < 10, 'small samples are pulled below the raw 12');
-  assert.equal(seasonality(0, 100, 0), null, 'no baseline');
+test('seasonality: which months a bird is around, with photo effort and small samples allowed for', async () => {
+  const { monthlyProfile, seasonalityFor } = await import('../src/lib/seasonality.js');
+  // Far more photos in summer, as in real iNaturalist data.
+  const totals = [100, 100, 150, 250, 400, 500, 500, 450, 300, 200, 120, 100];
+  const scaled = (shares) => shares.map((f, i) => Math.round(f * totals[i]));
 
-  const month = [
-    { scientificName: 'Bombycilla garrulus', observations: 40 },
-    { scientificName: 'Pica hudsonia', observations: 30 },
-  ];
-  const year = [
-    { scientificName: 'Bombycilla garrulus', observations: 60 },
-    { scientificName: 'Pica hudsonia', observations: 400 },
-    { scientificName: 'Setophaga petechia', observations: 300 },
-  ];
-  const map = seasonalityFor(month, year);
-  assert.equal(map.get('bombycilla garrulus').kind, 'now-only');
+  const magpie = monthlyProfile(scaled(new Array(12).fill(0.05)), totals, 1);
+  assert.equal(magpie.kind, 'year-round', 'the same share of photos every month');
+  assert.equal(magpie.monthsAround, 12);
+
+  // A summer bird: common May to September, two stragglers in April.
+  const warbler = scaled([0, 0, 0, 0.01, 0.06, 0.08, 0.08, 0.07, 0.04, 0, 0, 0]);
+  assert.equal(monthlyProfile(warbler, totals, 7).kind, 'seasonal');
+  assert.deepEqual(
+    monthlyProfile(warbler, totals, 7).months.map((m, i) => (m ? i + 1 : 0)).filter(Boolean),
+    [5, 6, 7, 8, 9],
+    'April is too rare to count',
+  );
+  assert.equal(monthlyProfile(warbler, totals, 4).kind, 'off-peak', 'seen in April, but rarely');
+  assert.equal(monthlyProfile(warbler, totals, 7).profile[6], 1, 'peak month is 1');
+
+  // A winter bird around November to March: few photos, but a big share of a quiet month.
+  const waxwing = monthlyProfile(scaled([0.2, 0.2, 0.1, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.2]), totals, 1);
+  assert.equal(waxwing.kind, 'seasonal');
+  assert.equal(waxwing.monthsAround, 5);
+
+  // A passing migrant: two months.
+  assert.equal(monthlyProfile(scaled([0, 0, 0, 0, 0.03, 0, 0, 0, 0.02, 0, 0, 0]), totals, 5).kind, 'now-only');
+
+  assert.equal(monthlyProfile([0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0], totals, 5), null, 'too few photos to say');
+
+  const byMonth = Array.from({ length: 12 }, (_, i) => [
+    { scientificName: 'Pica hudsonia', observations: 20 },
+    ...(i < 2 || i === 11 ? [{ scientificName: 'Bombycilla garrulus', observations: 15 }] : []),
+  ]);
+  const map = seasonalityFor(byMonth, 1);
   assert.equal(map.get('pica hudsonia').kind, 'year-round');
-  assert.equal(map.has('setophaga petechia'), false, 'not around this month');
-  assert.equal(seasonalityFor([], year).size, 0);
+  assert.equal(map.get('bombycilla garrulus').kind, 'now-only');
+  assert.deepEqual(map.get('bombycilla garrulus').months.map((m, i) => (m ? i + 1 : 0)).filter(Boolean), [1, 2, 12]);
 });

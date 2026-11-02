@@ -871,16 +871,29 @@ const routes = [
     // Pretend summer birds are around May-September and everything else all year.
     const summer = new Set(['rufhum', 'easkin', 'treswa', 'yelwar', 'westan', 'sposan', 'fragul', 'amwpel', 'osprey', 'killde', 'moublu', 'sancra']);
     const winter = new Set(['bohwax', 'comgol', 'goleag']);
-    // Passing migrants and short-stay birds count as "only around now"; other summer and winter
-    // birds as seasonal; the rest as year-round (a real install works this out from iNaturalist).
-    const passing = new Set(['fragul', 'amwpel', 'sancra', 'bohwax']);
-    const demoSeasonality = (code, i) => {
-      const yearPhotos = 120 + ((i * 53) % 900);
-      if (passing.has(code)) return { kind: 'now-only', lift: 4.2 + (i % 4) * 0.6, share: 0.42, yearPhotos };
-      if (summer.has(code) || winter.has(code)) return { kind: 'seasonal', lift: 1.9 + (i % 5) * 0.2, share: 0.19, yearPhotos };
-      return { kind: 'year-round', lift: 0.8 + (i % 4) * 0.1, share: 0.08, yearPhotos };
+    // Which months each bird is around (a real install works this out from iNaturalist photo counts).
+    const MONTHS_AROUND = {
+      bohwax: [9, 10], // Oct-Nov: passing through
+      fragul: [4, 8], // May and September: migrating
+      sancra: [4, 8],
+      amwpel: [4, 5, 6],
     };
-    const inSeason = (code) => (summer.has(code) ? month >= 5 && month <= 9 : winter.has(code) ? month <= 3 || month >= 10 : true);
+    const demoSeasonality = (code, i) => {
+      const idx = MONTHS_AROUND[code] ?? (summer.has(code) ? [4, 5, 6, 7, 8] : winter.has(code) ? [9, 10, 11, 0, 1, 2] : [...Array(12).keys()]);
+      const months = Array.from({ length: 12 }, (_, m) => idx.includes(m));
+      const profile = months.map((on, m) =>
+        on ? Math.round((0.55 + (((i + m) * 7) % 45) / 100) * 100) / 100 : months[(m + 1) % 12] || months[(m + 11) % 12] ? 0.08 : 0,
+      );
+      const peak = idx[Math.floor(idx.length / 2)];
+      profile[peak] = 1;
+      const monthsAround = idx.length;
+      const here = months[month - 1];
+      const kind = !here ? 'off-peak' : monthsAround >= 9 ? 'year-round' : monthsAround <= 3 ? 'now-only' : 'seasonal';
+      const lift = Math.round((profile[month - 1] * 12) / profile.reduce((a, b) => a + b, 0) * 10) / 10;
+      return { kind, months, monthsAround, profile, lift, share: 0.1, yearPhotos: 120 + ((i * 53) % 900) };
+    };
+    const passingNow = (code) => MONTHS_AROUND[code]?.some((m) => Math.abs(m - (month - 1)) <= 1);
+    const inSeason = (code) => passingNow(code) || (summer.has(code) ? month >= 5 && month <= 9 : winter.has(code) ? month <= 3 || month >= 10 : true);
     const species = [];
     dex.forEach((d, i) => {
       if (!d.ebirdCode || !inSeason(d.ebirdCode)) return;

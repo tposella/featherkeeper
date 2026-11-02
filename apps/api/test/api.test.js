@@ -730,7 +730,10 @@ print(json.dumps({
     assert.equal(res.body.sources.seasonality, 'inaturalist');
     assert.equal(byName['Black-capped Chickadee'].seasonality.kind, 'year-round');
     assert.equal(byName['American Robin'].seasonality.kind, 'now-only');
-    assert.ok(byName['American Robin'].seasonality.lift > 3.5);
+    assert.deepEqual(byName['American Robin'].seasonality.months, [false, false, false, false, false, false, false, false, true, true, true, false]);
+    assert.equal(byName['American Robin'].seasonality.monthsAround, 3);
+    assert.equal(byName['Black-capped Chickadee'].seasonality.monthsAround, 12);
+    assert.equal(byName['American Robin'].seasonality.profile.length, 12);
     assert.deepEqual(res.body.notInCatalogue.map((s) => s.commonName), ['Bohemian Waxwing']);
 
     const may = await owner.get('/api/catalogues/cochrane-backyard-2/season?month=5&current=10');

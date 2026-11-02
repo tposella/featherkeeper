@@ -44,22 +44,26 @@ export default async function seasonRoutes(app, { db, ebird, inat, wikipedia, so
       if (!area) return result;
 
       const point = area.kind !== 'region' && inat.enabled ? { latitude: area.latitude, longitude: area.longitude, radiusKm: area.radiusKm } : null;
-      const [now, usual, allYear] = await Promise.all([
+      const [now, byMonth] = await Promise.all([
         month === currentMonth && ebird.enabled
           ? ebird.recentObservations(ebirdSource(area)).catch((err) => ({ error: err.message }))
           : null,
-        point ? inat.monthlySpecies({ ...point, month }).catch((err) => ({ error: err.message })) : null,
-        // The same counts for every month, to tell year-round birds from seasonal ones.
-        point ? inat.monthlySpecies({ ...point, month: null }).catch(() => null) : null,
+        // Every month's counts, to tell which months each bird is around (the viewed month is one of them).
+        point ? inat.allMonths(point).catch((err) => ({ error: err.message })) : null,
       ]);
+      let usual = Array.isArray(byMonth) ? byMonth[month - 1] : byMonth;
+      if (!Array.isArray(usual) && point) {
+        // The full year failed part-way: still show "usually here" for this month if we can.
+        usual = await inat.monthlySpecies({ ...point, month }).catch((err) => ({ error: err.message }));
+      }
       result.sources = {
         now: Array.isArray(now) ? 'ebird' : null,
         nowError: now?.error ?? null,
         usual: Array.isArray(usual) ? 'inaturalist' : null,
         usualError: usual?.error ?? null,
-        seasonality: Array.isArray(usual) && Array.isArray(allYear) ? 'inaturalist' : null,
+        seasonality: Array.isArray(byMonth) ? 'inaturalist' : null,
       };
-      const seasonal = Array.isArray(usual) && Array.isArray(allYear) ? seasonalityFor(usual, allYear) : new Map();
+      const seasonal = Array.isArray(byMonth) ? seasonalityFor(byMonth, month) : new Map();
 
       const nowByCode = new Map((Array.isArray(now) ? now : []).map((o) => [o.ebirdCode, o]));
       const usualBySci = new Map((Array.isArray(usual) ? usual : []).map((u) => [u.scientificName.toLowerCase(), u]));
