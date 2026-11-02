@@ -1,0 +1,12 @@
+== camera.jpg
+DateTimeOriginal                : 2024:05:18 07:42:10
+CreateDate                      : 2024:05:18 07:42:10
+GPSPosition                     : 51 deg 9' 54.72" N, 114 deg 22' 56.64" W
+Model                           : Canon EOS R7
+== phone.jpg
+DateTimeOriginal                : 2025:09:02 18:05:33
+Model                           : iPhone 15
+== xmp.jpg
+CreateDate                      : 2023:06:11 05:58:00
+ModifyDate                      : 2023:06:12 20:00:00
+DateCreated                     : 2023:06:11 05:58:00
