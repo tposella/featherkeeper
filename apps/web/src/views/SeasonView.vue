@@ -197,7 +197,8 @@ async function add(s) {
             uncommon-now species hidden.
           </template>
           <template v-else-if="hasSeasonality">
-            Badges show which birds are tied to this time of year and which are around all year.
+            Badges and the small charts show which birds are tied to this time of year and which are around all year
+            (gold: months it’s around; the line marks {{ monthName }}). Hover a chart for each month.
           </template>
           <template v-if="data.sources.nowError || data.sources.usualError">
             Some data couldn’t be loaded right now: {{ data.sources.nowError || data.sources.usualError }}
@@ -220,7 +221,7 @@ async function add(s) {
                 </span>
                 <span class="facts small">
                   <span v-if="seasonLabel(s)" :class="['fact', 'season', s.seasonality.kind]" :title="seasonTitle(s)">{{ seasonLabel(s) }}</span>
-                  <span v-if="filtering && s.seasonality" class="calendar" role="img" :aria-label="aroundText(s)">
+                  <span v-if="s.seasonality" :class="['calendar', { compact: !filtering }]" role="img" :aria-label="aroundText(s)">
                     <span class="bars" aria-hidden="true">
                       <span
                         v-for="(p, i) in s.seasonality.profile"
@@ -258,7 +259,7 @@ async function add(s) {
                   <span class="names"><strong>{{ s.commonName }}</strong></span>
                   <span class="facts small">
                     <span v-if="seasonLabel(s)" :class="['fact', 'season', s.seasonality.kind]" :title="seasonTitle(s)">{{ seasonLabel(s) }}</span>
-                  <span v-if="filtering && s.seasonality" class="calendar" role="img" :aria-label="aroundText(s)">
+                  <span v-if="s.seasonality" :class="['calendar', { compact: !filtering }]" role="img" :aria-label="aroundText(s)">
                     <span class="bars" aria-hidden="true">
                       <span
                         v-for="(p, i) in s.seasonality.profile"
@@ -465,6 +466,32 @@ details summary h3 {
 .around {
   font-weight: 650;
   padding-bottom: 12px;
+}
+/* With the switch off: a smaller chart beside the badge, no month letters. */
+.calendar.compact {
+  flex-basis: auto;
+  order: 0;
+  align-items: center;
+  gap: 6px;
+}
+.compact .bars {
+  grid-template-columns: repeat(12, 5px);
+  gap: 1px;
+}
+.compact .bar {
+  grid-template-rows: 14px;
+  border-bottom: 2px solid transparent;
+}
+.compact .bar.cur {
+  border-bottom-color: var(--ink);
+}
+.compact .ini {
+  display: none;
+}
+.compact .around {
+  font-weight: 400;
+  color: var(--ink-soft);
+  padding-bottom: 0;
 }
 .switch {
   display: inline-flex;
